@@ -4,3 +4,4 @@ FoxBuild/zfs*
 FoxBuild/alpine-minirootfs/
 FoxBuild/*.tar.*
 OneRecovery.efi
+FUTURE_IMPROVEMENTS.md

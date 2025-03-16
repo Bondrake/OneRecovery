@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  onerecovery-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: onerecovery-builder:latest
+    container_name: onerecovery-builder
+    volumes:
+      # Mount source code
+      - ../build:/onerecovery/build:rw
+      # Mount output directory
+      - ../output:/onerecovery/output:rw
+      # Mount persistent build cache
+      - onerecovery-cache:/onerecovery/.buildcache
+    environment:
+      # Configure build arguments here (can be overridden with .env)
+      - BUILD_ARGS=--with-zfs --with-recovery-tools --with-network-tools --use-cache
+      # Configure user ID mapping
+      - HOST_UID=${HOST_UID:-1000}
+      - HOST_GID=${HOST_GID:-1000}
+    # Enable any required capabilities
+    cap_add:
+      - SYS_ADMIN  # Required for chroot operations
+    # Enable privileged mode for complex operations like loop devices
+    privileged: true
+
+volumes:
+  onerecovery-cache:
+    driver: local
