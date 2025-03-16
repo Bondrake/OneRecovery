@@ -8,7 +8,7 @@ OneRecovery is a lightweight Linux distribution contained in a single EFI execut
 
 OneRecovery is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This modernized version features:
 
-- Updated Linux kernel (6.10.x) and Alpine Linux (3.21.0)
+- Updated Linux kernel (6.12.x) and Alpine Linux (3.21.3)
 - ZFS filesystem support
 - Enhanced system utilities for recovery and disk management
 - Streamlined user experience with automatic root login
@@ -139,9 +139,9 @@ For portable use or when direct EFI partition access is difficult:
 ### Architecture
 OneRecovery creates a single EFI executable file that contains a complete Linux system, allowing it to boot directly via UEFI without installation. The core components are:
 
-- Linux kernel (6.10.14)
-- Alpine Linux minimal rootfs (3.21.0)
-- ZFS filesystem support (2.3.0-rc3)
+- Linux kernel (6.12.19)
+- Alpine Linux minimal rootfs (3.21.3)
+- ZFS filesystem support (2.3.0)
 - System utilities for recovery operations
 
 ### Key Features
