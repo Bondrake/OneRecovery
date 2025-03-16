@@ -28,6 +28,46 @@ download_and_verify() {
     local file=$(basename "$url")
     local component=$2
     
+    # Use cache if enabled
+    if [ "${USE_CACHE:-false}" = "true" ]; then
+        local cache_file="$CACHE_DIR/sources/$file"
+        
+        if [ -f "$cache_file" ]; then
+            log "INFO" "Using cached $component from $cache_file"
+            
+            # Copy from cache to working directory
+            cp "$cache_file" ./ || {
+                log "WARNING" "Failed to copy from cache, will download instead"
+                download_file "$url" "$file" "$component"
+            }
+        else
+            # Download and store in cache
+            log "INFO" "Downloading $component from $url (will cache)"
+            
+            wget -c4 "$url" || {
+                log "ERROR" "Failed to download $component from $url"
+                return 1
+            }
+            
+            # Store in cache
+            mkdir -p "$CACHE_DIR/sources"
+            cp "$file" "$cache_file" || log "WARNING" "Failed to cache $file"
+        }
+    else
+        # Regular download without caching
+        download_file "$url" "$file" "$component"
+    fi
+    
+    log "SUCCESS" "Downloaded $component successfully"
+    return 0
+}
+
+# Function to download file without caching
+download_file() {
+    local url=$1
+    local file=$2
+    local component=$3
+    
     log "INFO" "Downloading $component from $url"
     
     # Skip download if file already exists and --resume flag is used
@@ -40,7 +80,6 @@ download_and_verify() {
         }
     fi
     
-    log "SUCCESS" "Downloaded $component successfully"
     return 0
 }
 

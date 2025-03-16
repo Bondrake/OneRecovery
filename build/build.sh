@@ -23,6 +23,12 @@ INCLUDE_MINIMAL_KERNEL=false
 INCLUDE_COMPRESSION=true
 COMPRESSION_TOOL="upx"  # Options: upx, xz, zstd
 
+# Build performance options
+USE_CACHE=true
+CACHE_DIR="${HOME}/.onerecovery/cache"
+BUILD_JOBS=$(getconf _NPROCESSORS_ONLN)
+KEEP_CCACHE=true
+
 # Define config file location
 CONFIG_FILE="./build.conf"
 
@@ -132,6 +138,12 @@ INCLUDE_TUI=$INCLUDE_TUI
 INCLUDE_MINIMAL_KERNEL=$INCLUDE_MINIMAL_KERNEL
 INCLUDE_COMPRESSION=$INCLUDE_COMPRESSION
 COMPRESSION_TOOL="$COMPRESSION_TOOL"
+
+# Build performance options
+USE_CACHE=$USE_CACHE
+CACHE_DIR="$CACHE_DIR"
+BUILD_JOBS=$BUILD_JOBS
+KEEP_CCACHE=$KEEP_CCACHE
 EOF
     log "SUCCESS" "Configuration saved successfully"
 }
@@ -157,6 +169,16 @@ print_config() {
     else
         log "INFO" "  EFI Compression: ${RED}No${NC}"
     fi
+    
+    # Display build performance settings
+    log "INFO" ""
+    log "INFO" "Build performance settings:"
+    log "INFO" "  Source caching: $(bool_to_str $USE_CACHE)"
+    if [ "$USE_CACHE" = "true" ]; then
+        log "INFO" "  Cache directory: $CACHE_DIR"
+    fi
+    log "INFO" "  Parallel jobs: ${GREEN}$BUILD_JOBS${NC}"
+    log "INFO" "  Keep ccache: $(bool_to_str $KEEP_CCACHE)"
 }
 
 # Convert boolean to Yes/No string
@@ -179,6 +201,14 @@ usage_modules() {
     echo "  --with-compression     Enable EFI file compression (default: yes)"
     echo "  --without-compression  Disable EFI file compression (faster boot)"
     echo "  --compression-tool=TOOL Select compression tool (upx, xz, zstd) (default: upx)"
+    echo ""
+    echo "Build Performance Options:"
+    echo "  --use-cache            Enable source and build caching (default: yes)"
+    echo "  --no-cache             Disable source and build caching"
+    echo "  --cache-dir=DIR        Set cache directory (default: ~/.onerecovery/cache)"
+    echo "  --jobs=N               Set number of parallel build jobs (default: CPU cores)"
+    echo "  --keep-ccache          Keep compiler cache between builds (default: yes)"
+    echo "  --no-keep-ccache       Clear compiler cache between builds"
     echo ""
     echo "Optional Modules:"
     echo "  --with-zfs             Include ZFS filesystem support (default: yes)"
@@ -205,6 +235,9 @@ usage_modules() {
     echo "  $0 --compression-tool=zstd  Use ZSTD for compression instead of UPX"
     echo "  $0 --minimal --compression-tool=xz  Minimal build with highest compression"
     echo "  $0 --without-compression  Disable compression for faster boot time"
+    echo "  $0 --jobs=8             Use 8 parallel build jobs"
+    echo "  $0 --cache-dir=/tmp/cache  Use custom cache directory"
+    echo "  $0 --no-cache           Perform a clean build without caching"
     echo ""
 }
 
@@ -303,6 +336,35 @@ process_args() {
                     log "ERROR" "Invalid compression tool: $COMPRESSION_TOOL. Allowed values: upx, xz, zstd"
                     exit 1
                 fi
+                shift
+                ;;
+            --use-cache)
+                USE_CACHE=true
+                shift
+                ;;
+            --no-cache)
+                USE_CACHE=false
+                shift
+                ;;
+            --cache-dir=*)
+                CACHE_DIR="${1#*=}"
+                shift
+                ;;
+            --jobs=*)
+                BUILD_JOBS="${1#*=}"
+                # Validate that the job count is a positive integer
+                if ! [[ "$BUILD_JOBS" =~ ^[0-9]+$ ]] || [ "$BUILD_JOBS" -lt 1 ]; then
+                    log "ERROR" "Invalid job count: $BUILD_JOBS. Must be a positive integer."
+                    exit 1
+                fi
+                shift
+                ;;
+            --keep-ccache)
+                KEEP_CCACHE=true
+                shift
+                ;;
+            --no-keep-ccache)
+                KEEP_CCACHE=false
                 shift
                 ;;
             --minimal)
@@ -409,6 +471,36 @@ load_progress() {
     fi
 }
 
+# Setup cache directory
+setup_cache() {
+    if [ "$USE_CACHE" = true ]; then
+        log "INFO" "Setting up cache directory: $CACHE_DIR"
+        
+        # Create cache directories
+        mkdir -p "$CACHE_DIR/sources"
+        mkdir -p "$CACHE_DIR/ccache"
+        mkdir -p "$CACHE_DIR/packages"
+        mkdir -p "$CACHE_DIR/build"
+        
+        # Set up ccache if available
+        if command -v ccache &> /dev/null; then
+            export CCACHE_DIR="$CACHE_DIR/ccache"
+            export PATH="/usr/lib/ccache:$PATH"
+            log "SUCCESS" "Compiler cache enabled: $CCACHE_DIR"
+            
+            # Set ccache limits
+            ccache -M 5G  # Set max cache size to 5GB
+            ccache -z     # Zero statistics
+        else
+            log "WARNING" "ccache not found. Install ccache for faster rebuilds."
+        fi
+        
+        log "SUCCESS" "Cache directories prepared"
+    else
+        log "INFO" "Caching disabled"
+    fi
+}
+
 # Generate module configuration environment variables
 generate_module_env() {
     local env_vars=""
@@ -423,6 +515,18 @@ generate_module_env() {
     env_vars+="export INCLUDE_MINIMAL_KERNEL=$INCLUDE_MINIMAL_KERNEL "
     env_vars+="export INCLUDE_COMPRESSION=$INCLUDE_COMPRESSION "
     env_vars+="export COMPRESSION_TOOL=$COMPRESSION_TOOL "
+    
+    # Set build performance variables
+    env_vars+="export USE_CACHE=$USE_CACHE "
+    env_vars+="export CACHE_DIR=$CACHE_DIR "
+    env_vars+="export BUILD_JOBS=$BUILD_JOBS "
+    env_vars+="export KEEP_CCACHE=$KEEP_CCACHE "
+    
+    # Set ccache variables if enabled
+    if [ "$USE_CACHE" = true ] && command -v ccache &> /dev/null; then
+        env_vars+="export CCACHE_DIR=$CACHE_DIR/ccache "
+        env_vars+="export PATH=/usr/lib/ccache:\$PATH "
+    fi
     
     echo "$env_vars"
 }
@@ -561,6 +665,11 @@ main() {
     # Display build configuration
     print_config
     
+    # Setup cache if enabled
+    if [ "$USE_CACHE" = true ]; then
+        setup_cache
+    fi
+    
     # Check required scripts
     check_scripts
     
@@ -591,6 +700,15 @@ main() {
             [ "$INCLUDE_RECOVERY_TOOLS" = true ] && log "INFO" "  - Data recovery tools"
             [ "$INCLUDE_NETWORK_TOOLS" = true ] && log "INFO" "  - Network tools"
             [ "$INCLUDE_CRYPTO" = true ] && log "INFO" "  - Encryption support"
+            
+            # Show ccache stats if used
+            if [ "$USE_CACHE" = true ] && command -v ccache &> /dev/null; then
+                log "INFO" ""
+                log "INFO" "Compiler cache statistics:"
+                ccache -s | grep -E 'cache hit|cache miss|cache size' | while read line; do
+                    log "INFO" "  $line"
+                done
+            fi
         fi
     else
         log "SUCCESS" "Build step '$BUILD_STEP' completed successfully!"

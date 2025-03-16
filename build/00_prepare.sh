@@ -98,6 +98,14 @@ prepare_directories() {
     mkdir -p alpine-minirootfs/lib/modules
     mkdir -p alpine-minirootfs/dev
     
+    # Create cache directory if caching is enabled
+    if [ "${USE_CACHE:-true}" = "true" ]; then
+        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/sources"
+        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/ccache"
+        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/packages"
+        log "INFO" "Cache directories prepared: ${CACHE_DIR:-$HOME/.onerecovery/cache}"
+    fi
+    
     log "SUCCESS" "Directory structure prepared."
 }
 
@@ -144,6 +152,10 @@ main() {
             # Install compression tools
             log "INFO" "Installing compression tools..."
             apt-get install -y xz-utils lzma zstd upx-ucl
+            
+            # Install build performance tools
+            log "INFO" "Installing build performance tools..."
+            apt-get install -y ccache
             ;;
         "Fedora"|"CentOS"|"Red Hat Enterprise Linux"|"RHEL")
             check_root
@@ -154,12 +166,20 @@ main() {
                 # Install compression tools
                 log "INFO" "Installing compression tools..."
                 dnf install -y xz lzma-sdk-devel zstd upx || true  # Continue even if some packages aren't available
+                
+                # Install build performance tools
+                log "INFO" "Installing build performance tools..."
+                dnf install -y ccache
             else
                 yum install -y wget tar xz-utils gcc make flex bison openssl-devel bc kmod elfutils-libelf-devel
                 
                 # Install compression tools
                 log "INFO" "Installing compression tools..."
                 yum install -y xz lzma-sdk-devel zstd upx || true  # Continue even if some packages aren't available
+                
+                # Install build performance tools
+                log "INFO" "Installing build performance tools..."
+                yum install -y ccache
             fi
             ;;
         "Arch Linux"|"Manjaro Linux")
@@ -170,6 +190,10 @@ main() {
             # Install compression tools
             log "INFO" "Installing compression tools..."
             pacman -Sy --noconfirm xz zstd upx || true  # Continue even if some packages aren't available
+            
+            # Install build performance tools
+            log "INFO" "Installing build performance tools..."
+            pacman -Sy --noconfirm ccache
             ;;
         "Alpine Linux")
             check_root
@@ -179,6 +203,10 @@ main() {
             # Install compression tools
             log "INFO" "Installing compression tools..."
             apk add xz zstd upx || true  # Continue even if some packages aren't available
+            
+            # Install build performance tools
+            log "INFO" "Installing build performance tools..."
+            apk add ccache
             ;;
         "macOS")
             log "WARNING" "macOS detected. You need a Linux environment to build OneRecovery."

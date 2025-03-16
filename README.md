@@ -325,6 +325,14 @@ Advanced Configuration:
   --cache-dir=DIR        Set directory for caching downloaded files
   --output-dir=DIR       Set directory for final EFI output
   --debug                Enable additional debug output during build
+  
+Build Performance Options:
+  --use-cache            Enable source and build caching (default: yes)
+  --no-cache             Disable source and build caching
+  --cache-dir=DIR        Set cache directory (default: ~/.onerecovery/cache)
+  --jobs=N               Set number of parallel build jobs (default: CPU cores)
+  --keep-ccache          Keep compiler cache between builds (default: yes)
+  --no-keep-ccache       Clear compiler cache between builds
 ```
 
 Examples:
@@ -340,6 +348,9 @@ Examples:
 - `./build.sh --full` - Build with all available components
 - `./build.sh --compression-tool=zstd` - Use ZSTD compression instead of UPX
 - `./build.sh --minimal --compression-tool=xz` - Minimal build with maximum compression
+- `./build.sh --jobs=8` - Use 8 parallel build jobs
+- `./build.sh --cache-dir=/tmp/cache` - Use custom cache directory
+- `./build.sh --no-cache` - Perform a clean build without caching
 
 ## License
 

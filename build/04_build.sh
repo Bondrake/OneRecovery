@@ -43,8 +43,16 @@ KERNELVERSION="$(ls -d linux-* | awk '{print $1}' | head -1 | cut -d- -f2)"
 KERNELPATH="linux"
 export INSTALL_MOD_PATH="../$ROOTFS/"
 
-# Build threads equal to CPU cores
-THREADS=$(getconf _NPROCESSORS_ONLN)
+# Set optimal number of build threads
+# Use the specified number of jobs, or autodetect from CPU count
+if [ -n "${BUILD_JOBS:-}" ] && [ "${BUILD_JOBS:-0}" -gt 0 ]; then
+    THREADS=$BUILD_JOBS
+    log "INFO" "Using specified number of build jobs: $THREADS"
+else
+    # Default: Use number of cores for optimal performance 
+    THREADS=$(getconf _NPROCESSORS_ONLN)
+    log "INFO" "Auto-detected number of build jobs: $THREADS"
+fi
 
 # Print banner
 echo "      ____________  "
@@ -129,19 +137,30 @@ echo -e "Uncompressed root filesystem size WITHOUT kernel modules: $(du -sh $ROO
 cd $KERNELPATH 
 
 ##########################
-# Bulding kernel
+# Building kernel
 ##########################
 echo "----------------------------------------------------"
-echo -e "Building kernel with initrams using $THREADS threads...\n"
-nice -19 make -s -j$THREADS
+log "INFO" "Building kernel with initramfs using $THREADS threads"
+
+if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
+    log "INFO" "Using compiler cache for faster builds"
+    nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+else
+    nice -n 19 make -s -j$THREADS
+fi
 
 ##########################
-# Bulding kernel modules
+# Building kernel modules
 ##########################
 
-#echo "----------------------------------------------------"
-echo -e "Building kernel mobules using $THREADS threads...\n"
-nice -19 make -s modules -j$THREADS
+echo "----------------------------------------------------"
+log "INFO" "Building kernel modules using $THREADS threads"
+
+if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
+    nice -n 19 make -s modules -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+else
+    nice -n 19 make -s modules -j$THREADS
+fi
 
 # Copying kernel modules in root filesystem
 echo "----------------------------------------------------"
@@ -151,11 +170,19 @@ nice -19 make -s modules_install
 # Building and installing ZFS modules if enabled
 if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
     echo "----------------------------------------------------"
-    echo "Building and installing ZFS modules"
+    log "INFO" "Building and installing ZFS modules"
     cd ../zfs
+    
+    # Use ccache for ZFS if enabled
+    if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
+        log "INFO" "Using compiler cache for ZFS build"
+        export CC="ccache gcc"
+        export HOSTCC="ccache gcc"
+    fi
+    
     ./autogen.sh
     ./configure --with-linux=$(pwd)/../$KERNELPATH --with-linux-obj=$(pwd)/../$KERNELPATH --prefix=/fake
-    nice -19 make -s -j$THREADS -C module
+    nice -n 19 make -s -j$THREADS -C module
     DESTDIR=$(realpath $(pwd)/../$ROOTFS)
     mkdir -p ${DESTDIR}/fake
     make DESTDIR=${DESTDIR} INSTALL_MOD_PATH=${DESTDIR} install
@@ -174,11 +201,16 @@ echo -e "Copying modules.dep\n"
 nice -19 depmod -b ../$ROOTFS -F System.map $KERNELVERSION
 
 ##########################
-# Bulding kernel
+# Rebuilding kernel
 ##########################
 echo "----------------------------------------------------"
-echo -e "Building kernel with initrams using $THREADS threads...\n"
-nice -19 make -s -j$THREADS
+log "INFO" "Rebuilding kernel with all modules using $THREADS threads"
+
+if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
+    nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+else
+    nice -n 19 make -s -j$THREADS
+fi
 
 
 ##########################
