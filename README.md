@@ -178,7 +178,7 @@ OneRecovery can be built from source using the FoxBuild system. The build enviro
 
 ### Build Process
 
-The build system uses a sequence of numbered scripts with robust error handling:
+The build system (in the `build` directory) uses a sequence of numbered scripts with robust error handling:
 
 1. `00_prepare.sh`: Detects OS, installs dependencies, and prepares the build environment
 2. `01_get.sh`: Downloads and extracts Alpine Linux, Linux kernel, and ZFS sources
@@ -200,7 +200,7 @@ All build scripts include:
 1. Clone the repository:  
    ```bash
    git clone https://github.com/Bondrake/OneRecovery
-   cd OneRecovery/FoxBuild
+   cd OneRecovery/build
    ```
 
 2. Run the unified build script:
@@ -224,7 +224,7 @@ If you prefer more control over the build process, you can run each step manuall
 1. Clone the repository:  
    ```bash
    git clone https://github.com/Bondrake/OneRecovery
-   cd OneRecovery/FoxBuild
+   cd OneRecovery/build
    ```
 
 2. Prepare the build environment:
