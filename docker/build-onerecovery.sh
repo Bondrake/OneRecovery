@@ -164,19 +164,19 @@ echo -e "${BLUE}[INFO]${NC} Detecting system resources..."
 case $RESOURCES in
     max)
         # Leave minimal resources for the host
-        eval "$("$SCRIPT_DIR/auto-resources.sh" --export)"
+        source "$SCRIPT_DIR/auto-resources.sh" --env > /dev/null
         # Override default resource limits with detected values
         MIN_FREE_MEM_GB=2
         MIN_FREE_CPUS=1
-        # Recalculate with minimal reserves
-        TOTAL_MEM_GB=$(("$DOCKER_MEMORY" / 1024 / 1024 / 1024))
-        AVAIL_MEM_GB=$((TOTAL_MEM_GB - MIN_FREE_MEM_GB))
+        # Calculate with minimal reserves - memory is already in g format (like "16g")
+        MEMORY_VALUE=$(echo $DOCKER_MEMORY | sed 's/g//')
+        AVAIL_MEM_GB=$((MEMORY_VALUE - MIN_FREE_MEM_GB))
         DOCKER_MEMORY="${AVAIL_MEM_GB}g"
         echo -e "${BLUE}[INFO]${NC} Using maximum available resources: $DOCKER_MEMORY RAM, $DOCKER_CPUS CPU cores"
         ;;
     balanced)
         # Default balanced mode
-        eval "$("$SCRIPT_DIR/auto-resources.sh" --export)"
+        source "$SCRIPT_DIR/auto-resources.sh" --env > /dev/null
         echo -e "${BLUE}[INFO]${NC} Using balanced resources: $DOCKER_MEMORY RAM, $DOCKER_CPUS CPU cores"
         ;;
     min)

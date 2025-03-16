@@ -54,6 +54,9 @@ handle_extraction() {
     
     echo "Special handling for extraction of $src_file to $dest_dir"
     
+    # Create destination directory first
+    mkdir -p "$dest_dir"
+    
     # Use temp directory for intermediate extraction
     mkdir -p "$TEMP_EXTRACT_DIR"
     
@@ -61,11 +64,26 @@ handle_extraction() {
     if [[ "$src_file" == *.tar.gz ]]; then
         tar -xzf "$src_file" -C "$TEMP_EXTRACT_DIR"
     elif [[ "$src_file" == *.tar.xz ]]; then
+        # For .tar.xz files, must decompress and extract separately
         xz -dc "$src_file" | tar -x -C "$TEMP_EXTRACT_DIR"
     fi
     
+    # Check if extraction succeeded
+    if [ $? -ne 0 ] || [ -z "$(ls -A "$TEMP_EXTRACT_DIR")" ]; then
+        echo "WARNING: Initial extraction failed, trying alternative method"
+        # Try using tar with xf directly
+        if [[ "$src_file" == *.tar.xz ]]; then
+            tar -xf "$src_file" -C "$TEMP_EXTRACT_DIR" --no-same-owner
+        fi
+    fi
+    
+    # Check again if extraction succeeded
+    if [ -z "$(ls -A "$TEMP_EXTRACT_DIR")" ]; then
+        echo "ERROR: All extraction methods failed for $src_file"
+        return 1
+    fi
+    
     # Copy files to final location with correct permissions
-    mkdir -p "$dest_dir"
     cp -a "$TEMP_EXTRACT_DIR"/* "$dest_dir"/ || true
     
     # Clean up
@@ -73,6 +91,15 @@ handle_extraction() {
     
     # Set permissions
     chown -R builder:builder "$dest_dir"
+    
+    # Verify final directory has content
+    if [ -z "$(ls -A "$dest_dir")" ]; then
+        echo "ERROR: Failed to extract content to $dest_dir"
+        return 1
+    fi
+    
+    echo "Extraction completed successfully to $dest_dir"
+    return 0
 }
 
 # Export the function so it's available in child processes

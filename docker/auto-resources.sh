@@ -59,17 +59,29 @@ fi
 # Output results
 echo "Detected system resources: ${TOTAL_MEM_GB}GB RAM, ${TOTAL_CPUS} CPU cores"
 echo "Allocating: ${DOCKER_MEM} RAM, ${AVAIL_CPUS} CPU cores to Docker"
-echo "DOCKER_MEMORY=$DOCKER_MEM"
-echo "DOCKER_CPUS=$AVAIL_CPUS"
-echo "BUILD_FLAGS=$BUILD_FLAGS"
 
-# Output for .env file format or as environment variables
+# Always set the variables for sourcing
+DOCKER_MEMORY=$DOCKER_MEM
+DOCKER_CPUS=$AVAIL_CPUS
+BUILD_FLAGS=$BUILD_FLAGS
+
+# Output for different modes
 if [ "$1" == "--env" ]; then
     echo "DOCKER_MEMORY=$DOCKER_MEM"
     echo "DOCKER_CPUS=$AVAIL_CPUS"
     echo "BUILD_FLAGS=$BUILD_FLAGS"
+    
+    # Also export for sourcing
+    export DOCKER_MEMORY
+    export DOCKER_CPUS
+    export BUILD_FLAGS
 elif [ "$1" == "--export" ]; then
     echo "export DOCKER_MEMORY=$DOCKER_MEM"
     echo "export DOCKER_CPUS=$AVAIL_CPUS"
     echo "export BUILD_FLAGS=$BUILD_FLAGS"
+else
+    # Default output
+    echo "DOCKER_MEMORY=$DOCKER_MEM"
+    echo "DOCKER_CPUS=$AVAIL_CPUS"
+    echo "BUILD_FLAGS=$BUILD_FLAGS"
 fi
