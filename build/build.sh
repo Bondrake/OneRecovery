@@ -23,6 +23,16 @@ INCLUDE_MINIMAL_KERNEL=false
 INCLUDE_COMPRESSION=true
 COMPRESSION_TOOL="upx"  # Options: upx, xz, zstd
 
+# Advanced package groups
+INCLUDE_ADVANCED_FS=false      # Advanced filesystem tools
+INCLUDE_DISK_DIAG=false        # Disk and hardware diagnostics
+INCLUDE_NETWORK_DIAG=false     # Network diagnostics and VPN
+INCLUDE_SYSTEM_TOOLS=false     # Advanced system utilities
+INCLUDE_DATA_RECOVERY=false    # Advanced data recovery tools
+INCLUDE_BOOT_REPAIR=false      # Boot repair utilities
+INCLUDE_EDITORS=false          # Advanced text editors
+INCLUDE_SECURITY=false         # Security analysis tools
+
 # Build performance options
 USE_CACHE=true
 CACHE_DIR="${HOME}/.onerecovery/cache"
@@ -162,6 +172,16 @@ INTERACTIVE_CONFIG=$INTERACTIVE_CONFIG
 CUSTOM_KERNEL_CONFIG="$CUSTOM_KERNEL_CONFIG"
 EXTRA_PACKAGES="$EXTRA_PACKAGES"
 
+# Advanced package groups
+INCLUDE_ADVANCED_FS=$INCLUDE_ADVANCED_FS
+INCLUDE_DISK_DIAG=$INCLUDE_DISK_DIAG
+INCLUDE_NETWORK_DIAG=$INCLUDE_NETWORK_DIAG
+INCLUDE_SYSTEM_TOOLS=$INCLUDE_SYSTEM_TOOLS
+INCLUDE_DATA_RECOVERY=$INCLUDE_DATA_RECOVERY
+INCLUDE_BOOT_REPAIR=$INCLUDE_BOOT_REPAIR
+INCLUDE_EDITORS=$INCLUDE_EDITORS
+INCLUDE_SECURITY=$INCLUDE_SECURITY
+
 # Security options
 GENERATE_RANDOM_PASSWORD=$GENERATE_RANDOM_PASSWORD
 ROOT_PASSWORD_LENGTH=$ROOT_PASSWORD_LENGTH
@@ -216,6 +236,18 @@ print_config() {
     else
         log "INFO" "  Extra packages: ${BLUE}None${NC}"
     fi
+    
+    # Display advanced package groups
+    log "INFO" ""
+    log "INFO" "Advanced package groups:"
+    log "INFO" "  Advanced filesystem tools: $(bool_to_str $INCLUDE_ADVANCED_FS)"
+    log "INFO" "  Disk & hardware diagnostics: $(bool_to_str $INCLUDE_DISK_DIAG)"
+    log "INFO" "  Network diagnostics & VPN: $(bool_to_str $INCLUDE_NETWORK_DIAG)"
+    log "INFO" "  Advanced system tools: $(bool_to_str $INCLUDE_SYSTEM_TOOLS)"
+    log "INFO" "  Data recovery utilities: $(bool_to_str $INCLUDE_DATA_RECOVERY)"
+    log "INFO" "  Boot repair tools: $(bool_to_str $INCLUDE_BOOT_REPAIR)"
+    log "INFO" "  Advanced text editors: $(bool_to_str $INCLUDE_EDITORS)"
+    log "INFO" "  Security tools: $(bool_to_str $INCLUDE_SECURITY)"
     
     # Display security settings
     log "INFO" ""
@@ -391,6 +423,95 @@ process_args() {
                 INCLUDE_COMPRESSION=false
                 shift
                 ;;
+            # Advanced package groups
+            --with-advanced-fs)
+                INCLUDE_ADVANCED_FS=true
+                shift
+                ;;
+            --without-advanced-fs)
+                INCLUDE_ADVANCED_FS=false
+                shift
+                ;;
+            --with-disk-diag)
+                INCLUDE_DISK_DIAG=true
+                shift
+                ;;
+            --without-disk-diag)
+                INCLUDE_DISK_DIAG=false
+                shift
+                ;;
+            --with-network-diag)
+                INCLUDE_NETWORK_DIAG=true
+                shift
+                ;;
+            --without-network-diag)
+                INCLUDE_NETWORK_DIAG=false
+                shift
+                ;;
+            --with-system-tools)
+                INCLUDE_SYSTEM_TOOLS=true
+                shift
+                ;;
+            --without-system-tools)
+                INCLUDE_SYSTEM_TOOLS=false
+                shift
+                ;;
+            --with-data-recovery)
+                INCLUDE_DATA_RECOVERY=true
+                shift
+                ;;
+            --without-data-recovery)
+                INCLUDE_DATA_RECOVERY=false
+                shift
+                ;;
+            --with-boot-repair)
+                INCLUDE_BOOT_REPAIR=true
+                shift
+                ;;
+            --without-boot-repair)
+                INCLUDE_BOOT_REPAIR=false
+                shift
+                ;;
+            --with-editors)
+                INCLUDE_EDITORS=true
+                shift
+                ;;
+            --without-editors)
+                INCLUDE_EDITORS=false
+                shift
+                ;;
+            --with-security)
+                INCLUDE_SECURITY=true
+                shift
+                ;;
+            --without-security)
+                INCLUDE_SECURITY=false
+                shift
+                ;;
+            --with-all-advanced)
+                INCLUDE_ADVANCED_FS=true
+                INCLUDE_DISK_DIAG=true
+                INCLUDE_NETWORK_DIAG=true
+                INCLUDE_SYSTEM_TOOLS=true
+                INCLUDE_DATA_RECOVERY=true
+                INCLUDE_BOOT_REPAIR=true
+                INCLUDE_EDITORS=true
+                INCLUDE_SECURITY=true
+                log "INFO" "Enabling all advanced package groups"
+                shift
+                ;;
+            --without-all-advanced)
+                INCLUDE_ADVANCED_FS=false
+                INCLUDE_DISK_DIAG=false
+                INCLUDE_NETWORK_DIAG=false
+                INCLUDE_SYSTEM_TOOLS=false
+                INCLUDE_DATA_RECOVERY=false
+                INCLUDE_BOOT_REPAIR=false
+                INCLUDE_EDITORS=false
+                INCLUDE_SECURITY=false
+                log "INFO" "Disabling all advanced package groups"
+                shift
+                ;;
             --compression-tool=*)
                 COMPRESSION_TOOL="${1#*=}"
                 # Validate that the tool is one of the allowed options
@@ -500,6 +621,16 @@ process_args() {
                 INCLUDE_NETWORK_TOOLS=true
                 INCLUDE_CRYPTO=true
                 INCLUDE_TUI=true
+                # Include all advanced package groups
+                INCLUDE_ADVANCED_FS=true
+                INCLUDE_DISK_DIAG=true
+                INCLUDE_NETWORK_DIAG=true
+                INCLUDE_SYSTEM_TOOLS=true
+                INCLUDE_DATA_RECOVERY=true
+                INCLUDE_BOOT_REPAIR=true
+                INCLUDE_EDITORS=true
+                INCLUDE_SECURITY=true
+                log "INFO" "Enabling full build with all components and advanced package groups"
                 shift
                 ;;
             --save-config)
@@ -643,6 +774,16 @@ generate_module_env() {
     # Set customization variables
     env_vars+="export CUSTOM_KERNEL_CONFIG=\"$CUSTOM_KERNEL_CONFIG\" "
     env_vars+="export EXTRA_PACKAGES=\"$EXTRA_PACKAGES\" "
+    
+    # Set advanced package groups
+    env_vars+="export INCLUDE_ADVANCED_FS=$INCLUDE_ADVANCED_FS "
+    env_vars+="export INCLUDE_DISK_DIAG=$INCLUDE_DISK_DIAG "
+    env_vars+="export INCLUDE_NETWORK_DIAG=$INCLUDE_NETWORK_DIAG "
+    env_vars+="export INCLUDE_SYSTEM_TOOLS=$INCLUDE_SYSTEM_TOOLS "
+    env_vars+="export INCLUDE_DATA_RECOVERY=$INCLUDE_DATA_RECOVERY "
+    env_vars+="export INCLUDE_BOOT_REPAIR=$INCLUDE_BOOT_REPAIR "
+    env_vars+="export INCLUDE_EDITORS=$INCLUDE_EDITORS "
+    env_vars+="export INCLUDE_SECURITY=$INCLUDE_SECURITY "
     
     # Set security variables
     env_vars+="export ROOT_PASSWORD=\"$ROOT_PASSWORD\" "

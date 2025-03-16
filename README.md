@@ -37,6 +37,22 @@ OneRecovery provides direct hardware access capabilities not available in virtua
 
 ## Platform-Specific Installation
 
+### EFI Partition Size Considerations
+
+The EFI System Partition (ESP) typically has the following default sizes:
+- Windows systems: 100-260 MB
+- macOS systems: 200 MB
+- Linux systems: 100-550 MB (varies by distribution)
+
+When using the full build with all advanced package groups, the OneRecovery.efi file size can be up to 150-200 MB, which may approach or exceed the available space on some EFI partitions. Consider these options:
+
+1. **Selective Package Groups**: Use only the package groups you need instead of `--with-all-advanced` or `--full`
+2. **Resize EFI Partition**: On some systems, you can resize the EFI partition (requires advanced partitioning tools)
+3. **Use USB Installation**: For larger builds, consider the USB flash drive installation method
+4. **Use Compression**: Ensure compression is enabled with `--with-compression` (default)
+
+> **Note**: If you encounter "No space left on device" errors when copying to the EFI partition, build a smaller version by excluding package groups you don't need.
+
 ### macOS Installation
 
 1. **Download OneRecovery.efi**
@@ -271,6 +287,11 @@ OneRecovery offers several options to reduce the size of the final EFI file:
   - `--without-network-tools`: Skip advanced networking tools
   - `--without-crypto`: Skip encryption-related tools
   - `--without-tui`: Skip the Text User Interface for minimal CLI experience
+  
+- **Advanced Package Groups**: Carefully select only required advanced package groups to control size:
+  - Each advanced package group has a different size impact (from ~4 MB to ~20 MB)
+  - Including all advanced packages adds approximately 75 MB to the EFI file size
+  - See the Advanced Package Groups section for size estimates of each group
 
 - **EFI Compression** (`--with-compression`, on by default):
   - Compresses the final EFI file using compression tools
@@ -319,9 +340,21 @@ Optional Modules:
   --with-crypto          Include encryption support (default: yes)
   --without-crypto       Exclude encryption support
   --minimal              Minimal build with only essential components
-  --full                 Full build with all available components
+  --full                 Full build with all available components and advanced package groups [~75 MB larger]
   --save-config          Save current configuration as default
   --show-config          Display current build configuration
+  
+Advanced Package Groups (with estimated EFI size impact):
+  --with-advanced-fs     Include advanced filesystem tools (ntfs-3g, xfsprogs, etc.) [~7 MB]
+  --with-disk-diag       Include disk & hardware diagnostics (smartmontools, etc.) [~8 MB] 
+  --with-network-diag    Include network diagnostics and VPN tools [~15 MB]
+  --with-system-tools    Include advanced system utilities (htop, strace, etc.) [~7 MB]
+  --with-data-recovery   Include additional data recovery tools [~5 MB]
+  --with-boot-repair     Include boot repair utilities (grub) [~10 MB]
+  --with-editors         Include advanced text editors (vim, tmux, jq) [~20 MB]
+  --with-security        Include security tools (openssl) [~4 MB]
+  --with-all-advanced    Include all advanced package groups [~75 MB total]
+  --without-all-advanced Exclude all advanced package groups
 
 Build Configuration Management:
   --save-config          Save current configuration to build.conf for future builds
@@ -394,6 +427,20 @@ Examples:
 - `./build.sh --interactive-config` - Use interactive kernel configuration for custom kernel options
 - `./build.sh --kernel-config=/path/to/custom.config` - Use a custom kernel configuration file
 - `./build.sh --extra-packages=htop,vim,tmux` - Install additional Alpine packages
+- `./build.sh --with-advanced-fs --with-disk-diag` - Add advanced filesystem and disk diagnostic tools
+- `./build.sh --with-all-advanced` - Include all advanced package groups
+- `./build.sh --with-editors --with-system-tools` - Add advanced editors and system utilities
+
+### Balancing Size and Functionality
+
+When building OneRecovery, consider these best practices:
+
+1. **EFI Partition Size Constraints**: Standard EFI partitions are 100-260 MB on most systems
+2. **Package Group Selection**: Choose only the advanced package groups you need for your specific use case
+3. **Test on Target Systems**: Verify that your build fits on the EFI partitions of your target systems
+4. **Compression Importance**: For full builds, compression is essential - UPX is fastest, while XZ offers better compression
+
+Remember that each advanced package group adds size to the final EFI file. Consider using `--with-specific-groups` instead of `--with-all-advanced` for targeted functionality while keeping the file size manageable.
 
 ## License
 

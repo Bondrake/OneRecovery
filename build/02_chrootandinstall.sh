@@ -66,6 +66,62 @@ if [ "${INCLUDE_TUI:-true}" = "true" ]; then
     log "INFO" "Including TUI dependencies"
 fi
 
+# Add advanced filesystem tools if enabled
+if [ "${INCLUDE_ADVANCED_FS:-false}" = "true" ]; then
+    ADVANCED_FS_PACKAGES="ntfs-3g xfsprogs gdisk exfatprogs f2fs-tools"
+    PACKAGES="$PACKAGES $ADVANCED_FS_PACKAGES"
+    log "INFO" "Including advanced filesystem tools: $ADVANCED_FS_PACKAGES"
+fi
+
+# Add disk and hardware diagnostics if enabled
+if [ "${INCLUDE_DISK_DIAG:-false}" = "true" ]; then
+    DISK_DIAG_PACKAGES="smartmontools hdparm nvme-cli dmidecode lshw"
+    PACKAGES="$PACKAGES $DISK_DIAG_PACKAGES"
+    log "INFO" "Including disk and hardware diagnostics: $DISK_DIAG_PACKAGES"
+fi
+
+# Add network diagnostics if enabled
+if [ "${INCLUDE_NETWORK_DIAG:-false}" = "true" ]; then
+    NETWORK_DIAG_PACKAGES="ethtool nmap wireguard-tools openvpn"
+    PACKAGES="$PACKAGES $NETWORK_DIAG_PACKAGES"
+    log "INFO" "Including network diagnostics and VPN tools: $NETWORK_DIAG_PACKAGES"
+fi
+
+# Add system tools if enabled
+if [ "${INCLUDE_SYSTEM_TOOLS:-false}" = "true" ]; then
+    SYSTEM_TOOLS_PACKAGES="htop strace pciutils usbutils"
+    PACKAGES="$PACKAGES $SYSTEM_TOOLS_PACKAGES"
+    log "INFO" "Including advanced system tools: $SYSTEM_TOOLS_PACKAGES"
+fi
+
+# Add data recovery tools if enabled (photorec is part of testdisk)
+if [ "${INCLUDE_DATA_RECOVERY:-false}" = "true" ]; then
+    DATA_RECOVERY_PACKAGES="testdisk"
+    PACKAGES="$PACKAGES $DATA_RECOVERY_PACKAGES"
+    log "INFO" "Including advanced data recovery tools: $DATA_RECOVERY_PACKAGES"
+fi
+
+# Add boot repair tools if enabled
+if [ "${INCLUDE_BOOT_REPAIR:-false}" = "true" ]; then
+    BOOT_REPAIR_PACKAGES="grub"
+    PACKAGES="$PACKAGES $BOOT_REPAIR_PACKAGES"
+    log "INFO" "Including boot repair tools: $BOOT_REPAIR_PACKAGES"
+fi
+
+# Add advanced editors if enabled
+if [ "${INCLUDE_EDITORS:-false}" = "true" ]; then
+    EDITORS_PACKAGES="vim tmux jq"
+    PACKAGES="$PACKAGES $EDITORS_PACKAGES"
+    log "INFO" "Including advanced text editors: $EDITORS_PACKAGES"
+fi
+
+# Add security tools if enabled
+if [ "${INCLUDE_SECURITY:-false}" = "true" ]; then
+    SECURITY_PACKAGES="openssl"
+    PACKAGES="$PACKAGES $SECURITY_PACKAGES"
+    log "INFO" "Including security tools: $SECURITY_PACKAGES"
+fi
+
 # Add extra packages if specified
 if [ -n "${EXTRA_PACKAGES:-}" ]; then
     # Convert comma-separated list to space-separated list
