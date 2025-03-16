@@ -107,7 +107,20 @@ extract_archive() {
             fi
         fi
     elif [[ "$file" == *.tar.xz ]]; then
-        tar -xf "$file" --no-same-owner || return 1
+        # Special handling for kernel extraction inside Docker
+        if grep -q "docker\|container" /proc/1/cgroup 2>/dev/null; then
+            log "INFO" "Detected container environment, using special extraction mode for XZ archive"
+            mkdir -p "${file%.tar.xz}" && tar -xf "$file" --no-same-owner -C "${file%.tar.xz}" --strip-components=1 || {
+                log "WARNING" "Failed with direct extraction, trying alternative method"
+                # Alternative extraction method - extract to temporary directory first
+                local temp_dir=$(mktemp -d)
+                tar -xf "$file" --no-same-owner -C "$temp_dir" && 
+                    rsync -a "$temp_dir/${file%.tar.xz}/" "${file%.tar.xz}/" && 
+                    rm -rf "$temp_dir" || return 1
+            }
+        else
+            tar -xf "$file" --no-same-owner || return 1
+        fi
     else
         log "ERROR" "Unknown archive format: $file"
         return 1

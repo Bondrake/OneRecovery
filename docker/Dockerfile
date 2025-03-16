@@ -38,7 +38,8 @@ RUN apk add --no-cache \
     xorriso \
     squashfs-tools \
     kmod \
-    bc
+    bc \
+    rsync
 
 # Create non-root user to run the build as
 RUN adduser -D -u 1000 builder && \
