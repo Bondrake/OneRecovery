@@ -255,39 +255,37 @@ jobs:
           
           if [ ! -f ".config" ]; then
             echo "Kernel config missing, creating default config..."
-            # Create a minimal config manually
-            cat > .config << 'EOF'
-# Minimal kernel configuration
-CONFIG_64BIT=y
-CONFIG_X86_64=y
-CONFIG_SMP=y
-CONFIG_MODULES=y
-CONFIG_MODULE_UNLOAD=y
-CONFIG_EFI=y
-CONFIG_EFI_STUB=y
-CONFIG_BLK_DEV_INITRD=y
-CONFIG_BINFMT_ELF=y
-CONFIG_FS_POSIX_ACL=y
-CONFIG_TMPFS=y
-CONFIG_TMPFS_POSIX_ACL=y
-CONFIG_PROC_FS=y
-CONFIG_SYSFS=y
-CONFIG_DEVTMPFS=y
-CONFIG_UNIX=y
-CONFIG_NET=y
-CONFIG_INET=y
-CONFIG_BLK_DEV=y
-CONFIG_BLK_DEV_SD=y
-CONFIG_ATA=y
-CONFIG_SATA_AHCI=y
-CONFIG_USB_SUPPORT=y
-CONFIG_USB=y
-CONFIG_USB_EHCI_HCD=y
-CONFIG_USB_XHCI_HCD=y
-CONFIG_USB_STORAGE=y
-CONFIG_EXT4_FS=y
-CONFIG_CRYPTO=y
-EOF
+            # Create a minimal config manually line by line
+            echo "# Minimal kernel configuration" > .config
+            echo "CONFIG_64BIT=y" >> .config
+            echo "CONFIG_X86_64=y" >> .config
+            echo "CONFIG_SMP=y" >> .config
+            echo "CONFIG_MODULES=y" >> .config
+            echo "CONFIG_MODULE_UNLOAD=y" >> .config
+            echo "CONFIG_EFI=y" >> .config
+            echo "CONFIG_EFI_STUB=y" >> .config
+            echo "CONFIG_BLK_DEV_INITRD=y" >> .config
+            echo "CONFIG_BINFMT_ELF=y" >> .config
+            echo "CONFIG_FS_POSIX_ACL=y" >> .config
+            echo "CONFIG_TMPFS=y" >> .config
+            echo "CONFIG_TMPFS_POSIX_ACL=y" >> .config
+            echo "CONFIG_PROC_FS=y" >> .config
+            echo "CONFIG_SYSFS=y" >> .config
+            echo "CONFIG_DEVTMPFS=y" >> .config
+            echo "CONFIG_UNIX=y" >> .config
+            echo "CONFIG_NET=y" >> .config
+            echo "CONFIG_INET=y" >> .config
+            echo "CONFIG_BLK_DEV=y" >> .config
+            echo "CONFIG_BLK_DEV_SD=y" >> .config
+            echo "CONFIG_ATA=y" >> .config
+            echo "CONFIG_SATA_AHCI=y" >> .config
+            echo "CONFIG_USB_SUPPORT=y" >> .config
+            echo "CONFIG_USB=y" >> .config
+            echo "CONFIG_USB_EHCI_HCD=y" >> .config
+            echo "CONFIG_USB_XHCI_HCD=y" >> .config
+            echo "CONFIG_USB_STORAGE=y" >> .config
+            echo "CONFIG_EXT4_FS=y" >> .config
+            echo "CONFIG_CRYPTO=y" >> .config
             make olddefconfig
           fi
           
