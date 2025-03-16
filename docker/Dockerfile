@@ -15,6 +15,7 @@ RUN apk add --no-cache \
     zstd-dev \
     lz4-dev \
     openssl-dev \
+    libelf \
     elfutils-dev \
     bison \
     flex \
@@ -35,7 +36,9 @@ RUN apk add --no-cache \
     coreutils \
     mtools \
     xorriso \
-    squashfs-tools
+    squashfs-tools \
+    kmod \
+    bc
 
 # Create non-root user to run the build as
 RUN adduser -D -u 1000 builder && \

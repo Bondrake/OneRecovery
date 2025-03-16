@@ -198,7 +198,7 @@ main() {
         "Alpine Linux")
             check_root
             log "INFO" "Installing dependencies for $OS..."
-            apk add wget tar xz build-base flex bison openssl-dev bc kmod libelf-dev
+            apk add wget tar xz build-base flex bison openssl-dev bc kmod libelf elfutils-dev
             
             # Install compression tools
             log "INFO" "Installing compression tools..."
