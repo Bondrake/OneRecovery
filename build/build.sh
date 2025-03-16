@@ -28,6 +28,7 @@ USE_CACHE=true
 CACHE_DIR="${HOME}/.onerecovery/cache"
 BUILD_JOBS=$(getconf _NPROCESSORS_ONLN)
 KEEP_CCACHE=true
+USE_SWAP=false        # Create swap file if memory is low
 
 # Security options
 ROOT_PASSWORD=""
@@ -149,6 +150,7 @@ USE_CACHE=$USE_CACHE
 CACHE_DIR="$CACHE_DIR"
 BUILD_JOBS=$BUILD_JOBS
 KEEP_CCACHE=$KEEP_CCACHE
+USE_SWAP=$USE_SWAP
 
 # Security options
 GENERATE_RANDOM_PASSWORD=$GENERATE_RANDOM_PASSWORD
@@ -188,6 +190,7 @@ print_config() {
     fi
     log "INFO" "  Parallel jobs: ${GREEN}$BUILD_JOBS${NC}"
     log "INFO" "  Keep ccache: $(bool_to_str $KEEP_CCACHE)"
+    log "INFO" "  Use swap file: $(bool_to_str $USE_SWAP)"
     
     # Display security settings
     log "INFO" ""
@@ -229,6 +232,8 @@ usage_modules() {
     echo "  --jobs=N               Set number of parallel build jobs (default: CPU cores)"
     echo "  --keep-ccache          Keep compiler cache between builds (default: yes)"
     echo "  --no-keep-ccache       Clear compiler cache between builds"
+    echo "  --use-swap             Create swap file if memory is low (default: no)"
+    echo "  --no-swap              Do not create swap file even if memory is low"
     echo ""
     echo "Security Options:"
     echo "  --password=PASS        Set custom root password (CAUTION: visible in process list)"
@@ -264,6 +269,7 @@ usage_modules() {
     echo "  $0 --jobs=8             Use 8 parallel build jobs"
     echo "  $0 --cache-dir=/tmp/cache  Use custom cache directory"
     echo "  $0 --no-cache           Perform a clean build without caching"
+    echo "  $0 --use-swap           Create swap file if system has low memory"
     echo "  $0 --password=mypassword  Set a specific root password"
     echo "  $0 --random-password    Generate a secure random root password"
     echo "  $0 --password-length=16  Set random password length to 16 characters"
@@ -394,6 +400,14 @@ process_args() {
                 ;;
             --no-keep-ccache)
                 KEEP_CCACHE=false
+                shift
+                ;;
+            --use-swap)
+                USE_SWAP=true
+                shift
+                ;;
+            --no-swap)
+                USE_SWAP=false
                 shift
                 ;;
             --password=*)
@@ -574,6 +588,7 @@ generate_module_env() {
     env_vars+="export CACHE_DIR=$CACHE_DIR "
     env_vars+="export BUILD_JOBS=$BUILD_JOBS "
     env_vars+="export KEEP_CCACHE=$KEEP_CCACHE "
+    env_vars+="export USE_SWAP=$USE_SWAP "
     
     # Set security variables
     env_vars+="export ROOT_PASSWORD=\"$ROOT_PASSWORD\" "

@@ -333,6 +333,8 @@ Build Performance Options:
   --jobs=N               Set number of parallel build jobs (default: CPU cores)
   --keep-ccache          Keep compiler cache between builds (default: yes)
   --no-keep-ccache       Clear compiler cache between builds
+  --use-swap             Create swap file if memory is low (default: no)
+  --no-swap              Do not create swap file even if memory is low
   
 Security Options:
   --password=PASS        Set custom root password (CAUTION: visible in process list)
@@ -357,6 +359,7 @@ Examples:
 - `./build.sh --jobs=8` - Use 8 parallel build jobs
 - `./build.sh --cache-dir=/tmp/cache` - Use custom cache directory
 - `./build.sh --no-cache` - Perform a clean build without caching
+- `./build.sh --use-swap` - Create swap file if system has low memory
 - `./build.sh --password=SecurePass123` - Set specific root password
 - `./build.sh --random-password` - Generate a secure random password
 - `./build.sh --password-length=16` - Use longer random password

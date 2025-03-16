@@ -142,6 +142,77 @@ cd $KERNELPATH
 echo "----------------------------------------------------"
 log "INFO" "Building kernel with initramfs using $THREADS threads"
 
+# Detect available system memory and adjust threads if needed
+AVAILABLE_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+AVAILABLE_MEM_GB=$(awk "BEGIN {printf \"%.1f\", $AVAILABLE_MEM_KB/1024/1024}")
+
+# Create swap file if memory is very low and USE_SWAP is enabled
+if [ "${USE_SWAP:-false}" = "true" ] && [ "$AVAILABLE_MEM_KB" -gt 0 ] && [ "$AVAILABLE_MEM_KB" -lt 4000000 ]; then  # < 4GB
+    log "INFO" "Low memory detected (${AVAILABLE_MEM_GB}GB). Creating temporary swap file..."
+    
+    SWAP_SIZE_MB=4096  # 4GB swap
+    SWAP_FILE="/tmp/onerecovery_swap"
+    
+    # Remove existing swap if present
+    if [ -f "$SWAP_FILE" ]; then
+        sudo swapoff "$SWAP_FILE" 2>/dev/null || true
+        sudo rm -f "$SWAP_FILE"
+    fi
+    
+    # Create new swap file
+    log "INFO" "Allocating ${SWAP_SIZE_MB}MB swap file at $SWAP_FILE"
+    sudo dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$SWAP_SIZE_MB" status=progress 2>/dev/null || {
+        log "WARNING" "Failed to create swap file. Continuing without swap."
+    }
+    
+    if [ -f "$SWAP_FILE" ]; then
+        sudo chmod 600 "$SWAP_FILE"
+        sudo mkswap "$SWAP_FILE" >/dev/null 2>&1 || {
+            log "WARNING" "Failed to format swap file. Continuing without swap."
+            sudo rm -f "$SWAP_FILE"
+        }
+        
+        sudo swapon "$SWAP_FILE" >/dev/null 2>&1 || {
+            log "WARNING" "Failed to enable swap file. Continuing without swap."
+            sudo rm -f "$SWAP_FILE"
+        }
+        
+        # Re-read available memory with swap included
+        sleep 1
+        AVAILABLE_MEM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+        AVAILABLE_MEM_GB=$(awk "BEGIN {printf \"%.1f\", $AVAILABLE_MEM_KB/1024/1024}")
+        log "SUCCESS" "Swap file enabled. Available memory now: ${AVAILABLE_MEM_GB}GB"
+    fi
+fi
+
+# Calculate a safe number of threads based on available memory
+# Empirically, each compilation thread needs ~2GB for kernel compilation
+if [ "$AVAILABLE_MEM_KB" -gt 0 ]; then
+    SAFE_THREADS=$(awk "BEGIN {print int($AVAILABLE_MEM_KB/1024/1024/2)}")
+    # Ensure at least 1 thread and no more than original THREADS
+    SAFE_THREADS=$(( SAFE_THREADS < 1 ? 1 : SAFE_THREADS ))
+    SAFE_THREADS=$(( SAFE_THREADS > THREADS ? THREADS : SAFE_THREADS ))
+    
+    if [ "$SAFE_THREADS" -lt "$THREADS" ]; then
+        log "WARNING" "Limited available memory: ${AVAILABLE_MEM_GB}GB. Reducing build threads from $THREADS to $SAFE_THREADS"
+        THREADS=$SAFE_THREADS
+    else
+        log "INFO" "Available memory: ${AVAILABLE_MEM_GB}GB. Using $THREADS threads"
+    fi
+else
+    log "WARNING" "Could not detect available memory. Using $THREADS threads, but may be risky"
+fi
+
+# Additional optimizations to reduce memory usage
+export KBUILD_BUILD_TIMESTAMP=$(date)
+# Reduce memory usage by disabling debugging symbols if memory is tight
+if [ "$AVAILABLE_MEM_KB" -gt 0 ] && [ "$AVAILABLE_MEM_KB" -lt 8000000 ]; then  # < 8GB
+    log "INFO" "Low memory environment detected, using memory-saving options"
+    export KCFLAGS="-g0 -Os"  # Optimize for size, omit debug info
+else
+    export KCFLAGS="-O2"      # Default optimization
+fi
+
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
     log "INFO" "Using compiler cache for faster builds"
     nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
@@ -173,6 +244,14 @@ if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
     log "INFO" "Building and installing ZFS modules"
     cd ../zfs
     
+    # Memory-saving options for ZFS build too
+    if [ "$AVAILABLE_MEM_KB" -gt 0 ] && [ "$AVAILABLE_MEM_KB" -lt 8000000 ]; then  # < 8GB
+        log "INFO" "Low memory environment detected, using memory-saving options for ZFS build"
+        export CFLAGS="-g0 -Os"  # Optimize for size, omit debug info
+    else
+        export CFLAGS="-O2"      # Default optimization
+    fi
+    
     # Use ccache for ZFS if enabled
     if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
         log "INFO" "Using compiler cache for ZFS build"
@@ -182,6 +261,7 @@ if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
     
     ./autogen.sh
     ./configure --with-linux=$(pwd)/../$KERNELPATH --with-linux-obj=$(pwd)/../$KERNELPATH --prefix=/fake
+    log "INFO" "Building ZFS modules with $THREADS threads"
     nice -n 19 make -s -j$THREADS -C module
     DESTDIR=$(realpath $(pwd)/../$ROOTFS)
     mkdir -p ${DESTDIR}/fake
@@ -206,6 +286,7 @@ nice -19 depmod -b ../$ROOTFS -F System.map $KERNELVERSION
 echo "----------------------------------------------------"
 log "INFO" "Rebuilding kernel with all modules using $THREADS threads"
 
+# Apply memory-saving optimizations for final build too
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
     nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
 else
@@ -331,6 +412,14 @@ log "SUCCESS" "Build completed successfully: $(pwd)/../OneRecovery.efi"
 sleep 2
 FINAL_SIZE=$(du -sh $(pwd)/../OneRecovery.efi | cut -f1)
 log "INFO" "Final file size: $FINAL_SIZE"
+
+# Clean up swap file if we created one
+if [ "${USE_SWAP:-false}" = "true" ] && [ -f "/tmp/onerecovery_swap" ]; then
+    log "INFO" "Removing temporary swap file"
+    sudo swapoff "/tmp/onerecovery_swap" 2>/dev/null || true
+    sudo rm -f "/tmp/onerecovery_swap"
+    log "SUCCESS" "Swap file removed"
+fi
 
 # Print summary of build configuration
 echo "----------------------------------------------------"
