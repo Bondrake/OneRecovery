@@ -116,13 +116,109 @@ Then format drive from `diskmgmt.msc` in FAT32.
 
 
 
+## About This Fork
+
+OneRecovery is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This fork modernizes the codebase with current Linux kernel (6.10.x), updated Alpine Linux (3.21.0), and adds several important features:
+
+- ZFS filesystem support
+- Modern system utilities for recovery and disk management
+- Automatic root login for easier access
+- Size optimizations for better performance
+
+## System Overview
+
+### Architecture
+OneRecovery creates a single EFI executable file that contains a complete Linux system, allowing it to boot directly via UEFI without installation. The core components are:
+
+- Linux kernel (6.10.14)
+- Alpine Linux minimal rootfs (3.21.0)
+- ZFS filesystem support (2.3.0-rc3)
+- System utilities for recovery operations
+
+### Key Features
+- **Non-invasive**: Runs without modifying existing systems
+- **Hardware access**: Direct access to hardware components (like PCIe WiFi cards)
+- **Filesystem support**: Handles ext4, ZFS, FAT32, etc.
+- **Disk management**: LVM, RAID, encryption (cryptsetup)
+- **Network tools**: DHCP, SSH (dropbear), basic utilities
+- **Recovery tools**: Disk utilities, filesystem tools, debootstrap
+
+### Use Cases
+- Recovering data from systems with inaccessible primary OS
+- Working with hardware that can't be virtualized
+- Penetration testing using internal hardware
+- Emergency system recovery and maintenance
+- Working alongside encrypted filesystems
+
+## Installation Instructions
+
+### 1. Get the OneRecovery.efi file
+Either download a pre-built release or build your own (see Build section below).
+
+### 2. Choose an installation method
+
+#### Option A: Direct Installation to EFI Partition
+This method allows booting without external media:
+
+1. Mount your EFI system partition
+2. Copy OneRecovery.efi to the EFI partition
+3. Configure your system to boot from this file (see macOS and PC instructions below)
+
+#### Option B: USB Flash Drive
+For portable use or when you can't access the EFI partition:
+
+1. Format a USB flash drive as FAT32 with GPT partition scheme
+2. Create the directory structure: `EFI/BOOT/`
+3. Copy OneRecovery.efi to `/EFI/BOOT/BOOTx64.EFI`
+4. Boot from the USB drive using your system's boot menu
+
+### 3. Boot Configuration
+
+#### For macOS:
+```bash
+# Mount EFI partition (first find it with diskutil list)
+diskutil mount disk0s1  # Replace with your EFI partition
+
+# Copy the file
+cp path/to/OneRecovery.efi /Volumes/EFI/
+
+# Set one-time boot option (must be done from Recovery Mode if SIP is enabled)
+bless --mount /Volumes/EFI --setBoot --nextonly --file /Volumes/EFI/OneRecovery.efi
+```
+
+#### For PC/Windows:
+```bash
+# From Linux with efibootmgr:
+efibootmgr --disk /dev/sda --part 1 --create --label "OneRecovery" --loader /OneRecovery.efi
+
+# Or use your PC's boot menu (often F12, F10, or Esc at startup)
+```
+
 ## Build your own 
 
-You can build your own version of One File Linux.  
-It based on Alpine Linux and vanilla kernel.  
+You can build your own version of OneRecovery.  
+It's based on Alpine Linux and vanilla kernel.  
 
-1. Clone repositry  
-`git clone https://github.com/D4rk4/OneRecovery`
+### Build Process
+The build process follows a sequential flow through numbered scripts:
 
-2. Build  
-`cd FoxBuild && *.sh`
+1. `01_get.sh`: Downloads and extracts Alpine Linux, Linux kernel, and ZFS sources
+2. `02_chrootandinstall.sh`: Sets up the chroot environment and installs packages
+3. `03_conf.sh`: Configures system services, network, auto-login, and kernel settings
+4. `04_build.sh`: Builds the kernel, modules, ZFS support, and packages everything into the EFI file
+5. `99_cleanup.sh`: Removes build artifacts when finished
+
+### Steps
+1. Clone repository:  
+   `git clone https://github.com/D4rk4/OneRecovery`
+
+2. Run build scripts sequentially:  
+   ```
+   cd FoxBuild
+   ./01_get.sh
+   ./02_chrootandinstall.sh
+   ./03_conf.sh
+   ./04_build.sh
+   ```
+   
+3. The final file will be created as `OneRecovery.efi` in the root directory
