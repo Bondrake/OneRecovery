@@ -93,14 +93,21 @@ extract_archive() {
     
     if [[ "$file" == *.tar.gz ]]; then
         if [[ "$target" == "" ]]; then
-            tar -xf "$file" || return 1
+            tar -xf "$file" --no-same-owner || return 1
         else
             # Create target directory if it doesn't exist
             [ ! -d "$target" ] && mkdir -p "$target"
-            tar -C "$target" -xf "$file" || return 1
+            
+            # Special handling for Alpine rootfs extraction inside Docker
+            if [[ "$file" == *"alpine-minirootfs"* ]] && grep -q "docker\|container" /proc/1/cgroup 2>/dev/null; then
+                log "INFO" "Detected container environment, using special Alpine extraction mode"
+                tar -C "$target" -xf "$file" --no-same-owner || return 1
+            else
+                tar -C "$target" -xf "$file" || return 1
+            fi
         fi
     elif [[ "$file" == *.tar.xz ]]; then
-        tar -xf "$file" || return 1
+        tar -xf "$file" --no-same-owner || return 1
     else
         log "ERROR" "Unknown archive format: $file"
         return 1
