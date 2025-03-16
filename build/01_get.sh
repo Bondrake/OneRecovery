@@ -207,45 +207,70 @@ extract_archive() {
     return 0
 }
 
-# Check if we should resume from a checkpoint
-check_resume_point "$1"
+# Main function
+main() {
+    # Check if we should resume from a checkpoint
+    check_resume_point "$1"
 
-# Download and extract Alpine Linux
-log "INFO" "Step 1: Getting Alpine Linux minirootfs"
-download_and_verify "$ALPINE_URL" "Alpine Linux" && 
-    extract_archive "$alpineminirootfsfile" "./alpine-minirootfs" "Alpine Linux" || 
-    exit 1
-
-# Download and extract Linux kernel
-log "INFO" "Step 2: Getting Linux kernel"
-download_and_verify "$KERNEL_URL" "Linux kernel" && 
-    extract_archive "$linuxver.tar.xz" "" "Linux kernel" || 
-    exit 1
-
-# Create symbolic link to Linux kernel directory
-if [ ! -L "linux" ] || [ ! -d "linux" ]; then
-    ln -sf "$linuxver" linux
-    log "INFO" "Created symbolic link to Linux kernel directory"
-fi
-
-# Download and extract OpenZFS if enabled
-if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
-    log "INFO" "Step 3: Getting OpenZFS source"
-    download_and_verify "$ZFS_URL" "OpenZFS" && 
-        extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS" || 
+    # Step 1: Download and extract Alpine Linux
+    log "INFO" "Step 1: Getting Alpine Linux minirootfs"
+    if ! download_and_verify "$ALPINE_URL" "Alpine Linux"; then
+        log "ERROR" "Failed to download Alpine Linux"
         exit 1
-
-    # Rename ZFS directory
-    if [ -d "zfs-${zfsver}" ] && [ ! -d "zfs" ]; then
-        mv "zfs-${zfsver}" zfs
-        log "INFO" "Renamed ZFS directory"
-    elif [ -d "zfs" ]; then
-        log "INFO" "ZFS directory already exists"
     fi
-else
-    log "INFO" "Step 3: Skipping OpenZFS (disabled in configuration)"
-fi
+    
+    if ! extract_archive "$alpineminirootfsfile" "./alpine-minirootfs" "Alpine Linux"; then
+        log "ERROR" "Failed to extract Alpine Linux"
+        exit 1
+    fi
 
-# Print final status
-print_script_end
+    # Step 2: Download and extract Linux kernel
+    log "INFO" "Step 2: Getting Linux kernel"
+    if ! download_and_verify "$KERNEL_URL" "Linux kernel"; then
+        log "ERROR" "Failed to download Linux kernel"
+        exit 1
+    fi
+    
+    if ! extract_archive "$linuxver.tar.xz" "" "Linux kernel"; then
+        log "ERROR" "Failed to extract Linux kernel"
+        exit 1
+    fi
+
+    # Create symbolic link to Linux kernel directory
+    if [ ! -L "linux" ] || [ ! -d "linux" ]; then
+        ln -sf "$linuxver" linux
+        log "INFO" "Created symbolic link to Linux kernel directory"
+    fi
+
+    # Step 3: Download and extract OpenZFS if enabled
+    if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
+        log "INFO" "Step 3: Getting OpenZFS source"
+        if ! download_and_verify "$ZFS_URL" "OpenZFS"; then
+            log "ERROR" "Failed to download OpenZFS"
+            exit 1
+        fi
+        
+        if ! extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS"; then
+            log "ERROR" "Failed to extract OpenZFS"
+            exit 1
+        fi
+
+        # Rename ZFS directory
+        if [ -d "zfs-${zfsver}" ] && [ ! -d "zfs" ]; then
+            mv "zfs-${zfsver}" zfs
+            log "INFO" "Renamed ZFS directory"
+        elif [ -d "zfs" ]; then
+            log "INFO" "ZFS directory already exists"
+        fi
+    else
+        log "INFO" "Step 3: Skipping OpenZFS (disabled in configuration)"
+    fi
+
+    # Print final status
+    print_script_end
+    return 0
+}
+
+# Execute main function
+main "$@"
 
