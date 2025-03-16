@@ -213,6 +213,14 @@ else
     export KCFLAGS="-O2"      # Default optimization
 fi
 
+if [ "${INTERACTIVE_CONFIG:-false}" = "true" ]; then
+    log "INFO" "Using interactive kernel configuration"
+    make menuconfig
+else
+    log "INFO" "Using non-interactive kernel configuration (auto-accepting defaults for new options)"
+    make olddefconfig
+fi
+
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
     log "INFO" "Using compiler cache for faster builds"
     nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
@@ -287,6 +295,7 @@ echo "----------------------------------------------------"
 log "INFO" "Rebuilding kernel with all modules using $THREADS threads"
 
 # Apply memory-saving optimizations for final build too
+# No need to reconfigure here, as we're just rebuilding with modules
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
     nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
 else

@@ -66,6 +66,14 @@ if [ "${INCLUDE_TUI:-true}" = "true" ]; then
     log "INFO" "Including TUI dependencies"
 fi
 
+# Add extra packages if specified
+if [ -n "${EXTRA_PACKAGES:-}" ]; then
+    # Convert comma-separated list to space-separated list
+    EXTRA_PACKAGES_LIST=$(echo "$EXTRA_PACKAGES" | tr ',' ' ')
+    PACKAGES="$PACKAGES $EXTRA_PACKAGES_LIST"
+    log "INFO" "Including extra packages: $EXTRA_PACKAGES_LIST"
+fi
+
 cat > alpine-minirootfs/mk.sh << EOF
 #!/bin/ash
 set -e

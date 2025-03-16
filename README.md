@@ -147,6 +147,9 @@ OneRecovery creates a single EFI executable file that contains a complete Linux 
 ### Key Features
 - **Non-invasive**: Runs without modifying existing systems
 - **Text-based UI**: Simple menu-driven interface for common recovery tasks
+  - Optional TUI component provides easy-to-navigate menus for disk operations
+  - Includes wizards for common recovery tasks
+  - Can be disabled with `--without-tui` for a minimal CLI-only interface
 - **Hardware access**: Direct access to hardware components (like PCIe WiFi cards)
 - **Filesystem support**: Handles ext4, ZFS, FAT32, etc.
 - **Disk management**: LVM, RAID, encryption (cryptsetup)
@@ -187,6 +190,8 @@ The build system (in the `build` directory) uses a sequence of numbered scripts 
 3. `02_chrootandinstall.sh`: Sets up the chroot environment and installs packages
 4. `03_conf.sh`: Configures system services, network, auto-login, and kernel settings
 5. `04_build.sh`: Builds the kernel, modules, ZFS support, and creates the EFI file
+   - Supports interactive kernel configuration with the `--interactive-config` flag
+   - Uses non-interactive defaults by default for automated builds
 6. `99_cleanup.sh`: Removes build artifacts after successful build
 
 All build scripts include:
@@ -255,14 +260,17 @@ OneRecovery offers several options to reduce the size of the final EFI file:
 
 - **Minimal Build** (`--minimal`): Creates a substantially smaller EFI file by:
   - Excluding ZFS, recovery tools, and other optional components
-  - Using a size-optimized kernel configuration
+  - Using a size-optimized kernel configuration (`kernel-minimal.config`)
   - Disabling unnecessary kernel modules and features
+  - Reducing included drivers to essential hardware support only
+  - Optimizing for size over performance (using compiler flags like -Os)
 
 - **Component Selection**: Selectively include only needed components:
   - `--without-zfs`: Exclude ZFS support for smaller size
   - `--without-recovery-tools`: Skip TestDisk and other recovery utilities
   - `--without-network-tools`: Skip advanced networking tools
   - `--without-crypto`: Skip encryption-related tools
+  - `--without-tui`: Skip the Text User Interface for minimal CLI experience
 
 - **EFI Compression** (`--with-compression`, on by default):
   - Compresses the final EFI file using compression tools
@@ -315,33 +323,53 @@ Optional Modules:
   --save-config          Save current configuration as default
   --show-config          Display current build configuration
 
-Advanced Configuration:
+Build Configuration Management:
+  --save-config          Save current configuration to build.conf for future builds
+  --show-config          Display current build configuration
+  --cache-dir=DIR        Set directory for caching sources (default: ~/.onerecovery/cache)
+  --jobs=N               Set number of parallel build jobs (default: CPU cores)
+  
+Customization Options:
   --kernel-config=PATH   Use custom kernel configuration file
   --extra-packages=LIST  Install additional Alpine packages (comma-separated)
+  
+Compression Options:
   --with-compression     Enable EFI file compression (default: yes)
   --without-compression  Disable EFI file compression
   --compression-tool=TOOL Select compression tool: upx, xz, or zstd (default: upx)
-  --jobs=N               Set number of parallel jobs for make (default: available CPU cores)
-  --cache-dir=DIR        Set directory for caching downloaded files
-  --output-dir=DIR       Set directory for final EFI output
-  --debug                Enable additional debug output during build
   
 Build Performance Options:
   --use-cache            Enable source and build caching (default: yes)
   --no-cache             Disable source and build caching
-  --cache-dir=DIR        Set cache directory (default: ~/.onerecovery/cache)
-  --jobs=N               Set number of parallel build jobs (default: CPU cores)
   --keep-ccache          Keep compiler cache between builds (default: yes)
   --no-keep-ccache       Clear compiler cache between builds
   --use-swap             Create swap file if memory is low (default: no)
   --no-swap              Do not create swap file even if memory is low
+  
+Kernel Configuration Options:
+  --interactive-config   Use interactive kernel configuration (menuconfig)
+  --no-interactive-config Use non-interactive kernel config (default)
+
+The kernel configuration options control how the Linux kernel is configured:
+- With `--interactive-config`, the build pauses at the kernel configuration step, displaying
+  the menuconfig interface where you can customize all kernel options
+- With `--no-interactive-config` (default), the build uses olddefconfig to automatically accept
+  defaults for all new configuration options, enabling non-interactive builds
   
 Security Options:
   --password=PASS        Set custom root password (CAUTION: visible in process list)
   --random-password      Generate random root password (default)
   --no-password          Create root account with no password (unsafe)
   --password-length=N    Set length of random password (default: 12)
-```
+
+The security options determine how the root account is configured:
+- With `--random-password` (default), a secure random password is generated and saved to 
+  `onerecovery-password.txt` in the build directory
+- With `--password=PASS`, your specified password is used (note: visible in process list)
+- With `--no-password`, an empty password is set (NOT RECOMMENDED for security reasons)
+
+The password is securely hashed using SHA-512 and stored in the system's shadow file. 
+The script supports multiple hashing methods (OpenSSL, mkpasswd) with automatic fallback.
 
 Examples:
 - `./build.sh -c` - Clean previous build and start fresh
@@ -363,6 +391,9 @@ Examples:
 - `./build.sh --password=SecurePass123` - Set specific root password
 - `./build.sh --random-password` - Generate a secure random password
 - `./build.sh --password-length=16` - Use longer random password
+- `./build.sh --interactive-config` - Use interactive kernel configuration for custom kernel options
+- `./build.sh --kernel-config=/path/to/custom.config` - Use a custom kernel configuration file
+- `./build.sh --extra-packages=htop,vim,tmux` - Install additional Alpine packages
 
 ## License
 

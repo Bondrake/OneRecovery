@@ -127,8 +127,12 @@ log "SUCCESS" "Console settings configured"
 log "INFO" "Setting up kernel configuration"
 mkdir -p alpine-minirootfs/lib/
 
+# Check for custom kernel configuration
+if [ -n "${CUSTOM_KERNEL_CONFIG:-}" ] && [ -f "${CUSTOM_KERNEL_CONFIG}" ]; then
+    log "INFO" "Using custom kernel configuration: ${CUSTOM_KERNEL_CONFIG}"
+    cp "${CUSTOM_KERNEL_CONFIG}" linux/.config
 # Use appropriate kernel config based on build type
-if [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
+elif [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
     if [ ! -f "zfiles/kernel-minimal.config" ]; then
         log "ERROR" "Minimal kernel configuration file not found: zfiles/kernel-minimal.config"
         exit 1

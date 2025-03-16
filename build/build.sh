@@ -29,6 +29,11 @@ CACHE_DIR="${HOME}/.onerecovery/cache"
 BUILD_JOBS=$(getconf _NPROCESSORS_ONLN)
 KEEP_CCACHE=true
 USE_SWAP=false        # Create swap file if memory is low
+INTERACTIVE_CONFIG=false  # Use interactive kernel configuration
+
+# Customization options
+CUSTOM_KERNEL_CONFIG=""  # Path to custom kernel config
+EXTRA_PACKAGES=""        # Comma-separated list of additional packages
 
 # Security options
 ROOT_PASSWORD=""
@@ -151,6 +156,11 @@ CACHE_DIR="$CACHE_DIR"
 BUILD_JOBS=$BUILD_JOBS
 KEEP_CCACHE=$KEEP_CCACHE
 USE_SWAP=$USE_SWAP
+INTERACTIVE_CONFIG=$INTERACTIVE_CONFIG
+
+# Customization options
+CUSTOM_KERNEL_CONFIG="$CUSTOM_KERNEL_CONFIG"
+EXTRA_PACKAGES="$EXTRA_PACKAGES"
 
 # Security options
 GENERATE_RANDOM_PASSWORD=$GENERATE_RANDOM_PASSWORD
@@ -191,6 +201,21 @@ print_config() {
     log "INFO" "  Parallel jobs: ${GREEN}$BUILD_JOBS${NC}"
     log "INFO" "  Keep ccache: $(bool_to_str $KEEP_CCACHE)"
     log "INFO" "  Use swap file: $(bool_to_str $USE_SWAP)"
+    log "INFO" "  Interactive kernel config: $(bool_to_str $INTERACTIVE_CONFIG)"
+    
+    # Display customization settings
+    log "INFO" ""
+    log "INFO" "Customization settings:"
+    if [ -n "$CUSTOM_KERNEL_CONFIG" ]; then
+        log "INFO" "  Custom kernel config: ${GREEN}$CUSTOM_KERNEL_CONFIG${NC}"
+    else
+        log "INFO" "  Kernel config: ${BLUE}Default${NC}"
+    fi
+    if [ -n "$EXTRA_PACKAGES" ]; then
+        log "INFO" "  Extra packages: ${GREEN}$EXTRA_PACKAGES${NC}"
+    else
+        log "INFO" "  Extra packages: ${BLUE}None${NC}"
+    fi
     
     # Display security settings
     log "INFO" ""
@@ -234,6 +259,8 @@ usage_modules() {
     echo "  --no-keep-ccache       Clear compiler cache between builds"
     echo "  --use-swap             Create swap file if memory is low (default: no)"
     echo "  --no-swap              Do not create swap file even if memory is low"
+    echo "  --interactive-config   Use interactive kernel configuration (menuconfig)"
+    echo "  --no-interactive-config Use non-interactive kernel config (default)"
     echo ""
     echo "Security Options:"
     echo "  --password=PASS        Set custom root password (CAUTION: visible in process list)"
@@ -408,6 +435,28 @@ process_args() {
                 ;;
             --no-swap)
                 USE_SWAP=false
+                shift
+                ;;
+            --interactive-config)
+                INTERACTIVE_CONFIG=true
+                shift
+                ;;
+            --no-interactive-config)
+                INTERACTIVE_CONFIG=false
+                shift
+                ;;
+            --kernel-config=*)
+                CUSTOM_KERNEL_CONFIG="${1#*=}"
+                if [ ! -f "$CUSTOM_KERNEL_CONFIG" ]; then
+                    log "ERROR" "Custom kernel configuration file not found: $CUSTOM_KERNEL_CONFIG"
+                    exit 1
+                fi
+                log "INFO" "Using custom kernel configuration file: $CUSTOM_KERNEL_CONFIG"
+                shift
+                ;;
+            --extra-packages=*)
+                EXTRA_PACKAGES="${1#*=}"
+                log "INFO" "Adding extra packages: $EXTRA_PACKAGES"
                 shift
                 ;;
             --password=*)
@@ -589,6 +638,11 @@ generate_module_env() {
     env_vars+="export BUILD_JOBS=$BUILD_JOBS "
     env_vars+="export KEEP_CCACHE=$KEEP_CCACHE "
     env_vars+="export USE_SWAP=$USE_SWAP "
+    env_vars+="export INTERACTIVE_CONFIG=$INTERACTIVE_CONFIG "
+    
+    # Set customization variables
+    env_vars+="export CUSTOM_KERNEL_CONFIG=\"$CUSTOM_KERNEL_CONFIG\" "
+    env_vars+="export EXTRA_PACKAGES=\"$EXTRA_PACKAGES\" "
     
     # Set security variables
     env_vars+="export ROOT_PASSWORD=\"$ROOT_PASSWORD\" "
