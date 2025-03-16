@@ -200,8 +200,13 @@ jobs:
             fi
           fi
           
-          # Ensure config is properly set up
+          # Make shell scripts executable and ensure config is properly set up
           cd linux
+          # Fix permissions for all shell scripts
+          find . -name "*.sh" -exec chmod +x {} \;
+          # Fix permissions for all important directories
+          chmod -R +x scripts
+          # Ensure config is set up
           make olddefconfig
           cd ..
           echo "::endgroup::"
@@ -243,10 +248,46 @@ jobs:
           cd linux
           echo "::group::Building Linux kernel"
           
-          # Ensure kernel config exists
+          # Fix permissions and ensure kernel config exists
+          echo "Fixing script permissions..."
+          find . -name "*.sh" -exec chmod +x {} \;
+          chmod -R +x scripts
+          
           if [ ! -f ".config" ]; then
             echo "Kernel config missing, creating default config..."
-            make defconfig
+            # Create a minimal config manually
+            cat > .config << 'EOF'
+# Minimal kernel configuration
+CONFIG_64BIT=y
+CONFIG_X86_64=y
+CONFIG_SMP=y
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_BINFMT_ELF=y
+CONFIG_FS_POSIX_ACL=y
+CONFIG_TMPFS=y
+CONFIG_TMPFS_POSIX_ACL=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_DEVTMPFS=y
+CONFIG_UNIX=y
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_BLK_DEV=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_ATA=y
+CONFIG_SATA_AHCI=y
+CONFIG_USB_SUPPORT=y
+CONFIG_USB=y
+CONFIG_USB_EHCI_HCD=y
+CONFIG_USB_XHCI_HCD=y
+CONFIG_USB_STORAGE=y
+CONFIG_EXT4_FS=y
+CONFIG_CRYPTO=y
+EOF
             make olddefconfig
           fi
           
@@ -258,7 +299,25 @@ jobs:
           if [[ "$BUILD_TYPE" != *"--minimal"* ]]; then
             cd ../zfs
             echo "::group::Building ZFS"
-            ./autogen.sh
+            # Fix permissions for ZFS scripts
+            find . -name "*.sh" -exec chmod +x {} \;
+            
+            # Make autogen.sh and configure scripts executable
+            chmod +x autogen.sh
+            chmod +x configure
+            if [ -f "config/missing" ]; then
+              chmod +x config/missing
+            fi
+            
+            # Generate configure script if needed
+            if [ ! -f "configure" ]; then
+              echo "Running autogen.sh..."
+              ./autogen.sh
+            else
+              echo "Configure script exists, skipping autogen"
+            fi
+            
+            # Configure and build ZFS
             ./configure --with-linux=../linux
             make -j$(nproc) -C module || exit 1
             echo "::endgroup::"
