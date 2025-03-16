@@ -297,3 +297,7 @@ Examples:
 - `./build.sh --minimal` - Build with minimal components for a smaller image
 - `./build.sh --with-btrfs --without-crypto` - Custom component selection
 - `./build.sh --full` - Build with all available components
+
+## License
+
+OneRecovery is released under the [MIT License](LICENSE).
