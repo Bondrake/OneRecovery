@@ -24,23 +24,30 @@ on:
           - full
 
 jobs:
+  # Job to determine which builds to run based on trigger type
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # For manual triggers, only build the selected type
+            echo "matrix={\"include\":[{\"name\":\"${{ github.event.inputs.build_type }}\",\"build_args\":\"${{ github.event.inputs.build_type == 'minimal' && '--minimal' || github.event.inputs.build_type == 'full' && '--full' || '--with-zfs --with-recovery-tools --with-network-tools' }}\"}]}" >> $GITHUB_OUTPUT
+          else
+            # For automatic triggers, build all types
+            echo "matrix={\"include\":[{\"name\":\"minimal\",\"build_args\":\"--minimal\"},{\"name\":\"standard\",\"build_args\":\"--with-zfs --with-recovery-tools --with-network-tools\"},{\"name\":\"full\",\"build_args\":\"--full\"}]}" >> $GITHUB_OUTPUT
+          fi
+
+  # Main build job
   build:
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        include:
-          - name: minimal
-            build_args: --minimal
-          - name: standard
-            build_args: --with-zfs --with-recovery-tools --with-network-tools
-          - name: full
-            build_args: --full
+      matrix: ${{fromJson(needs.setup.outputs.matrix)}}
 
     name: Build OneRecovery (${{ matrix.name }})
-    # Skip builds based on workflow_dispatch input, build all for normal triggers
-    if: >-
-      github.event_name != 'workflow_dispatch' || 
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == matrix.name)
     
     steps:
       - name: Checkout code
@@ -91,6 +98,7 @@ jobs:
           path: ./output/OneRecovery.efi
           if-no-files-found: error
 
+  # Package all artifacts into a release
   release:
     needs: build
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
@@ -104,9 +112,16 @@ jobs:
       - name: Create release package
         run: |
           mkdir -p release
-          cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
-          cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
-          cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
+          # Only copy files that exist
+          if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
+          fi
+          if [ -f "./artifacts/OneRecovery-standard/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
+          fi
+          if [ -f "./artifacts/OneRecovery-full/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
+          fi
           cd release
           zip -r OneRecovery-release.zip *.efi
 
