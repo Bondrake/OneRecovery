@@ -83,67 +83,124 @@ download_file() {
     return 0
 }
 
-# Function to extract an archive
-extract_archive() {
+# Function to check if running in a container
+is_container() {
+    grep -q "docker\|container" /proc/1/cgroup 2>/dev/null || [ -f "/.dockerenv" ]
+    return $?
+}
+
+# Function to extract using busybox tar
+extract_with_busybox() {
+    local file=$1
+    local target=$2
+    local strip=$3
+    
+    log "INFO" "Using busybox tar for extraction"
+    if [ "$strip" -gt 0 ]; then
+        busybox tar -xf "$file" -C "$target" --strip-components=$strip
+    else
+        busybox tar -xf "$file" -C "$target"
+    fi
+    return $?
+}
+
+# Function to extract using pipe method (decompress | extract)
+extract_with_pipe() {
+    local file=$1
+    local target=$2
+    local strip=$3
+    
+    log "INFO" "Using pipe-based extraction (decompress | extract)"
+    
+    if [[ "$file" == *.tar.gz ]]; then
+        if [ "$strip" -gt 0 ]; then
+            gzip -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+        else
+            gzip -dc "$file" | tar -x -C "$target" --no-same-owner
+        fi
+    elif [[ "$file" == *.tar.xz ]]; then
+        if [ "$strip" -gt 0 ]; then
+            xz -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+        else
+            xz -dc "$file" | tar -x -C "$target" --no-same-owner
+        fi
+    else
+        return 1
+    fi
+    return $?
+}
+
+# Function to try cached version if extraction fails
+try_cached_version() {
     local file=$1
     local target=$2
     local component=$3
     
+    local base_name=$(basename "$file")
+    local cache_dir="/onerecovery/.buildcache/${component,,}"
+    
+    if [ -d "$cache_dir/${base_name%.tar.*}" ]; then
+        log "INFO" "Found cached $component, copying"
+        cp -a "$cache_dir/${base_name%.tar.*}/." "$target/"
+        return $?
+    fi
+    
+    return 1
+}
+
+# Function to extract an archive with container awareness
+extract_archive() {
+    local file=$1
+    local target=$2
+    local component=$3
+    local strip_components=0
+    
     log "INFO" "Extracting $component from $file"
     
-    if [[ "$file" == *.tar.gz ]]; then
-        if [[ "$target" == "" ]]; then
-            tar -xf "$file" --no-same-owner || return 1
-        else
-            # Create target directory if it doesn't exist
-            [ ! -d "$target" ] && mkdir -p "$target"
-            
-            # Special handling for Alpine rootfs extraction inside Docker
-            if [[ "$file" == *"alpine-minirootfs"* ]] && grep -q "docker\|container" /proc/1/cgroup 2>/dev/null; then
-                log "INFO" "Detected container environment, using special Alpine extraction mode"
-                tar -C "$target" -xf "$file" --no-same-owner || return 1
-            else
-                tar -C "$target" -xf "$file" || return 1
-            fi
+    # If target is not specified, use current directory or component directory
+    if [[ "$target" == "" ]]; then
+        if [[ "$file" == *.tar.xz ]]; then
+            target="${file%.tar.xz}"
+            strip_components=1
+        elif [[ "$file" == *.tar.gz ]]; then
+            target="."
         fi
-    elif [[ "$file" == *.tar.xz ]]; then
-        # Special handling for kernel extraction inside Docker
-        if grep -q "docker\|container" /proc/1/cgroup 2>/dev/null; then
-            log "INFO" "Detected container environment, using special extraction mode for XZ archive"
-            
-            # First attempt - manual extraction process
-            log "INFO" "Attempting manual extraction process"
-            mkdir -p "${file%.tar.xz}"
-            
-            # Use busybox tar instead which might handle Docker's overlay FS better
-            if command -v busybox &> /dev/null; then
-                log "INFO" "Using busybox tar for extraction"
-                busybox tar -xf "$file" -C "${file%.tar.xz}" --strip-components=1 || {
-                    log "WARNING" "busybox tar failed, trying xz + tar"
-                    # Try separate xz decompression and tar extraction
-                    xz -dc "$file" | tar -x -C "${file%.tar.xz}" --strip-components=1 || {
-                        log "WARNING" "All extraction methods failed, trying to copy prebuilt kernel if available"
-                        # Try using prebuilt kernel if extraction fails
-                        if [ -d "/onerecovery/.buildcache/kernel/${file%.tar.xz}" ]; then
-                            log "INFO" "Found prebuilt kernel in cache, copying"
-                            cp -a "/onerecovery/.buildcache/kernel/${file%.tar.xz}/." "${file%.tar.xz}/"
-                        else
-                            return 1
-                        fi
-                    }
-                }
-            else
-                # Try using unxz to decompress, then manually extract with tar
-                log "INFO" "Using xz + tar for extraction"
-                xz -dc "$file" | tar -x -C "${file%.tar.xz}" --strip-components=1 || return 1
-            fi
-        else
-            # Regular extraction on non-container environments
-            tar -xf "$file" --no-same-owner || return 1
+    fi
+    
+    # Create target directory if it doesn't exist
+    [ ! -d "$target" ] && mkdir -p "$target"
+    
+    # Determine extraction method based on environment
+    if is_container; then
+        log "INFO" "Detected container environment, using special extraction modes"
+        
+        # Try extraction methods in sequence until one succeeds
+        if command -v busybox &> /dev/null; then
+            extract_with_busybox "$file" "$target" "$strip_components" && return 0
         fi
-    else
-        log "ERROR" "Unknown archive format: $file"
+        
+        extract_with_pipe "$file" "$target" "$strip_components" && return 0
+        
+        if [ "${USE_CACHE:-false}" = "true" ]; then
+            try_cached_version "$file" "$target" "$component" && return 0
+        fi
+        
+        log "ERROR" "All extraction methods failed for $file"
         return 1
+    else
+        # Standard extraction for non-container environments
+        if [[ "$file" == *.tar.gz ]]; then
+            tar -C "$target" -xf "$file" || return 1
+        elif [[ "$file" == *.tar.xz ]]; then
+            if [ "$strip_components" -gt 0 ]; then
+                tar -xf "$file" -C "$target" --strip-components=$strip_components --no-same-owner || return 1
+            else
+                tar -xf "$file" --no-same-owner || return 1
+            fi
+        else
+            log "ERROR" "Unknown archive format: $file"
+            return 1
+        fi
     fi
     
     log "SUCCESS" "Extracted $component successfully"
