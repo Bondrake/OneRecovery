@@ -85,6 +85,12 @@ download_file() {
 
 # Function to check if running in a container
 is_container() {
+    # First check the environment variable set by the entrypoint script
+    if [ "${IN_DOCKER_CONTAINER}" = "true" ]; then
+        return 0
+    fi
+    
+    # Fallback to traditional detection methods
     grep -q "docker\|container" /proc/1/cgroup 2>/dev/null || [ -f "/.dockerenv" ]
     return $?
 }
@@ -174,6 +180,18 @@ extract_archive() {
     if is_container; then
         log "INFO" "Detected container environment, using special extraction modes"
         
+        # Check if extraction has been pre-handled by entrypoint script
+        if [[ "$file" == *"alpine-minirootfs"* ]] && [ -d "./alpine-minirootfs" ] && [ -f "./alpine-minirootfs/etc/alpine-release" ]; then
+            log "INFO" "Alpine minirootfs appears to be pre-extracted, skipping extraction"
+            return 0
+        fi
+        
+        # Try calling external handler if available (from entrypoint)
+        if type handle_extraction &>/dev/null; then
+            log "INFO" "Using entrypoint extraction handler"
+            handle_extraction "$file" "$target" && return 0
+        fi
+        
         # Try extraction methods in sequence until one succeeds
         if command -v busybox &> /dev/null; then
             extract_with_busybox "$file" "$target" "$strip_components" && return 0
@@ -183,6 +201,18 @@ extract_archive() {
         
         if [ "${USE_CACHE:-false}" = "true" ]; then
             try_cached_version "$file" "$target" "$component" && return 0
+        fi
+        
+        # Final attempt - try using sudo if available
+        if command -v sudo &> /dev/null; then
+            log "INFO" "Attempting extraction with sudo"
+            if [[ "$file" == *.tar.gz ]]; then
+                sudo mkdir -p "$target"
+                sudo tar -xzf "$file" -C "$target" && sudo chown -R $(id -u):$(id -g) "$target" && return 0
+            elif [[ "$file" == *.tar.xz ]]; then
+                sudo mkdir -p "$target"
+                sudo tar -xf "$file" -C "$target" --strip-components="$strip_components" && sudo chown -R $(id -u):$(id -g) "$target" && return 0
+            fi
         fi
         
         log "ERROR" "All extraction methods failed for $file"
