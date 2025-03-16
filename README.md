@@ -270,6 +270,22 @@ Steps:
   conf                Run through configuration (03_conf.sh)
   build               Run only the build step (04_build.sh)
   clean               Run only cleanup (99_cleanup.sh)
+
+Optional Modules:
+  --with-zfs             Include ZFS filesystem support (default: yes)
+  --without-zfs          Exclude ZFS filesystem support
+  --with-btrfs           Include Btrfs filesystem support (default: no)
+  --without-btrfs        Exclude Btrfs filesystem support
+  --with-recovery-tools  Include data recovery tools (default: yes)
+  --without-recovery-tools  Exclude data recovery tools
+  --with-network-tools   Include network tools (default: yes)
+  --without-network-tools  Exclude network tools
+  --with-crypto          Include encryption support (default: yes)
+  --without-crypto       Exclude encryption support
+  --minimal              Minimal build with only essential components
+  --full                 Full build with all available components
+  --save-config          Save current configuration as default
+  --show-config          Display current build configuration
 ```
 
 Examples:
@@ -277,3 +293,7 @@ Examples:
 - `./build.sh -r` - Resume build from last successful step
 - `./build.sh build` - Run only the final build step
 - `./build.sh -v` - Build with verbose output
+- `./build.sh --without-zfs` - Build without ZFS support (smaller image)
+- `./build.sh --minimal` - Build with minimal components for a smaller image
+- `./build.sh --with-btrfs --without-crypto` - Custom component selection
+- `./build.sh --full` - Build with all available components
