@@ -19,6 +19,9 @@ INCLUDE_RECOVERY_TOOLS=true
 INCLUDE_NETWORK_TOOLS=true
 INCLUDE_CRYPTO=true
 INCLUDE_TUI=true
+INCLUDE_MINIMAL_KERNEL=false
+INCLUDE_COMPRESSION=true
+COMPRESSION_TOOL="upx"  # Options: upx, xz, zstd
 
 # Define config file location
 CONFIG_FILE="./build.conf"
@@ -126,6 +129,9 @@ INCLUDE_RECOVERY_TOOLS=$INCLUDE_RECOVERY_TOOLS
 INCLUDE_NETWORK_TOOLS=$INCLUDE_NETWORK_TOOLS
 INCLUDE_CRYPTO=$INCLUDE_CRYPTO
 INCLUDE_TUI=$INCLUDE_TUI
+INCLUDE_MINIMAL_KERNEL=$INCLUDE_MINIMAL_KERNEL
+INCLUDE_COMPRESSION=$INCLUDE_COMPRESSION
+COMPRESSION_TOOL="$COMPRESSION_TOOL"
 EOF
     log "SUCCESS" "Configuration saved successfully"
 }
@@ -133,12 +139,24 @@ EOF
 # Print current configuration
 print_config() {
     log "INFO" "Current build configuration:"
+    if [ "$INCLUDE_MINIMAL_KERNEL" = "true" ]; then
+        log "INFO" "  Build type: ${YELLOW}Minimal${NC} (optimized for size)"
+    else
+        log "INFO" "  Build type: ${GREEN}Standard${NC}"
+    fi
     log "INFO" "  ZFS support: $(bool_to_str $INCLUDE_ZFS)"
     log "INFO" "  Btrfs support: $(bool_to_str $INCLUDE_BTRFS)"
     log "INFO" "  Recovery tools: $(bool_to_str $INCLUDE_RECOVERY_TOOLS)"
     log "INFO" "  Network tools: $(bool_to_str $INCLUDE_NETWORK_TOOLS)"
     log "INFO" "  Crypto support: $(bool_to_str $INCLUDE_CRYPTO)"
     log "INFO" "  Text User Interface: $(bool_to_str $INCLUDE_TUI)"
+    
+    # Display compression information
+    if [ "$INCLUDE_COMPRESSION" = "true" ]; then
+        log "INFO" "  EFI Compression: ${GREEN}Yes${NC} (using ${COMPRESSION_TOOL})"
+    else
+        log "INFO" "  EFI Compression: ${RED}No${NC}"
+    fi
 }
 
 # Convert boolean to Yes/No string
@@ -153,6 +171,15 @@ bool_to_str() {
 # Print extended usage information
 usage_modules() {
     echo ""
+    echo "Build Options:"
+    echo "  --minimal              Minimal build optimized for size (~30-50% smaller)"
+    echo "  --full                 Full build with all available components"
+    echo ""
+    echo "Size Optimization Options:"
+    echo "  --with-compression     Enable EFI file compression (default: yes)"
+    echo "  --without-compression  Disable EFI file compression (faster boot)"
+    echo "  --compression-tool=TOOL Select compression tool (upx, xz, zstd) (default: upx)"
+    echo ""
     echo "Optional Modules:"
     echo "  --with-zfs             Include ZFS filesystem support (default: yes)"
     echo "  --without-zfs          Exclude ZFS filesystem support"
@@ -166,8 +193,8 @@ usage_modules() {
     echo "  --without-crypto       Exclude encryption support"
     echo "  --with-tui             Include Text User Interface (default: yes)"
     echo "  --without-tui          Exclude Text User Interface"
-    echo "  --minimal              Minimal build with only essential components"
-    echo "  --full                 Full build with all available components"
+    echo ""
+    echo "Configuration Management:"
     echo "  --save-config          Save current configuration as default"
     echo "  --show-config          Display current build configuration"
     echo ""
@@ -175,6 +202,9 @@ usage_modules() {
     echo "  $0 --without-zfs        Build without ZFS support"
     echo "  $0 --minimal            Build with minimal components only"
     echo "  $0 --with-btrfs --without-crypto  Custom component selection"
+    echo "  $0 --compression-tool=zstd  Use ZSTD for compression instead of UPX"
+    echo "  $0 --minimal --compression-tool=xz  Minimal build with highest compression"
+    echo "  $0 --without-compression  Disable compression for faster boot time"
     echo ""
 }
 
@@ -258,6 +288,23 @@ process_args() {
                 INCLUDE_TUI=false
                 shift
                 ;;
+            --with-compression)
+                INCLUDE_COMPRESSION=true
+                shift
+                ;;
+            --without-compression)
+                INCLUDE_COMPRESSION=false
+                shift
+                ;;
+            --compression-tool=*)
+                COMPRESSION_TOOL="${1#*=}"
+                # Validate that the tool is one of the allowed options
+                if [[ "$COMPRESSION_TOOL" != "upx" && "$COMPRESSION_TOOL" != "xz" && "$COMPRESSION_TOOL" != "zstd" ]]; then
+                    log "ERROR" "Invalid compression tool: $COMPRESSION_TOOL. Allowed values: upx, xz, zstd"
+                    exit 1
+                fi
+                shift
+                ;;
             --minimal)
                 INCLUDE_ZFS=false
                 INCLUDE_BTRFS=false
@@ -265,6 +312,7 @@ process_args() {
                 INCLUDE_NETWORK_TOOLS=false
                 INCLUDE_CRYPTO=false
                 INCLUDE_TUI=false
+                INCLUDE_MINIMAL_KERNEL=true
                 shift
                 ;;
             --full)
@@ -371,6 +419,10 @@ generate_module_env() {
     env_vars+="export INCLUDE_RECOVERY_TOOLS=$INCLUDE_RECOVERY_TOOLS "
     env_vars+="export INCLUDE_NETWORK_TOOLS=$INCLUDE_NETWORK_TOOLS "
     env_vars+="export INCLUDE_CRYPTO=$INCLUDE_CRYPTO "
+    env_vars+="export INCLUDE_TUI=$INCLUDE_TUI "
+    env_vars+="export INCLUDE_MINIMAL_KERNEL=$INCLUDE_MINIMAL_KERNEL "
+    env_vars+="export INCLUDE_COMPRESSION=$INCLUDE_COMPRESSION "
+    env_vars+="export COMPRESSION_TOOL=$COMPRESSION_TOOL "
     
     echo "$env_vars"
 }

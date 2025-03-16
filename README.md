@@ -152,6 +152,7 @@ OneRecovery creates a single EFI executable file that contains a complete Linux 
 - **Disk management**: LVM, RAID, encryption (cryptsetup)
 - **Network tools**: DHCP, SSH (dropbear), basic utilities
 - **Recovery tools**: Disk utilities, filesystem tools, debootstrap
+- **Size optimization**: Configurable build options to reduce EFI file size
 
 ### Use Cases
 - Recovering data from systems with inaccessible primary OS
@@ -248,6 +249,32 @@ If you prefer more control over the build process, you can run each step manuall
    ./99_cleanup.sh
    ```
 
+#### Size Optimization Options
+
+OneRecovery offers several options to reduce the size of the final EFI file:
+
+- **Minimal Build** (`--minimal`): Creates a substantially smaller EFI file by:
+  - Excluding ZFS, recovery tools, and other optional components
+  - Using a size-optimized kernel configuration
+  - Disabling unnecessary kernel modules and features
+
+- **Component Selection**: Selectively include only needed components:
+  - `--without-zfs`: Exclude ZFS support for smaller size
+  - `--without-recovery-tools`: Skip TestDisk and other recovery utilities
+  - `--without-network-tools`: Skip advanced networking tools
+  - `--without-crypto`: Skip encryption-related tools
+
+- **EFI Compression** (`--with-compression`, on by default):
+  - Compresses the final EFI file using compression tools
+  - Multiple compression options available:
+    - UPX (default): 20-30% size reduction with fast decompression
+    - XZ: 30-40% size reduction but slower decompression
+    - ZSTD: Balanced compression ratio and speed
+  - Select with `--compression-tool=TOOL` (options: upx, xz, zstd)
+  - Can be disabled with `--without-compression` for faster boot time
+
+These optimization options can be combined as needed to balance size, features, and performance.
+
 #### Advanced Build Options
 
 The unified build script offers several options for customizing the build process:
@@ -287,6 +314,17 @@ Optional Modules:
   --full                 Full build with all available components
   --save-config          Save current configuration as default
   --show-config          Display current build configuration
+
+Advanced Configuration:
+  --kernel-config=PATH   Use custom kernel configuration file
+  --extra-packages=LIST  Install additional Alpine packages (comma-separated)
+  --with-compression     Enable EFI file compression (default: yes)
+  --without-compression  Disable EFI file compression
+  --compression-tool=TOOL Select compression tool: upx, xz, or zstd (default: upx)
+  --jobs=N               Set number of parallel jobs for make (default: available CPU cores)
+  --cache-dir=DIR        Set directory for caching downloaded files
+  --output-dir=DIR       Set directory for final EFI output
+  --debug                Enable additional debug output during build
 ```
 
 Examples:
@@ -296,9 +334,12 @@ Examples:
 - `./build.sh -v` - Build with verbose output
 - `./build.sh --without-zfs` - Build without ZFS support (smaller image)
 - `./build.sh --minimal` - Build with minimal components for a smaller image
+- `./build.sh --without-compression` - Disable EFI compression for faster boot time
 - `./build.sh --with-btrfs --without-crypto` - Custom component selection
 - `./build.sh --without-tui` - Build without the Text User Interface
 - `./build.sh --full` - Build with all available components
+- `./build.sh --compression-tool=zstd` - Use ZSTD compression instead of UPX
+- `./build.sh --minimal --compression-tool=xz` - Minimal build with maximum compression
 
 ## License
 

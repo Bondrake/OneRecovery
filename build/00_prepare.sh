@@ -140,25 +140,45 @@ main() {
             log "INFO" "Installing dependencies for $OS..."
             apt-get update
             apt-get install -y wget tar xz-utils build-essential flex bison libssl-dev bc kmod libelf-dev
+            
+            # Install compression tools
+            log "INFO" "Installing compression tools..."
+            apt-get install -y xz-utils lzma zstd upx-ucl
             ;;
         "Fedora"|"CentOS"|"Red Hat Enterprise Linux"|"RHEL")
             check_root
             log "INFO" "Installing dependencies for $OS..."
             if command -v dnf &> /dev/null; then
                 dnf install -y wget tar xz-utils gcc make flex bison openssl-devel bc kmod elfutils-libelf-devel
+                
+                # Install compression tools
+                log "INFO" "Installing compression tools..."
+                dnf install -y xz lzma-sdk-devel zstd upx || true  # Continue even if some packages aren't available
             else
                 yum install -y wget tar xz-utils gcc make flex bison openssl-devel bc kmod elfutils-libelf-devel
+                
+                # Install compression tools
+                log "INFO" "Installing compression tools..."
+                yum install -y xz lzma-sdk-devel zstd upx || true  # Continue even if some packages aren't available
             fi
             ;;
         "Arch Linux"|"Manjaro Linux")
             check_root
             log "INFO" "Installing dependencies for $OS..."
             pacman -Sy --noconfirm wget tar xz base-devel flex bison openssl bc kmod libelf
+            
+            # Install compression tools
+            log "INFO" "Installing compression tools..."
+            pacman -Sy --noconfirm xz zstd upx || true  # Continue even if some packages aren't available
             ;;
         "Alpine Linux")
             check_root
             log "INFO" "Installing dependencies for $OS..."
             apk add wget tar xz build-base flex bison openssl-dev bc kmod libelf-dev
+            
+            # Install compression tools
+            log "INFO" "Installing compression tools..."
+            apk add xz zstd upx || true  # Continue even if some packages aren't available
             ;;
         "macOS")
             log "WARNING" "macOS detected. You need a Linux environment to build OneRecovery."

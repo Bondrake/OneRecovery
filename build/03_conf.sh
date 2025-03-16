@@ -86,11 +86,23 @@ log "SUCCESS" "Console settings configured"
 # Set up kernel configuration
 log "INFO" "Setting up kernel configuration"
 mkdir -p alpine-minirootfs/lib/
-if [ ! -f "zfiles/.config" ]; then
-    log "ERROR" "Kernel configuration file not found: zfiles/.config"
-    exit 1
+
+# Use appropriate kernel config based on build type
+if [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
+    if [ ! -f "zfiles/kernel-minimal.config" ]; then
+        log "ERROR" "Minimal kernel configuration file not found: zfiles/kernel-minimal.config"
+        exit 1
+    fi
+    log "INFO" "Using minimal kernel configuration for smaller size"
+    cp zfiles/kernel-minimal.config linux/.config
+else
+    if [ ! -f "zfiles/.config" ]; then
+        log "ERROR" "Standard kernel configuration file not found: zfiles/.config"
+        exit 1
+    fi
+    log "INFO" "Using standard kernel configuration"
+    cp zfiles/.config linux/
 fi
-cp zfiles/.config linux/
 log "SUCCESS" "Kernel configuration copied"
 
 # Legacy commented code preserved for reference
