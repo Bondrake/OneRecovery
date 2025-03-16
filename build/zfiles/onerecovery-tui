@@ -503,7 +503,7 @@ data_recovery() {
     echo
     
     # Show data recovery submenu
-    echo "1. Recover deleted files (if available)"
+    echo "1. Run TestDisk/PhotoRec for recovery"
     echo "2. Copy files between partitions"
     echo "3. Create disk image"
     echo "4. Back to main menu"
@@ -516,12 +516,12 @@ data_recovery() {
     case "$recovery_option" in
         1)
             # Check if recovery tools are available
-            if command -v photorec > /dev/null; then
-                log_message "Starting PhotoRec for file recovery"
-                show_message "Starting PhotoRec file recovery tool. Please follow the on-screen instructions." "info"
-                photorec
+            if command -v testdisk > /dev/null; then
+                log_message "Starting TestDisk for file recovery"
+                show_message "Starting TestDisk/PhotoRec file recovery tool. Please follow the on-screen instructions." "info"
+                testdisk
             else
-                show_message "PhotoRec is not available in this build" "error"
+                show_message "TestDisk is not available in this build" "error"
             fi
             ;;
         2)
@@ -684,7 +684,7 @@ show_help() {
     echo -e "${CYAN}Common Tasks:${RESET}"
     echo "- Mount a filesystem: Use option 2 > Mount Filesystem"
     echo "- Copy files: Use option 4 > Copy Files Between Partitions"
-    echo "- Recover deleted files: Use option 4 > Recover Deleted Files"
+    echo "- Recover deleted files: Use option 4 > TestDisk/PhotoRec"
     echo "- Configure network: Use option 3 > Configure Network Interface"
     echo
     show_footer

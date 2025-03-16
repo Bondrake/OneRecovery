@@ -43,13 +43,14 @@ fi
 
 # Add recovery tools if enabled
 if [ "${INCLUDE_RECOVERY_TOOLS:-true}" = "true" ]; then
-    PACKAGES="$PACKAGES testdisk photorec ddrescue rsync unzip tar"
+    PACKAGES="$PACKAGES testdisk ddrescue rsync unzip tar"
     log "INFO" "Including recovery tools"
 fi
 
 # Add network tools if enabled
 if [ "${INCLUDE_NETWORK_TOOLS:-true}" = "true" ]; then
-    PACKAGES="$PACKAGES curl rsync openssh-client iperf3 tcpdump"
+    # Note: We use dropbear-ssh instead of openssh-client to avoid conflicts
+    PACKAGES="$PACKAGES curl rsync iperf3 tcpdump"
     log "INFO" "Including network tools"
 fi
 
