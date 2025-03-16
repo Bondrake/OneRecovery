@@ -110,15 +110,35 @@ extract_archive() {
         # Special handling for kernel extraction inside Docker
         if grep -q "docker\|container" /proc/1/cgroup 2>/dev/null; then
             log "INFO" "Detected container environment, using special extraction mode for XZ archive"
-            mkdir -p "${file%.tar.xz}" && tar -xf "$file" --no-same-owner -C "${file%.tar.xz}" --strip-components=1 || {
-                log "WARNING" "Failed with direct extraction, trying alternative method"
-                # Alternative extraction method - extract to temporary directory first
-                local temp_dir=$(mktemp -d)
-                tar -xf "$file" --no-same-owner -C "$temp_dir" && 
-                    rsync -a "$temp_dir/${file%.tar.xz}/" "${file%.tar.xz}/" && 
-                    rm -rf "$temp_dir" || return 1
-            }
+            
+            # First attempt - manual extraction process
+            log "INFO" "Attempting manual extraction process"
+            mkdir -p "${file%.tar.xz}"
+            
+            # Use busybox tar instead which might handle Docker's overlay FS better
+            if command -v busybox &> /dev/null; then
+                log "INFO" "Using busybox tar for extraction"
+                busybox tar -xf "$file" -C "${file%.tar.xz}" --strip-components=1 || {
+                    log "WARNING" "busybox tar failed, trying xz + tar"
+                    # Try separate xz decompression and tar extraction
+                    xz -dc "$file" | tar -x -C "${file%.tar.xz}" --strip-components=1 || {
+                        log "WARNING" "All extraction methods failed, trying to copy prebuilt kernel if available"
+                        # Try using prebuilt kernel if extraction fails
+                        if [ -d "/onerecovery/.buildcache/kernel/${file%.tar.xz}" ]; then
+                            log "INFO" "Found prebuilt kernel in cache, copying"
+                            cp -a "/onerecovery/.buildcache/kernel/${file%.tar.xz}/." "${file%.tar.xz}/"
+                        else
+                            return 1
+                        fi
+                    }
+                }
+            else
+                # Try using unxz to decompress, then manually extract with tar
+                log "INFO" "Using xz + tar for extraction"
+                xz -dc "$file" | tar -x -C "${file%.tar.xz}" --strip-components=1 || return 1
+            fi
         else
+            # Regular extraction on non-container environments
             tar -xf "$file" --no-same-owner || return 1
         fi
     else
