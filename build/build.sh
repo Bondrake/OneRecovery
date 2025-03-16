@@ -29,6 +29,11 @@ CACHE_DIR="${HOME}/.onerecovery/cache"
 BUILD_JOBS=$(getconf _NPROCESSORS_ONLN)
 KEEP_CCACHE=true
 
+# Security options
+ROOT_PASSWORD=""
+GENERATE_RANDOM_PASSWORD=true
+ROOT_PASSWORD_LENGTH=12
+
 # Define config file location
 CONFIG_FILE="./build.conf"
 
@@ -144,6 +149,10 @@ USE_CACHE=$USE_CACHE
 CACHE_DIR="$CACHE_DIR"
 BUILD_JOBS=$BUILD_JOBS
 KEEP_CCACHE=$KEEP_CCACHE
+
+# Security options
+GENERATE_RANDOM_PASSWORD=$GENERATE_RANDOM_PASSWORD
+ROOT_PASSWORD_LENGTH=$ROOT_PASSWORD_LENGTH
 EOF
     log "SUCCESS" "Configuration saved successfully"
 }
@@ -179,6 +188,17 @@ print_config() {
     fi
     log "INFO" "  Parallel jobs: ${GREEN}$BUILD_JOBS${NC}"
     log "INFO" "  Keep ccache: $(bool_to_str $KEEP_CCACHE)"
+    
+    # Display security settings
+    log "INFO" ""
+    log "INFO" "Security settings:"
+    if [ "$GENERATE_RANDOM_PASSWORD" = "true" ]; then
+        log "INFO" "  Root password: ${GREEN}Generate random password${NC} (length: $ROOT_PASSWORD_LENGTH)"
+    elif [ -n "$ROOT_PASSWORD" ]; then
+        log "INFO" "  Root password: ${GREEN}Custom password provided${NC}"
+    else
+        log "INFO" "  Root password: ${RED}None${NC} (unsafe)"
+    fi
 }
 
 # Convert boolean to Yes/No string
@@ -210,6 +230,12 @@ usage_modules() {
     echo "  --keep-ccache          Keep compiler cache between builds (default: yes)"
     echo "  --no-keep-ccache       Clear compiler cache between builds"
     echo ""
+    echo "Security Options:"
+    echo "  --password=PASS        Set custom root password (CAUTION: visible in process list)"
+    echo "  --random-password      Generate random root password (default)"
+    echo "  --no-password          Create root account with no password (unsafe)"
+    echo "  --password-length=N    Set length of random password (default: 12)"
+    echo ""
     echo "Optional Modules:"
     echo "  --with-zfs             Include ZFS filesystem support (default: yes)"
     echo "  --without-zfs          Exclude ZFS filesystem support"
@@ -238,6 +264,9 @@ usage_modules() {
     echo "  $0 --jobs=8             Use 8 parallel build jobs"
     echo "  $0 --cache-dir=/tmp/cache  Use custom cache directory"
     echo "  $0 --no-cache           Perform a clean build without caching"
+    echo "  $0 --password=mypassword  Set a specific root password"
+    echo "  $0 --random-password    Generate a secure random root password"
+    echo "  $0 --password-length=16  Set random password length to 16 characters"
     echo ""
 }
 
@@ -365,6 +394,30 @@ process_args() {
                 ;;
             --no-keep-ccache)
                 KEEP_CCACHE=false
+                shift
+                ;;
+            --password=*)
+                ROOT_PASSWORD="${1#*=}"
+                GENERATE_RANDOM_PASSWORD=false
+                shift
+                ;;
+            --random-password)
+                GENERATE_RANDOM_PASSWORD=true
+                ROOT_PASSWORD=""
+                shift
+                ;;
+            --no-password)
+                GENERATE_RANDOM_PASSWORD=false
+                ROOT_PASSWORD=""
+                shift
+                ;;
+            --password-length=*)
+                ROOT_PASSWORD_LENGTH="${1#*=}"
+                # Validate that the password length is a reasonable number
+                if ! [[ "$ROOT_PASSWORD_LENGTH" =~ ^[0-9]+$ ]] || [ "$ROOT_PASSWORD_LENGTH" -lt 8 ] || [ "$ROOT_PASSWORD_LENGTH" -gt 64 ]; then
+                    log "ERROR" "Invalid password length: $ROOT_PASSWORD_LENGTH. Must be a number between 8 and 64."
+                    exit 1
+                fi
                 shift
                 ;;
             --minimal)
@@ -521,6 +574,11 @@ generate_module_env() {
     env_vars+="export CACHE_DIR=$CACHE_DIR "
     env_vars+="export BUILD_JOBS=$BUILD_JOBS "
     env_vars+="export KEEP_CCACHE=$KEEP_CCACHE "
+    
+    # Set security variables
+    env_vars+="export ROOT_PASSWORD=\"$ROOT_PASSWORD\" "
+    env_vars+="export GENERATE_RANDOM_PASSWORD=$GENERATE_RANDOM_PASSWORD "
+    env_vars+="export ROOT_PASSWORD_LENGTH=$ROOT_PASSWORD_LENGTH "
     
     # Set ccache variables if enabled
     if [ "$USE_CACHE" = true ] && command -v ccache &> /dev/null; then
@@ -700,6 +758,21 @@ main() {
             [ "$INCLUDE_RECOVERY_TOOLS" = true ] && log "INFO" "  - Data recovery tools"
             [ "$INCLUDE_NETWORK_TOOLS" = true ] && log "INFO" "  - Network tools"
             [ "$INCLUDE_CRYPTO" = true ] && log "INFO" "  - Encryption support"
+            
+            # Show password information
+            log "INFO" ""
+            if [ -f "onerecovery-password.txt" ]; then
+                PASSWORD_INFO=$(cat onerecovery-password.txt)
+                log "INFO" "Security information:"
+                log "INFO" "  - ${GREEN}$PASSWORD_INFO${NC}"
+                log "INFO" "  - Password file: $(pwd)/onerecovery-password.txt"
+            elif [ -n "$ROOT_PASSWORD" ]; then
+                log "INFO" "Security information:"
+                log "INFO" "  - ${GREEN}Custom root password set${NC}"
+            else
+                log "INFO" "Security information:"
+                log "INFO" "  - ${RED}No root password set (unsafe)${NC}"
+            fi
             
             # Show ccache stats if used
             if [ "$USE_CACHE" = true ] && command -v ccache &> /dev/null; then

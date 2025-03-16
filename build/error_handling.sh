@@ -212,6 +212,50 @@ check_resume_point() {
     fi
 }
 
+# Generate a secure random password
+generate_random_password() {
+    local length=${1:-12}
+    local chars="A-Za-z0-9_!@#$%^&*()"
+    
+    # Method 1: Using /dev/urandom (Linux, macOS)
+    if [ -r "/dev/urandom" ]; then
+        local password=$(tr -dc "$chars" < /dev/urandom | head -c "$length")
+        echo "$password"
+    # Method 2: Using OpenSSL (fallback)
+    elif command -v openssl &> /dev/null; then
+        local password=$(openssl rand -base64 $((length * 2)) | tr -dc "$chars" | head -c "$length")
+        echo "$password"
+    # Method 3: Using built-in $RANDOM (last resort)
+    else
+        local password=""
+        local charcount=${#chars}
+        for i in $(seq 1 "$length"); do
+            local rand=$((RANDOM % charcount))
+            password="${password}${chars:$rand:1}"
+        done
+        echo "$password"
+    fi
+}
+
+# Generate a password hash for /etc/shadow
+create_password_hash() {
+    local password="$1"
+    
+    # Method 1: Using OpenSSL (Linux, macOS)
+    if command -v openssl &> /dev/null; then
+        local hash=$(openssl passwd -6 "$password")
+        echo "$hash"
+    # Method 2: Using mkpasswd (many Linux distros)
+    elif command -v mkpasswd &> /dev/null; then
+        local hash=$(mkpasswd -m sha-512 "$password")
+        echo "$hash"
+    # Method 3: Failed to hash
+    else
+        log "ERROR" "No password hashing tool available (openssl or mkpasswd required)"
+        echo "ERROR"
+    fi
+}
+
 # Initialize error handling framework
 init_error_handling() {
     echo "" > "$BUILD_LOG"

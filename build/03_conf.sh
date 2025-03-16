@@ -49,7 +49,47 @@ mkdir -p ./alpine-minirootfs/etc
 cat ./zfiles/interfaces > ./alpine-minirootfs/etc/network/interfaces
 cat ./zfiles/resolv.conf > ./alpine-minirootfs/etc/resolv.conf
 cat ./zfiles/profile > ./alpine-minirootfs/etc/profile
-cat ./zfiles/shadow > ./alpine-minirootfs/etc/shadow
+
+# Configure root password
+if [ "${GENERATE_RANDOM_PASSWORD:-true}" = "true" ]; then
+    # Generate a random password
+    log "INFO" "Generating random root password"
+    GENERATED_PASSWORD=$(generate_random_password "${ROOT_PASSWORD_LENGTH:-12}")
+    
+    # Create password hash
+    PASSWORD_HASH=$(create_password_hash "$GENERATED_PASSWORD")
+    
+    if [ "$PASSWORD_HASH" = "ERROR" ]; then
+        log "ERROR" "Failed to hash password. Falling back to no password (unsafe)."
+        cp ./zfiles/shadow ./alpine-minirootfs/etc/shadow
+    else
+        # Create shadow file with hashed password
+        log "INFO" "Setting secure root password"
+        sed "s|^root:.*|root:$PASSWORD_HASH:18383:0:::::|" ./zfiles/shadow > ./alpine-minirootfs/etc/shadow
+        
+        # Save the password to a file for user reference
+        echo "Generated root password: $GENERATED_PASSWORD" > onerecovery-password.txt
+        log "SUCCESS" "Random root password generated. See onerecovery-password.txt"
+    fi
+elif [ -n "${ROOT_PASSWORD}" ]; then
+    # Use provided custom password
+    log "INFO" "Setting custom root password"
+    PASSWORD_HASH=$(create_password_hash "$ROOT_PASSWORD")
+    
+    if [ "$PASSWORD_HASH" = "ERROR" ]; then
+        log "ERROR" "Failed to hash password. Falling back to no password (unsafe)."
+        cp ./zfiles/shadow ./alpine-minirootfs/etc/shadow
+    else
+        # Create shadow file with hashed password
+        sed "s|^root:.*|root:$PASSWORD_HASH:18383:0:::::|" ./zfiles/shadow > ./alpine-minirootfs/etc/shadow
+        log "SUCCESS" "Custom root password set"
+    fi
+else
+    # No password (original behavior)
+    log "WARNING" "Creating root account with no password (unsafe)"
+    cp ./zfiles/shadow ./alpine-minirootfs/etc/shadow
+fi
+
 cat ./zfiles/init > ./alpine-minirootfs/init
 chmod +x ./alpine-minirootfs/init
 
