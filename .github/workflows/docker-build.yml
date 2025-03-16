@@ -53,34 +53,88 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./docker
-          push: false
-          load: true
-          tags: onerecovery-builder:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Prepare directories
+      - name: Create build script
         run: |
-          mkdir -p output
-          sudo chown -R $(id -u):$(id -g) ${{ github.workspace }}/build
+          cat > build-github.sh << 'EOF'
+          #!/bin/bash
+          set -e
           
+          # Create build directories
+          mkdir -p build/alpine-minirootfs
+          
+          # Function to handle errors
+          handle_error() {
+            echo "::error::Build failed at step: $1"
+            exit 1
+          }
+          
+          # Step 1: Download Alpine
+          echo "::group::Downloading Alpine"
+          cd build
+          wget http://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.3-x86_64.tar.gz || handle_error "Alpine download"
+          
+          # Extract Alpine directly
+          echo "Extracting Alpine..."
+          sudo tar -xzf alpine-minirootfs-3.21.3-x86_64.tar.gz -C alpine-minirootfs || handle_error "Alpine extraction"
+          sudo chown -R $(id -u):$(id -g) alpine-minirootfs
+          echo "::endgroup::"
+          
+          # Step 2: Download Linux kernel
+          echo "::group::Downloading Linux kernel"
+          wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.19.tar.xz || handle_error "Kernel download"
+          
+          # Extract kernel
+          echo "Extracting kernel..."
+          mkdir -p linux-6.12.19
+          sudo tar -xf linux-6.12.19.tar.xz --strip-components=1 -C linux-6.12.19 || handle_error "Kernel extraction"
+          sudo chown -R $(id -u):$(id -g) linux-6.12.19
+          ln -sf linux-6.12.19 linux
+          echo "::endgroup::"
+          
+          # Step 3: Download ZFS if needed
+          if [[ "$1" != "--minimal" ]]; then
+            echo "::group::Downloading ZFS"
+            wget https://github.com/openzfs/zfs/releases/download/zfs-2.3.0/zfs-2.3.0.tar.gz || handle_error "ZFS download"
+            
+            # Extract ZFS
+            echo "Extracting ZFS..."
+            mkdir -p zfs
+            sudo tar -xzf zfs-2.3.0.tar.gz --strip-components=1 -C zfs || handle_error "ZFS extraction"
+            sudo chown -R $(id -u):$(id -g) zfs
+            echo "::endgroup::"
+          fi
+          
+          # Step 4: Configure and build
+          echo "::group::Building OneRecovery"
+          cd ..
+          sudo docker build -t onerecovery-builder ./docker
+          
+          # Copy scripts to fresh directory
+          cp -r build build-clean
+          
+          # Run the build steps in the container
+          sudo docker run --rm \
+            --privileged \
+            -v $(pwd)/build-clean:/onerecovery/build \
+            -v $(pwd)/output:/onerecovery/output \
+            -e BUILD_ARGS="$1" \
+            onerecovery-builder || handle_error "Docker build"
+          echo "::endgroup::"
+          
+          # Check result
+          if [ -f "output/OneRecovery.efi" ]; then
+            echo "Build completed successfully!"
+            ls -lh output/
+          else
+            handle_error "OneRecovery.efi not found"
+          fi
+          EOF
+          
+          chmod +x build-github.sh
+
       - name: Build OneRecovery
         run: |
-          docker run --rm \
-            --privileged \
-            -v ${{ github.workspace }}/build:/onerecovery/build \
-            -v ${{ github.workspace }}/output:/onerecovery/output \
-            -e BUILD_ARGS="${{ matrix.build_args }}" \
-            -e USER_ID=$(id -u) \
-            -e GROUP_ID=$(id -g) \
-            onerecovery-builder:latest
+          sudo -E ./build-github.sh "${{ matrix.build_args }}"
 
       - name: Check for build artifacts
         id: check_files
