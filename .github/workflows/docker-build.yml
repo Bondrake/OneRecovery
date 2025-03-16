@@ -133,10 +133,9 @@ jobs:
         run: |
           echo "::group::Extracting Linux kernel"
           cd build-files
-          mkdir -p linux-6.12.19
-          sudo tar -xf linux-6.12.19.tar.xz --strip-components=1 -C linux-6.12.19
-          sudo chown -R $(id -u):$(id -g) linux-6.12.19
-          ln -sf linux-6.12.19 linux
+          mkdir -p linux
+          sudo tar -xf linux-6.12.19.tar.xz --strip-components=1 -C linux
+          sudo chown -R $(id -u):$(id -g) linux
           
           # Copy appropriate kernel config based on build type
           if [[ "${{ matrix.build_args }}" == *"--minimal"* ]]; then
@@ -161,10 +160,9 @@ jobs:
         run: |
           echo "::group::Extracting ZFS"
           cd build-files
-          mkdir -p zfs-2.3.0
-          sudo tar -xzf zfs-2.3.0.tar.gz --strip-components=1 -C zfs-2.3.0
-          sudo chown -R $(id -u):$(id -g) zfs-2.3.0
-          ln -sf zfs-2.3.0 zfs
+          mkdir -p zfs
+          sudo tar -xzf zfs-2.3.0.tar.gz --strip-components=1 -C zfs
+          sudo chown -R $(id -u):$(id -g) zfs
           echo "::endgroup::"
       
       # Step 8: Create build script
@@ -201,8 +199,8 @@ jobs:
           echo "::group::Building EFI image"
           mkdir -p /onerecovery/output
           
-          # Get kernel version
-          KERNELVERSION="$(ls -d linux-* 2>/dev/null | head -1 | cut -d- -f2 || echo "6.12.19")"
+          # Set kernel version
+          KERNELVERSION="6.12.19"
           
           # Prepare modules directory
           MODULESPATH="alpine-minirootfs/lib/modules/"
