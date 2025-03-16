@@ -43,13 +43,44 @@ log() {
     esac
 }
 
-# Function to handle errors
+# Function to handle errors in standard environments
 handle_error() {
     local err_code=$?
     local line_num=$1
     local command="$2"
     
     if [ $err_code -ne 0 ]; then
+        # List of non-critical errors that we can ignore in containerized environments
+        local ignore_patterns=(
+            "chmod.*permission denied"
+            "mkdir.*permission denied"
+            "chmod:.*Operation not permitted"
+            "mkdir:.*Operation not permitted"
+            "ln -fs.*permission denied"
+            "chmod 777"
+            "mkdir -p ./alpine-minirootfs"
+            "write.*build_error.log: Permission denied"
+        )
+        
+        # Check if command matches any ignore patterns and we're in a container
+        local should_ignore=false
+        if [ "${IN_DOCKER_CONTAINER:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ] || grep -q "docker\|container" /proc/1/cgroup 2>/dev/null || [ -f "/.dockerenv" ]; then
+            for pattern in "${ignore_patterns[@]}"; do
+                if echo "$command" | grep -i -q "$pattern"; then
+                    should_ignore=true
+                    break
+                fi
+            done
+        fi
+        
+        # For non-critical errors in containers, warn but continue
+        if [ "$should_ignore" = true ]; then
+            log "WARNING" "Non-critical command failed at line $line_num: $command"
+            log "INFO" "Continuing build process despite this error"
+            return 0
+        fi
+        
+        # For critical errors, follow normal error handling
         log "ERROR" "Command failed with exit code $err_code at line $line_num: $command"
         log "ERROR" "Check $BUILD_LOG for details"
         
@@ -112,6 +143,11 @@ handle_error() {
 
 # Set up error trapping
 trap_errors() {
+    # In all environments, we use the same error handler with built-in container detection
+    log "INFO" "Setting up error handling"
+    
+    # Still use set -e, but our error handler will decide whether to continue
+    # based on the error type and environment
     set -e
     trap 'handle_error ${LINENO} "${BASH_COMMAND}"' ERR
 }
