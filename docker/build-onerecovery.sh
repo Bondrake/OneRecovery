@@ -46,13 +46,17 @@ usage() {
     echo "  -i, --interactive     Run in interactive mode (shell inside container)"
     echo "  -p, --pull            Pull the latest base image before building"
     echo "  --no-cache            Build the Docker image without using cache"
+    echo "  --max-resources       Use maximum available system resources"
+    echo "  --balanced-resources  Use balanced system resources (default)"
+    echo "  --min-resources       Use minimal system resources"
     echo ""
     echo "Examples:"
     echo "  $0                    Build with default settings"
     echo "  $0 -c                 Clean and rebuild"
     echo "  $0 -b \"--minimal\"     Build with minimal configuration"
     echo "  $0 -i                 Launch interactive shell in the container"
-    echo "  $0 -b \"--full --interactive-config\"  Build with all features and interactive kernel config"
+    echo "  $0 --max-resources    Use maximum available system resources"
+    echo "  $0 -b \"--full\" --max-resources  Build with all features using max resources"
     echo ""
 }
 
@@ -64,6 +68,7 @@ ENV_FILE=".env"
 INTERACTIVE=false
 PULL=false
 NO_CACHE=false
+RESOURCES="balanced"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -97,6 +102,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-cache)
             NO_CACHE=true
+            shift
+            ;;
+        --max-resources)
+            RESOURCES="max"
+            shift
+            ;;
+        --balanced-resources)
+            RESOURCES="balanced"
+            shift
+            ;;
+        --min-resources)
+            RESOURCES="min"
             shift
             ;;
         *)
@@ -139,6 +156,60 @@ else
     COMPOSE_CMD="docker-compose"
 fi
 
+# Make auto-resources.sh executable
+chmod +x "$SCRIPT_DIR/auto-resources.sh"
+
+# Determine resource allocation based on selected profile
+echo -e "${BLUE}[INFO]${NC} Detecting system resources..."
+case $RESOURCES in
+    max)
+        # Leave minimal resources for the host
+        eval "$("$SCRIPT_DIR/auto-resources.sh" --export)"
+        # Override default resource limits with detected values
+        MIN_FREE_MEM_GB=2
+        MIN_FREE_CPUS=1
+        # Recalculate with minimal reserves
+        TOTAL_MEM_GB=$(("$DOCKER_MEMORY" / 1024 / 1024 / 1024))
+        AVAIL_MEM_GB=$((TOTAL_MEM_GB - MIN_FREE_MEM_GB))
+        DOCKER_MEMORY="${AVAIL_MEM_GB}g"
+        echo -e "${BLUE}[INFO]${NC} Using maximum available resources: $DOCKER_MEMORY RAM, $DOCKER_CPUS CPU cores"
+        ;;
+    balanced)
+        # Default balanced mode
+        eval "$("$SCRIPT_DIR/auto-resources.sh" --export)"
+        echo -e "${BLUE}[INFO]${NC} Using balanced resources: $DOCKER_MEMORY RAM, $DOCKER_CPUS CPU cores"
+        ;;
+    min)
+        # Minimal resource usage
+        export DOCKER_MEMORY="4g"
+        export DOCKER_CPUS="2"
+        export BUILD_FLAGS="--jobs=2 --use-swap"
+        echo -e "${BLUE}[INFO]${NC} Using minimal resources: $DOCKER_MEMORY RAM, $DOCKER_CPUS CPU cores"
+        ;;
+esac
+
+# Append resource flags to build arguments if not already specified
+if [[ "$BUILD_ARGS" != *"--jobs="* ]] && [[ -n "$BUILD_FLAGS" ]]; then
+    BUILD_ARGS="$BUILD_ARGS $BUILD_FLAGS"
+fi
+
+# Create .env file for docker-compose
+cat > "$SCRIPT_DIR/.env" << EOF
+# Auto-generated environment file for OneRecovery build
+# Generated on $(date)
+
+# Resource limits
+DOCKER_MEMORY=$DOCKER_MEMORY
+DOCKER_CPUS=$DOCKER_CPUS
+
+# Build arguments
+BUILD_ARGS=$BUILD_ARGS
+
+# User mapping
+HOST_UID=$HOST_UID
+HOST_GID=$HOST_GID
+EOF
+
 # Clean if requested
 if [ "$CLEAN" = true ]; then
     echo -e "${BLUE}[INFO]${NC} Cleaning up Docker environment..."
@@ -149,12 +220,6 @@ fi
 
 # Create output directory if it doesn't exist
 mkdir -p "$PROJECT_DIR/output"
-
-# Set environment variables 
-if [ -n "$BUILD_ARGS" ]; then
-    export BUILD_ARGS
-    echo -e "${BLUE}[INFO]${NC} Using build arguments: $BUILD_ARGS"
-fi
 
 # Set verbose mode if requested
 if [ "$VERBOSE" = true ]; then
@@ -178,6 +243,12 @@ fi
 
 # Change to the docker directory
 cd "$SCRIPT_DIR"
+
+# Show resource allocation
+echo -e "${BLUE}[INFO]${NC} Docker container resource allocation:"
+echo -e "${BLUE}[INFO]${NC} - Memory: $DOCKER_MEMORY"
+echo -e "${BLUE}[INFO]${NC} - CPUs: $DOCKER_CPUS"
+echo -e "${BLUE}[INFO]${NC} - Build flags: $BUILD_ARGS"
 
 # Run in interactive mode or normal build mode
 if [ "$INTERACTIVE" = true ]; then
