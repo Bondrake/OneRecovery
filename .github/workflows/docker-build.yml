@@ -31,16 +31,16 @@ jobs:
         include:
           - name: minimal
             build_args: --minimal
-            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'minimal' || github.event_name != 'workflow_dispatch' }}
           - name: standard
             build_args: --with-zfs --with-recovery-tools --with-network-tools
-            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'standard' || github.event_name != 'workflow_dispatch' }}
           - name: full
             build_args: --full
-            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'full' || github.event_name != 'workflow_dispatch' }}
 
     name: Build OneRecovery (${{ matrix.name }})
-    if: ${{ matrix.run_if }}
+    # Skip builds based on workflow_dispatch input, build all for normal triggers
+    if: >-
+      github.event_name != 'workflow_dispatch' || 
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == matrix.name)
     
     steps:
       - name: Checkout code
