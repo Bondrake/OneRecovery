@@ -111,10 +111,28 @@ cd /onerecovery/build
 # Define function to run build
 run_build() {
     # Handle special alpine extraction issues
-    if [ -f "alpine-minirootfs-3.21.3-x86_64.tar.gz" ] && [ ! -d "alpine-minirootfs" ]; then
+    if [ -f "alpine-minirootfs-3.21.3-x86_64.tar.gz" ]; then
         echo "Pre-extracting Alpine minirootfs as root"
+        # Remove existing directory if it exists
+        if [ -d "alpine-minirootfs" ]; then
+            rm -rf alpine-minirootfs
+        fi
+        
+        # Create directory with proper permissions
         mkdir -p alpine-minirootfs
+        
+        # Extract with root privileges
         handle_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
+        
+        # Ensure permissions allow writing to all subdirectories
+        find alpine-minirootfs -type d -exec chmod 755 {} \;
+        
+        # Make sure root-owned directories are writable by all users
+        # This is necessary for the build scripts to create symlinks
+        mkdir -p alpine-minirootfs/etc/runlevels/sysinit
+        chmod -R 777 alpine-minirootfs/etc/runlevels
+        
+        echo "Set proper permissions on Alpine minirootfs"
     fi
     
     # Run the build command

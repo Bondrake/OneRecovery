@@ -29,7 +29,10 @@ log() {
             ;;
         "ERROR")
             echo -e "${RED}[ERROR]${NC} $message"
-            echo "[$timestamp] [ERROR] $message" >> "$BUILD_LOG"
+            # Write to log file with error handling
+            if ! echo "[$timestamp] [ERROR] $message" >> "$BUILD_LOG" 2>/dev/null; then
+                echo -e "${YELLOW}[WARNING]${NC} Could not write to log file. Continuing without logging."
+            fi
             ;;
         "SUCCESS")
             echo -e "${GREEN}[SUCCESS]${NC} $message"
@@ -258,7 +261,16 @@ create_password_hash() {
 
 # Initialize error handling framework
 init_error_handling() {
-    echo "" > "$BUILD_LOG"
+    # Try to create the log file with proper permissions
+    if ! touch "$BUILD_LOG" 2>/dev/null; then
+        echo -e "${YELLOW}[WARNING]${NC} Cannot create log file. Will continue without logging."
+        BUILD_LOG="/dev/null"
+    else
+        # Make sure the log file is writable
+        chmod 666 "$BUILD_LOG" 2>/dev/null || true
+        echo "" > "$BUILD_LOG" 2>/dev/null || true
+    fi
+    
     trap_errors
     check_prerequisites
     print_script_start

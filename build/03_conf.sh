@@ -17,13 +17,42 @@ check_resume_point "$1"
 
 # Configure system services for sysinit runlevel
 log "INFO" "Setting up system services in sysinit runlevel"
+
+# Ensure the directory exists with correct permissions
 mkdir -p ./alpine-minirootfs/etc/runlevels/sysinit
-ln -fs /etc/init.d/mdev ./alpine-minirootfs/etc/runlevels/sysinit/mdev
-ln -fs /etc/init.d/devfs ./alpine-minirootfs/etc/runlevels/sysinit/devfs
-ln -fs /etc/init.d/dmesg ./alpine-minirootfs/etc/runlevels/sysinit/dmesg
-ln -fs /etc/init.d/syslog ./alpine-minirootfs/etc/runlevels/sysinit/syslog
-ln -fs /etc/init.d/hwdrivers ./alpine-minirootfs/etc/runlevels/sysinit/hwdrivers
-ln -fs /etc/init.d/networking ./alpine-minirootfs/etc/runlevels/sysinit/networking
+chmod 777 ./alpine-minirootfs/etc/runlevels/sysinit
+
+# Check if running in container and apply special handling
+if [ "${IN_DOCKER_CONTAINER}" = "true" ] || grep -q "docker\|container" /proc/1/cgroup 2>/dev/null || [ -f "/.dockerenv" ]; then
+    log "INFO" "Running in container, using special permissions handling"
+    # In container, use sudo if available
+    if command -v sudo &> /dev/null; then
+        sudo mkdir -p ./alpine-minirootfs/etc/runlevels/sysinit
+        sudo chmod 777 ./alpine-minirootfs/etc/runlevels/sysinit
+        sudo ln -fs /etc/init.d/mdev ./alpine-minirootfs/etc/runlevels/sysinit/mdev
+        sudo ln -fs /etc/init.d/devfs ./alpine-minirootfs/etc/runlevels/sysinit/devfs
+        sudo ln -fs /etc/init.d/dmesg ./alpine-minirootfs/etc/runlevels/sysinit/dmesg
+        sudo ln -fs /etc/init.d/syslog ./alpine-minirootfs/etc/runlevels/sysinit/syslog
+        sudo ln -fs /etc/init.d/hwdrivers ./alpine-minirootfs/etc/runlevels/sysinit/hwdrivers
+        sudo ln -fs /etc/init.d/networking ./alpine-minirootfs/etc/runlevels/sysinit/networking
+    else
+        # Fallback to direct linking, which may fail
+        ln -fs /etc/init.d/mdev ./alpine-minirootfs/etc/runlevels/sysinit/mdev
+        ln -fs /etc/init.d/devfs ./alpine-minirootfs/etc/runlevels/sysinit/devfs
+        ln -fs /etc/init.d/dmesg ./alpine-minirootfs/etc/runlevels/sysinit/dmesg
+        ln -fs /etc/init.d/syslog ./alpine-minirootfs/etc/runlevels/sysinit/syslog
+        ln -fs /etc/init.d/hwdrivers ./alpine-minirootfs/etc/runlevels/sysinit/hwdrivers
+        ln -fs /etc/init.d/networking ./alpine-minirootfs/etc/runlevels/sysinit/networking
+    fi
+else
+    # Regular environment
+    ln -fs /etc/init.d/mdev ./alpine-minirootfs/etc/runlevels/sysinit/mdev
+    ln -fs /etc/init.d/devfs ./alpine-minirootfs/etc/runlevels/sysinit/devfs
+    ln -fs /etc/init.d/dmesg ./alpine-minirootfs/etc/runlevels/sysinit/dmesg
+    ln -fs /etc/init.d/syslog ./alpine-minirootfs/etc/runlevels/sysinit/syslog
+    ln -fs /etc/init.d/hwdrivers ./alpine-minirootfs/etc/runlevels/sysinit/hwdrivers
+    ln -fs /etc/init.d/networking ./alpine-minirootfs/etc/runlevels/sysinit/networking
+fi
 log "SUCCESS" "System services configured"
 
 # Set up terminal access
