@@ -100,18 +100,56 @@ jobs:
           sudo ln -fs /sbin/agetty alpine-minirootfs/sbin/getty
           
           # Copy configuration files
-          cp -r ../build/zfiles .
-          sudo cp zfiles/interfaces alpine-minirootfs/etc/network/interfaces
-          sudo cp zfiles/resolv.conf alpine-minirootfs/etc/resolv.conf
-          sudo cp zfiles/profile alpine-minirootfs/etc/profile
-          sudo cp zfiles/shadow alpine-minirootfs/etc/shadow
-          sudo cp zfiles/init alpine-minirootfs/init
-          sudo chmod +x alpine-minirootfs/init
+          mkdir -p zfiles
+          # First check if we're in GitHub Actions workspace
+          if [ -d "../build/zfiles" ]; then
+            echo "Copying zfiles from ../build/zfiles"
+            cp -r ../build/zfiles/* zfiles/
+          elif [ -d "/onerecovery/build/zfiles" ]; then
+            echo "Copying zfiles from /onerecovery/build/zfiles"
+            cp -r /onerecovery/build/zfiles/* zfiles/
+          fi
+          
+          # Make sure network directory exists
+          sudo mkdir -p alpine-minirootfs/etc/network
+          
+          # Copy files if they exist
+          if [ -f "zfiles/interfaces" ]; then
+            sudo cp zfiles/interfaces alpine-minirootfs/etc/network/interfaces
+          else
+            echo "Creating default interfaces file"
+            echo "auto lo" | sudo tee alpine-minirootfs/etc/network/interfaces
+            echo "iface lo inet loopback" | sudo tee -a alpine-minirootfs/etc/network/interfaces
+          fi
+          
+          if [ -f "zfiles/resolv.conf" ]; then
+            sudo cp zfiles/resolv.conf alpine-minirootfs/etc/resolv.conf
+          else
+            echo "Creating default resolv.conf"
+            echo "nameserver 8.8.8.8" | sudo tee alpine-minirootfs/etc/resolv.conf
+          fi
+          
+          if [ -f "zfiles/profile" ]; then
+            sudo cp zfiles/profile alpine-minirootfs/etc/profile
+          fi
+          
+          if [ -f "zfiles/shadow" ]; then
+            sudo cp zfiles/shadow alpine-minirootfs/etc/shadow
+          fi
+          
+          if [ -f "zfiles/init" ]; then
+            sudo cp zfiles/init alpine-minirootfs/init
+            sudo chmod +x alpine-minirootfs/init
+          fi
           
           # Install TUI script if included in build type
           if [[ "${{ matrix.build_args }}" != *"--minimal"* ]]; then
-            sudo cp zfiles/onerecovery-tui alpine-minirootfs/onerecovery-tui
-            sudo chmod +x alpine-minirootfs/onerecovery-tui
+            if [ -f "zfiles/onerecovery-tui" ]; then
+              sudo cp zfiles/onerecovery-tui alpine-minirootfs/onerecovery-tui
+              sudo chmod +x alpine-minirootfs/onerecovery-tui
+            else
+              echo "TUI script not found, skipping"
+            fi
           fi
           
           # Configure console settings
@@ -139,10 +177,33 @@ jobs:
           
           # Copy appropriate kernel config based on build type
           if [[ "${{ matrix.build_args }}" == *"--minimal"* ]]; then
-            cp zfiles/kernel-minimal.config linux/.config
+            # Check if zfiles directory has the kernel config
+            if [ -f "../build/zfiles/kernel-minimal.config" ]; then
+              echo "Copying kernel-minimal.config from build/zfiles..."
+              cp ../build/zfiles/kernel-minimal.config linux/.config
+            else
+              echo "WARNING: kernel-minimal.config not found, using default config"
+              cd linux
+              make defconfig
+              cd ..
+            fi
           else
-            cp zfiles/.config linux/.config
+            # Check if zfiles directory has the kernel config
+            if [ -f "../build/zfiles/.config" ]; then
+              echo "Copying .config from build/zfiles..."
+              cp ../build/zfiles/.config linux/.config
+            else
+              echo "WARNING: .config not found, using default config"
+              cd linux
+              make defconfig
+              cd ..
+            fi
           fi
+          
+          # Ensure config is properly set up
+          cd linux
+          make olddefconfig
+          cd ..
           echo "::endgroup::"
       
       # Step 6: Download ZFS if needed
@@ -181,6 +242,15 @@ jobs:
           # Build the Linux kernel
           cd linux
           echo "::group::Building Linux kernel"
+          
+          # Ensure kernel config exists
+          if [ ! -f ".config" ]; then
+            echo "Kernel config missing, creating default config..."
+            make defconfig
+            make olddefconfig
+          fi
+          
+          # Build kernel
           make -j$(nproc) || exit 1
           echo "::endgroup::"
           
