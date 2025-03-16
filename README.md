@@ -166,10 +166,15 @@ OneRecovery can be built from source using the FoxBuild system. The build enviro
 
 ### Prerequisites
 
-- Linux build environment
+- **Linux build environment** (required): The build process uses Linux-specific tools and chroot, which won't work directly on macOS
+  - If using macOS, you'll need to use a Linux virtual machine or container
+  - Docker or a Linux VM (via UTM/VirtualBox/Parallels) is recommended for macOS users
 - Standard build tools (gcc, make, etc.)
 - Approximately 5GB of free disk space
 - Internet connection for downloading source components
+- Required packages:
+  - Linux: `wget`, `tar`, `xz-utils`, `flex`, `bison`, `libssl-dev` (or `openssl-devel` on Fedora/RHEL)
+  - On macOS/Docker: Install wget if needed: `brew install wget` (only for downloading, actual build requires Linux)
 
 ### Build Process
 
@@ -189,9 +194,14 @@ The build system uses a sequence of numbered scripts:
    cd OneRecovery
    ```
 
-2. Run the build scripts in sequence:  
+2. Prepare the build environment:
    ```bash
    cd FoxBuild
+   sudo ./00_prepare.sh     # Detects OS and installs required dependencies
+   ```
+
+3. Run the build scripts in sequence:  
+   ```bash
    ./01_get.sh
    ./02_chrootandinstall.sh
    ./03_conf.sh
