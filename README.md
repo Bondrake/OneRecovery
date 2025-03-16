@@ -195,29 +195,85 @@ All build scripts include:
 
 ### Build Instructions
 
+#### Option 1: Single Command Build (Recommended)
+
 1. Clone the repository:  
    ```bash
    git clone https://github.com/Bondrake/OneRecovery
-   cd OneRecovery
+   cd OneRecovery/FoxBuild
+   ```
+
+2. Run the unified build script:
+   ```bash
+   sudo ./build.sh
+   ```
+   
+   This will automatically:
+   - Prepare the build environment (install dependencies)
+   - Download all required components
+   - Set up the chroot environment
+   - Configure the system
+   - Build the kernel and create the final EFI file
+
+3. After successful completion, the `OneRecovery.efi` file will be created in the repository root directory.
+
+#### Option 2: Step-by-Step Build
+
+If you prefer more control over the build process, you can run each step manually:
+
+1. Clone the repository:  
+   ```bash
+   git clone https://github.com/Bondrake/OneRecovery
+   cd OneRecovery/FoxBuild
    ```
 
 2. Prepare the build environment:
    ```bash
-   cd FoxBuild
    sudo ./00_prepare.sh     # Detects OS and installs required dependencies
    ```
 
 3. Run the build scripts in sequence:  
    ```bash
-   ./01_get.sh
-   ./02_chrootandinstall.sh
-   ./03_conf.sh
-   ./04_build.sh
+   ./01_get.sh              # Download components
+   sudo ./02_chrootandinstall.sh  # Set up chroot environment
+   ./03_conf.sh             # Configure system
+   ./04_build.sh            # Build kernel and create EFI file
    ```
    
-3. After successful completion, the `OneRecovery.efi` file will be created in the repository root directory.
+4. After successful completion, the `OneRecovery.efi` file will be created in the repository root directory.
 
-4. Optional: Clean up build artifacts:
+5. Optional: Clean up build artifacts:
    ```bash
    ./99_cleanup.sh
    ```
+
+#### Advanced Build Options
+
+The unified build script offers several options for customizing the build process:
+
+```bash
+Usage: ./build.sh [options] [STEP]
+
+Options:
+  -h, --help          Display this help message
+  -c, --clean-start   Run cleanup script before starting (removes previous builds)
+  -v, --verbose       Enable verbose output
+  -s, --skip-prepare  Skip environment preparation step
+  -r, --resume        Resume from last successful step (if possible)
+  -C, --clean-end     Run cleanup script after successful build
+
+Steps:
+  all                 Run all build steps (default)
+  prepare             Run only environment preparation (00_prepare.sh)
+  get                 Run through downloading sources (01_get.sh)
+  chroot              Run through chroot and install (02_chrootandinstall.sh)
+  conf                Run through configuration (03_conf.sh)
+  build               Run only the build step (04_build.sh)
+  clean               Run only cleanup (99_cleanup.sh)
+```
+
+Examples:
+- `./build.sh -c` - Clean previous build and start fresh
+- `./build.sh -r` - Resume build from last successful step
+- `./build.sh build` - Run only the final build step
+- `./build.sh -v` - Build with verbose output
