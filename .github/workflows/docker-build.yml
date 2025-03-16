@@ -1,0 +1,117 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ master, main, dev ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [ master, main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (minimal, standard, full)'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - minimal
+          - standard
+          - full
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: minimal
+            build_args: --minimal
+            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'minimal' || github.event_name != 'workflow_dispatch' }}
+          - name: standard
+            build_args: --with-zfs --with-recovery-tools --with-network-tools
+            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'standard' || github.event_name != 'workflow_dispatch' }}
+          - name: full
+            build_args: --full
+            run_if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'full' || github.event_name != 'workflow_dispatch' }}
+
+    name: Build OneRecovery (${{ matrix.name }})
+    if: ${{ matrix.run_if }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker
+          push: false
+          load: true
+          tags: onerecovery-builder:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create output directory
+        run: mkdir -p output
+
+      - name: Build OneRecovery
+        run: |
+          docker run --rm \
+            --privileged \
+            -v ${{ github.workspace }}/build:/onerecovery/build \
+            -v ${{ github.workspace }}/output:/onerecovery/output \
+            -e BUILD_ARGS="${{ matrix.build_args }}" \
+            onerecovery-builder:latest
+
+      - name: Check for build artifacts
+        id: check_files
+        run: |
+          if [ -f "./output/OneRecovery.efi" ]; then
+            echo "efi_file=true" >> $GITHUB_OUTPUT
+            du -h ./output/OneRecovery.efi
+          else
+            echo "efi_file=false" >> $GITHUB_OUTPUT
+            echo "Build failed to produce OneRecovery.efi"
+            exit 1
+          fi
+
+      - name: Upload build artifact
+        if: steps.check_files.outputs.efi_file == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneRecovery-${{ matrix.name }}
+          path: ./output/OneRecovery.efi
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create release package
+        run: |
+          mkdir -p release
+          cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
+          cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
+          cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
+          cd release
+          zip -r OneRecovery-release.zip *.efi
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneRecovery-release
+          path: ./release/OneRecovery-release.zip
