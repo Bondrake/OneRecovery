@@ -52,7 +52,7 @@ download_and_verify() {
             # Store in cache
             mkdir -p "$CACHE_DIR/sources"
             cp "$file" "$cache_file" || log "WARNING" "Failed to cache $file"
-        }
+        fi
     else
         # Regular download without caching
         download_file "$url" "$file" "$component"
