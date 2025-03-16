@@ -110,38 +110,57 @@ cd /onerecovery/build
 
 # Define function to run build
 run_build() {
-    # Handle special alpine extraction issues
-    if [ -f "alpine-minirootfs-3.21.3-x86_64.tar.gz" ]; then
-        echo "Pre-extracting Alpine minirootfs as root"
-        # Remove existing directory if it exists
-        if [ -d "alpine-minirootfs" ]; then
-            rm -rf alpine-minirootfs
+    # Check for the cross-environment build script
+    if [ -f "build_helper.sh" ] && [ -f "cross_env_build.sh" ]; then
+        # Use the cross-environment build script for consistent builds
+        echo "Using cross-environment build system"
+        chmod +x build_helper.sh
+        chmod +x cross_env_build.sh
+        
+        if [ -n "$BUILD_ARGS" ]; then
+            echo "Running: ./cross_env_build.sh $BUILD_ARGS"
+            ./cross_env_build.sh $BUILD_ARGS
+        else
+            echo "Running: ./cross_env_build.sh"
+            ./cross_env_build.sh
+        fi
+    else
+        # Fall back to legacy build scripts
+        echo "Cross-environment build scripts not found, using legacy build system"
+        
+        # Handle special alpine extraction issues
+        if [ -f "alpine-minirootfs-3.21.3-x86_64.tar.gz" ]; then
+            echo "Pre-extracting Alpine minirootfs as root"
+            # Remove existing directory if it exists
+            if [ -d "alpine-minirootfs" ]; then
+                rm -rf alpine-minirootfs
+            fi
+            
+            # Create directory with proper permissions
+            mkdir -p alpine-minirootfs
+            
+            # Extract with root privileges
+            handle_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
+            
+            # Ensure permissions allow writing to all subdirectories
+            find alpine-minirootfs -type d -exec chmod 755 {} \;
+            
+            # Make sure root-owned directories are writable by all users
+            # This is necessary for the build scripts to create symlinks
+            mkdir -p alpine-minirootfs/etc/runlevels/sysinit
+            chmod -R 777 alpine-minirootfs/etc/runlevels
+            
+            echo "Set proper permissions on Alpine minirootfs"
         fi
         
-        # Create directory with proper permissions
-        mkdir -p alpine-minirootfs
-        
-        # Extract with root privileges
-        handle_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
-        
-        # Ensure permissions allow writing to all subdirectories
-        find alpine-minirootfs -type d -exec chmod 755 {} \;
-        
-        # Make sure root-owned directories are writable by all users
-        # This is necessary for the build scripts to create symlinks
-        mkdir -p alpine-minirootfs/etc/runlevels/sysinit
-        chmod -R 777 alpine-minirootfs/etc/runlevels
-        
-        echo "Set proper permissions on Alpine minirootfs"
-    fi
-    
-    # Run the build command
-    if [ -n "$BUILD_ARGS" ]; then
-        echo "Running: ./build.sh $BUILD_ARGS"
-        ./build.sh $BUILD_ARGS
-    else
-        echo "Running: ./build.sh"
-        ./build.sh
+        # Run the legacy build command
+        if [ -n "$BUILD_ARGS" ]; then
+            echo "Running: ./build.sh $BUILD_ARGS"
+            ./build.sh $BUILD_ARGS
+        else
+            echo "Running: ./build.sh"
+            ./build.sh
+        fi
     fi
 }
 
