@@ -178,13 +178,20 @@ OneRecovery can be built from source using the FoxBuild system. The build enviro
 
 ### Build Process
 
-The build system uses a sequence of numbered scripts:
+The build system uses a sequence of numbered scripts with robust error handling:
 
-1. `01_get.sh`: Downloads and extracts Alpine Linux, Linux kernel, and ZFS sources
-2. `02_chrootandinstall.sh`: Sets up the chroot environment and installs packages
-3. `03_conf.sh`: Configures system services, network, auto-login, and kernel settings
-4. `04_build.sh`: Builds the kernel, modules, ZFS support, and creates the EFI file
-5. `99_cleanup.sh`: Removes build artifacts after successful build
+1. `00_prepare.sh`: Detects OS, installs dependencies, and prepares the build environment
+2. `01_get.sh`: Downloads and extracts Alpine Linux, Linux kernel, and ZFS sources
+3. `02_chrootandinstall.sh`: Sets up the chroot environment and installs packages
+4. `03_conf.sh`: Configures system services, network, auto-login, and kernel settings
+5. `04_build.sh`: Builds the kernel, modules, ZFS support, and creates the EFI file
+6. `99_cleanup.sh`: Removes build artifacts after successful build
+
+All build scripts include:
+- Comprehensive error handling with detailed diagnostic messages
+- Prerequisite checking to ensure dependencies are met
+- The ability to resume from checkpoints with the `--resume` flag
+- Detailed logging to help troubleshoot build failures
 
 ### Build Instructions
 
