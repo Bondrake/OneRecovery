@@ -40,102 +40,280 @@ jobs:
             echo "matrix={\"include\":[{\"name\":\"minimal\",\"build_args\":\"--minimal\"},{\"name\":\"standard\",\"build_args\":\"--with-zfs --with-recovery-tools --with-network-tools\"},{\"name\":\"full\",\"build_args\":\"--full\"}]}" >> $GITHUB_OUTPUT
           fi
 
-  # Main build job
-  build:
+  # Phase 1: Preparation of all files and environment
+  prepare:
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.setup.outputs.matrix)}}
+      fail-fast: false
+    
+    name: Prepare Build Environment (${{ matrix.name }})
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create directories
+        run: |
+          mkdir -p build-files/alpine-minirootfs
+          mkdir -p build-files/linux
+          mkdir -p build-files/zfs
+          mkdir -p output
+      
+      # Step 1: Download Alpine Linux
+      - name: Download Alpine Linux
+        run: |
+          echo "::group::Downloading Alpine Linux minirootfs"
+          cd build-files
+          wget -q --show-progress http://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.3-x86_64.tar.gz
+          echo "::endgroup::"
+      
+      # Step 2: Extract Alpine Linux with proper permissions
+      - name: Extract Alpine Linux
+        run: |
+          echo "::group::Extracting Alpine Linux minirootfs"
+          cd build-files
+          sudo tar -xzf alpine-minirootfs-3.21.3-x86_64.tar.gz -C alpine-minirootfs
+          sudo chown -R $(id -u):$(id -g) alpine-minirootfs
+          echo "::endgroup::"
+      
+      # Step 3: Configure Alpine Linux system
+      - name: Configure Alpine Linux
+        run: |
+          echo "::group::Configuring Alpine Linux"
+          cd build-files
+          
+          # Create runlevel directories with proper permissions
+          sudo mkdir -p alpine-minirootfs/etc/runlevels/sysinit
+          sudo chmod 777 alpine-minirootfs/etc/runlevels/sysinit
+          
+          # Create service symlinks
+          sudo ln -fs /etc/init.d/mdev alpine-minirootfs/etc/runlevels/sysinit/mdev
+          sudo ln -fs /etc/init.d/devfs alpine-minirootfs/etc/runlevels/sysinit/devfs
+          sudo ln -fs /etc/init.d/dmesg alpine-minirootfs/etc/runlevels/sysinit/dmesg
+          sudo ln -fs /etc/init.d/syslog alpine-minirootfs/etc/runlevels/sysinit/syslog
+          sudo ln -fs /etc/init.d/hwdrivers alpine-minirootfs/etc/runlevels/sysinit/hwdrivers
+          sudo ln -fs /etc/init.d/networking alpine-minirootfs/etc/runlevels/sysinit/networking
+          
+          # Set up terminal access
+          sudo ln -fs /sbin/agetty alpine-minirootfs/sbin/getty
+          
+          # Copy configuration files
+          cp -r ../build/zfiles .
+          sudo cp zfiles/interfaces alpine-minirootfs/etc/network/interfaces
+          sudo cp zfiles/resolv.conf alpine-minirootfs/etc/resolv.conf
+          sudo cp zfiles/profile alpine-minirootfs/etc/profile
+          sudo cp zfiles/shadow alpine-minirootfs/etc/shadow
+          sudo cp zfiles/init alpine-minirootfs/init
+          sudo chmod +x alpine-minirootfs/init
+          
+          # Install TUI script if included in build type
+          if [[ "${{ matrix.build_args }}" != *"--minimal"* ]]; then
+            sudo cp zfiles/onerecovery-tui alpine-minirootfs/onerecovery-tui
+            sudo chmod +x alpine-minirootfs/onerecovery-tui
+          fi
+          
+          # Configure console settings
+          sudo sed -i 's/^#ttyS0/ttyS0/' alpine-minirootfs/etc/inittab
+          sudo sed -i 's|\(/sbin/getty \)|\1 -a root |' alpine-minirootfs/etc/inittab
+          
+          echo "::endgroup::"
+      
+      # Step 4: Download Linux kernel
+      - name: Download Linux kernel
+        run: |
+          echo "::group::Downloading Linux kernel"
+          cd build-files
+          wget -q --show-progress https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.19.tar.xz
+          echo "::endgroup::"
+      
+      # Step 5: Extract Linux kernel
+      - name: Extract Linux kernel
+        run: |
+          echo "::group::Extracting Linux kernel"
+          cd build-files
+          mkdir -p linux-6.12.19
+          sudo tar -xf linux-6.12.19.tar.xz --strip-components=1 -C linux-6.12.19
+          sudo chown -R $(id -u):$(id -g) linux-6.12.19
+          ln -sf linux-6.12.19 linux
+          
+          # Copy appropriate kernel config based on build type
+          if [[ "${{ matrix.build_args }}" == *"--minimal"* ]]; then
+            cp zfiles/kernel-minimal.config linux/.config
+          else
+            cp zfiles/.config linux/.config
+          fi
+          echo "::endgroup::"
+      
+      # Step 6: Download ZFS if needed
+      - name: Download ZFS
+        if: matrix.name != 'minimal'
+        run: |
+          echo "::group::Downloading ZFS"
+          cd build-files
+          wget -q --show-progress https://github.com/openzfs/zfs/releases/download/zfs-2.3.0/zfs-2.3.0.tar.gz
+          echo "::endgroup::"
+      
+      # Step 7: Extract ZFS if needed
+      - name: Extract ZFS
+        if: matrix.name != 'minimal'
+        run: |
+          echo "::group::Extracting ZFS"
+          cd build-files
+          mkdir -p zfs-2.3.0
+          sudo tar -xzf zfs-2.3.0.tar.gz --strip-components=1 -C zfs-2.3.0
+          sudo chown -R $(id -u):$(id -g) zfs-2.3.0
+          ln -sf zfs-2.3.0 zfs
+          echo "::endgroup::"
+      
+      # Step 8: Create build script
+      - name: Create build script
+        run: |
+          cat > build-files/build.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Set up environment variables
+          export ONERECOVERY_BUILD_DIR=$(pwd)
+          export BUILD_TYPE="$1"
+          
+          echo "Building OneRecovery with options: $BUILD_TYPE"
+          
+          # Build the Linux kernel
+          cd linux
+          echo "::group::Building Linux kernel"
+          make -j$(nproc) || exit 1
+          echo "::endgroup::"
+          
+          # Build ZFS if needed
+          if [[ "$BUILD_TYPE" != *"--minimal"* ]]; then
+            cd ../zfs
+            echo "::group::Building ZFS"
+            ./autogen.sh
+            ./configure --with-linux=../linux
+            make -j$(nproc) -C module || exit 1
+            echo "::endgroup::"
+          fi
+          
+          # Build the final EFI image
+          cd ..
+          echo "::group::Building EFI image"
+          mkdir -p /onerecovery/output
+          
+          # Get kernel version
+          KERNELVERSION="$(ls -d linux-* 2>/dev/null | head -1 | cut -d- -f2 || echo "6.12.19")"
+          
+          # Prepare modules directory
+          MODULESPATH="alpine-minirootfs/lib/modules/"
+          if [ -d "$MODULESPATH" ]; then
+            echo "Clearing existing modules..."
+            rm -rf $MODULESPATH/*
+          else
+            echo "Creating modules directory..."
+            mkdir -p $MODULESPATH
+          fi
+          
+          # Install kernel modules
+          echo "Installing kernel modules..."
+          cd linux
+          INSTALL_MOD_PATH="../alpine-minirootfs/"
+          make -s modules_install
+          
+          # Building and installing ZFS modules if enabled
+          if [[ "$BUILD_TYPE" != *"--minimal"* ]]; then
+            echo "Building ZFS modules..."
+            cd ../zfs
+            ./configure --with-linux=$(pwd)/../linux --with-linux-obj=$(pwd)/../linux
+            make -s -j$(nproc) -C module
+            DESTDIR=$(realpath $(pwd)/../alpine-minirootfs)
+            mkdir -p ${DESTDIR}/fake
+            make DESTDIR=${DESTDIR} INSTALL_MOD_PATH=${DESTDIR} install
+            rm -rf ${DESTDIR}/fake
+            cd ../linux
+          fi
+          
+          # Creating modules.dep
+          echo "Creating modules.dep..."
+          depmod -b ../alpine-minirootfs -F System.map $KERNELVERSION
+          
+          # Copy the kernel image as OneRecovery.efi
+          echo "Creating OneRecovery.efi..."
+          cp arch/x86/boot/bzImage /onerecovery/output/OneRecovery.efi
+          
+          # Apply compression if available
+          if command -v upx &> /dev/null; then
+            echo "Applying UPX compression..."
+            cp /onerecovery/output/OneRecovery.efi /onerecovery/output/OneRecovery.efi.original
+            if upx --best --lzma /onerecovery/output/OneRecovery.efi; then
+              echo "Compression successful"
+              COMPRESSED_SIZE=$(du -h /onerecovery/output/OneRecovery.efi | cut -f1)
+              echo "Compressed size: $COMPRESSED_SIZE"
+            else
+              echo "Compression failed, restoring original file"
+              mv /onerecovery/output/OneRecovery.efi.original /onerecovery/output/OneRecovery.efi
+            fi
+            # Clean up backup
+            rm -f /onerecovery/output/OneRecovery.efi.original
+          else
+            echo "UPX not found, skipping compression"
+          fi
+          
+          echo "::endgroup::"
+          
+          echo "Build complete!"
+          EOF
+          
+          chmod +x build-files/build.sh
+      
+      # Step 9: Upload prepared files for Phase 2
+      - name: Upload prepared files
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files-${{ matrix.name }}
+          path: build-files
+          retention-days: 1
 
+  # Phase 2: Build in Docker container
+  build:
+    needs: [setup, prepare]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{fromJson(needs.setup.outputs.matrix)}}
+      fail-fast: false
+    
     name: Build OneRecovery (${{ matrix.name }})
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Create build script
+      
+      - name: Download prepared files
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files-${{ matrix.name }}
+          path: build-files
+      
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
         run: |
-          cat > build-github.sh << 'EOF'
-          #!/bin/bash
-          set -e
+          docker build -t onerecovery-builder ./docker
+      
+      - name: Build OneRecovery in container
+        run: |
+          mkdir -p output
+          chmod +x build-files/build.sh
           
-          # Create build directories
-          mkdir -p build/alpine-minirootfs
-          
-          # Function to handle errors
-          handle_error() {
-            echo "::error::Build failed at step: $1"
-            exit 1
-          }
-          
-          # Step 1: Download Alpine
-          echo "::group::Downloading Alpine"
-          cd build
-          wget http://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.3-x86_64.tar.gz || handle_error "Alpine download"
-          
-          # Extract Alpine directly
-          echo "Extracting Alpine..."
-          sudo tar -xzf alpine-minirootfs-3.21.3-x86_64.tar.gz -C alpine-minirootfs || handle_error "Alpine extraction"
-          sudo chown -R $(id -u):$(id -g) alpine-minirootfs
-          echo "::endgroup::"
-          
-          # Step 2: Download Linux kernel
-          echo "::group::Downloading Linux kernel"
-          wget https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.19.tar.xz || handle_error "Kernel download"
-          
-          # Extract kernel
-          echo "Extracting kernel..."
-          mkdir -p linux-6.12.19
-          sudo tar -xf linux-6.12.19.tar.xz --strip-components=1 -C linux-6.12.19 || handle_error "Kernel extraction"
-          sudo chown -R $(id -u):$(id -g) linux-6.12.19
-          ln -sf linux-6.12.19 linux
-          echo "::endgroup::"
-          
-          # Step 3: Download ZFS if needed
-          if [[ "$1" != "--minimal" ]]; then
-            echo "::group::Downloading ZFS"
-            wget https://github.com/openzfs/zfs/releases/download/zfs-2.3.0/zfs-2.3.0.tar.gz || handle_error "ZFS download"
-            
-            # Extract ZFS
-            echo "Extracting ZFS..."
-            mkdir -p zfs
-            sudo tar -xzf zfs-2.3.0.tar.gz --strip-components=1 -C zfs || handle_error "ZFS extraction"
-            sudo chown -R $(id -u):$(id -g) zfs
-            echo "::endgroup::"
-          fi
-          
-          # Step 4: Configure and build
-          echo "::group::Building OneRecovery"
-          cd ..
-          sudo docker build -t onerecovery-builder ./docker
-          
-          # Copy scripts to fresh directory
-          cp -r build build-clean
-          
-          # Run the build steps in the container
-          sudo docker run --rm \
+          # Run the build in Docker with prepared files
+          docker run --rm \
             --privileged \
-            -v $(pwd)/build-clean:/onerecovery/build \
+            -v $(pwd)/build-files:/onerecovery/build \
             -v $(pwd)/output:/onerecovery/output \
-            -e BUILD_ARGS="$1" \
-            onerecovery-builder || handle_error "Docker build"
-          echo "::endgroup::"
-          
-          # Check result
-          if [ -f "output/OneRecovery.efi" ]; then
-            echo "Build completed successfully!"
-            ls -lh output/
-          else
-            handle_error "OneRecovery.efi not found"
-          fi
-          EOF
-          
-          chmod +x build-github.sh
-
-      - name: Build OneRecovery
-        run: |
-          sudo -E ./build-github.sh "${{ matrix.build_args }}"
-
+            onerecovery-builder \
+            bash -c "cd /onerecovery/build && ./build.sh \"${{ matrix.build_args }}\""
+      
       - name: Check for build artifacts
         id: check_files
         run: |
@@ -147,7 +325,7 @@ jobs:
             echo "Build failed to produce OneRecovery.efi"
             exit 1
           fi
-
+      
       - name: Upload build artifact
         if: steps.check_files.outputs.efi_file == 'true'
         uses: actions/upload-artifact@v4
@@ -166,7 +344,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-
+      
       - name: Create release package
         run: |
           mkdir -p release
@@ -182,7 +360,7 @@ jobs:
           fi
           cd release
           zip -r OneRecovery-release.zip *.efi
-
+      
       - name: Upload release package
         uses: actions/upload-artifact@v4
         with:
