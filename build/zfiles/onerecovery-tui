@@ -1,0 +1,787 @@
+#!/bin/ash
+#
+# OneRecovery TUI (Text User Interface)
+# A simple menu-driven interface for common recovery tasks
+#
+
+# ANSI colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+RESET='\033[0m'
+
+# Terminal size
+TERM_WIDTH=$(tput cols)
+TERM_HEIGHT=$(tput lines)
+
+# Version
+VERSION="1.0.0"
+
+# Log file
+LOG_FILE="/tmp/onerecovery.log"
+touch "$LOG_FILE"
+
+# Function to center text
+center_text() {
+    local text="$1"
+    local width="${2:-$TERM_WIDTH}"
+    local padding=$(( (width - ${#text}) / 2 ))
+    printf "%${padding}s" ""
+    printf "%s" "$text"
+    printf "%${padding}s" ""
+    echo
+}
+
+# Function to draw a line
+draw_line() {
+    local width="${1:-$TERM_WIDTH}"
+    local char="${2:-═}"
+    printf "%${width}s" "" | tr " " "$char"
+    echo
+}
+
+# Function to show header
+show_header() {
+    clear
+    echo -e "${BLUE}"
+    echo "      ____________  "
+    echo "    /|------------| "
+    echo "   /_|  .---.     | "
+    echo "  |    /     \    | "
+    echo "  |    \.6-6./    | "
+    echo "  |    /\`\_/\`\    | "
+    echo "  |   //  _  \\\   | "
+    echo "  |  | \     / |  | "
+    echo "  | /\`\_\`>  <_/\`\ | "
+    echo "  | \__/'---'\__/ | "
+    echo "  |_______________| "
+    echo "                    "
+    echo -e "${GREEN}   OneRecovery v$VERSION   ${RESET}"
+    draw_line
+}
+
+# Function to show footer
+show_footer() {
+    draw_line
+    echo -e "${YELLOW}Press 'q' to quit or 'h' for help${RESET}"
+}
+
+# Function to show a message with pause
+show_message() {
+    local message="$1"
+    local type="${2:-info}"
+    
+    case "$type" in
+        info)    echo -e "${BLUE}[INFO]${RESET} $message" ;;
+        success) echo -e "${GREEN}[SUCCESS]${RESET} $message" ;;
+        warning) echo -e "${YELLOW}[WARNING]${RESET} $message" ;;
+        error)   echo -e "${RED}[ERROR]${RESET} $message" ;;
+    esac
+    
+    echo "Press any key to continue..."
+    read -n 1
+}
+
+# Function to log messages
+log_message() {
+    local message="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] $message" >> "$LOG_FILE"
+}
+
+# Function to detect system information
+detect_system_info() {
+    log_message "Detecting system information"
+    
+    # Basic system information
+    HOSTNAME=$(hostname)
+    KERNEL=$(uname -r)
+    CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d ':' -f 2 | sed 's/^[ \t]*//')
+    CPU_CORES=$(grep -c processor /proc/cpuinfo)
+    MEM_TOTAL=$(free -h | grep Mem | awk '{print $2}')
+    
+    # Storage information
+    DISKS=$(lsblk -d -o NAME,SIZE,MODEL | grep -v loop | grep -v NAME)
+    
+    # Network information
+    INTERFACES=$(ip -o link show | grep -v "lo" | awk -F': ' '{print $2}')
+    
+    log_message "System information detection complete"
+}
+
+# Function to show system information
+show_system_info() {
+    show_header
+    echo -e "${WHITE}System Information${RESET}"
+    echo
+    echo -e "${CYAN}Hostname:${RESET}    $HOSTNAME"
+    echo -e "${CYAN}Kernel:${RESET}      $KERNEL"
+    echo -e "${CYAN}CPU:${RESET}         $CPU_MODEL ($CPU_CORES cores)"
+    echo -e "${CYAN}Memory:${RESET}      $MEM_TOTAL"
+    echo
+    
+    echo -e "${WHITE}Disk Information${RESET}"
+    echo -e "${CYAN}Available disks:${RESET}"
+    echo "$DISKS"
+    echo
+    
+    echo -e "${WHITE}Network Information${RESET}"
+    echo -e "${CYAN}Available interfaces:${RESET}"
+    for iface in $INTERFACES; do
+        local ip_addr=$(ip -o -4 addr show dev "$iface" | awk '{print $4}')
+        local status=$(cat /sys/class/net/$iface/operstate)
+        echo "  $iface: $ip_addr ($status)"
+    done
+    
+    show_footer
+    read -n 1 key
+}
+
+# Function to scan disks
+scan_disks() {
+    show_header
+    echo -e "${WHITE}Scanning Disks...${RESET}"
+    echo
+    
+    log_message "Scanning disks"
+    
+    # List block devices
+    echo -e "${CYAN}Block Devices:${RESET}"
+    lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE
+    echo
+    
+    # Partitioning schemes
+    echo -e "${CYAN}Partition Tables:${RESET}"
+    for disk in $(lsblk -d -n -o NAME | grep -v loop); do
+        echo -n "  /dev/$disk: "
+        fdisk -l /dev/$disk | grep -m 1 "Disklabel type" | cut -d ":" -f 2 || echo "Unknown"
+    done
+    echo
+    
+    # File systems
+    echo -e "${CYAN}File Systems:${RESET}"
+    df -Th | grep -v tmpfs | grep -v devtmpfs
+    
+    log_message "Disk scan complete"
+    
+    show_footer
+    read -n 1 key
+}
+
+# Function to mount a filesystem
+mount_filesystem() {
+    show_header
+    echo -e "${WHITE}Mount Filesystem${RESET}"
+    echo
+    
+    # Show available partitions
+    echo -e "${CYAN}Available Partitions:${RESET}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE | grep -v loop | grep part
+    echo
+    
+    # Get user input
+    echo -n "Enter partition to mount (e.g., sda1): "
+    read partition
+    
+    if [ -z "$partition" ]; then
+        show_message "No partition specified" "error"
+        return
+    fi
+    
+    # Verify partition exists
+    if [ ! -b "/dev/$partition" ]; then
+        show_message "Partition /dev/$partition does not exist" "error"
+        return
+    fi
+    
+    # Create mount point
+    mount_point="/mnt/$partition"
+    mkdir -p "$mount_point"
+    
+    # Determine filesystem type
+    fs_type=$(lsblk -n -o FSTYPE /dev/$partition)
+    
+    log_message "Mounting /dev/$partition ($fs_type) to $mount_point"
+    
+    # Mount the filesystem
+    mount_options=""
+    
+    case "$fs_type" in
+        ext4|ext3|ext2)
+            mount_options="-o rw"
+            ;;
+        ntfs)
+            # Check if ntfs-3g is available
+            if command -v ntfs-3g > /dev/null; then
+                mount_options="-t ntfs-3g -o rw"
+            else
+                mount_options="-t ntfs -o rw"
+            fi
+            ;;
+        vfat|msdos)
+            mount_options="-t vfat -o rw,umask=000"
+            ;;
+        exfat)
+            mount_options="-t exfat -o rw"
+            ;;
+        xfs)
+            mount_options="-t xfs -o rw"
+            ;;
+        zfs)
+            # Special handling for ZFS
+            if command -v zpool > /dev/null && command -v zfs > /dev/null; then
+                pool_name=$(echo "$partition" | sed 's/[0-9]//g')
+                show_message "ZFS detected. Please use the ZFS menu option for ZFS filesystems" "info"
+                return
+            else
+                show_message "ZFS tools not available" "error"
+                return
+            fi
+            ;;
+        *)
+            if [ -z "$fs_type" ]; then
+                show_message "No filesystem detected on /dev/$partition" "error"
+                return
+            else
+                mount_options="-t $fs_type"
+            fi
+            ;;
+    esac
+    
+    # Try to mount
+    if eval "mount $mount_options /dev/$partition $mount_point"; then
+        show_message "Successfully mounted /dev/$partition to $mount_point" "success"
+        log_message "Successfully mounted /dev/$partition to $mount_point"
+    else
+        show_message "Failed to mount /dev/$partition" "error"
+        log_message "Failed to mount /dev/$partition"
+    fi
+}
+
+# Function to unmount a filesystem
+unmount_filesystem() {
+    show_header
+    echo -e "${WHITE}Unmount Filesystem${RESET}"
+    echo
+    
+    # Show mounted filesystems
+    echo -e "${CYAN}Mounted Partitions:${RESET}"
+    mount | grep -v tmpfs | grep -v proc | grep -v sysfs | grep -v devpts
+    echo
+    
+    # Get user input
+    echo -n "Enter mount point to unmount (e.g., /mnt/sda1): "
+    read mount_point
+    
+    if [ -z "$mount_point" ]; then
+        show_message "No mount point specified" "error"
+        return
+    fi
+    
+    # Check if mount point is actually mounted
+    if ! mount | grep -q " $mount_point "; then
+        show_message "$mount_point is not mounted" "error"
+        return
+    fi
+    
+    log_message "Unmounting $mount_point"
+    
+    # Try to unmount
+    if umount "$mount_point"; then
+        show_message "Successfully unmounted $mount_point" "success"
+        log_message "Successfully unmounted $mount_point"
+    else
+        show_message "Failed to unmount $mount_point" "error"
+        log_message "Failed to unmount $mount_point"
+    fi
+}
+
+# Function to handle ZFS operations
+zfs_operations() {
+    # Check if ZFS is available
+    if ! command -v zpool > /dev/null || ! command -v zfs > /dev/null; then
+        show_message "ZFS tools are not available" "error"
+        return
+    fi
+    
+    show_header
+    echo -e "${WHITE}ZFS Operations${RESET}"
+    echo
+    
+    # Show ZFS submenu
+    echo "1. Import all pools"
+    echo "2. List pools"
+    echo "3. List datasets"
+    echo "4. Export all pools"
+    echo "5. Back to main menu"
+    echo
+    
+    echo -n "Select an option: "
+    read -n 1 zfs_option
+    echo
+    
+    case "$zfs_option" in
+        1)
+            log_message "Importing all ZFS pools"
+            zpool import -a
+            show_message "Attempted to import all ZFS pools" "info"
+            ;;
+        2)
+            log_message "Listing ZFS pools"
+            zpool_list=$(zpool list)
+            show_header
+            echo -e "${WHITE}ZFS Pools${RESET}"
+            echo
+            echo "$zpool_list"
+            echo
+            show_footer
+            read -n 1 key
+            ;;
+        3)
+            log_message "Listing ZFS datasets"
+            zfs_list=$(zfs list)
+            show_header
+            echo -e "${WHITE}ZFS Datasets${RESET}"
+            echo
+            echo "$zfs_list"
+            echo
+            show_footer
+            read -n 1 key
+            ;;
+        4)
+            log_message "Exporting all ZFS pools"
+            zpool export -a
+            show_message "Attempted to export all ZFS pools" "info"
+            ;;
+        *)
+            # Back to main menu or invalid option
+            ;;
+    esac
+}
+
+# Function to handle network operations
+network_operations() {
+    show_header
+    echo -e "${WHITE}Network Operations${RESET}"
+    echo
+    
+    # Show network submenu
+    echo "1. Configure network interface"
+    echo "2. Test connectivity"
+    echo "3. Show network status"
+    echo "4. Back to main menu"
+    echo
+    
+    echo -n "Select an option: "
+    read -n 1 net_option
+    echo
+    
+    case "$net_option" in
+        1)
+            show_header
+            echo -e "${WHITE}Configure Network Interface${RESET}"
+            echo
+            
+            # Show available interfaces
+            echo -e "${CYAN}Available interfaces:${RESET}"
+            ip -o link show | grep -v "lo" | awk -F': ' '{print $2}'
+            echo
+            
+            # Get user input
+            echo -n "Enter interface name (e.g., eth0): "
+            read iface
+            
+            if [ -z "$iface" ]; then
+                show_message "No interface specified" "error"
+                return
+            fi
+            
+            # Check if interface exists
+            if ! ip link show "$iface" &> /dev/null; then
+                show_message "Interface $iface does not exist" "error"
+                return
+            fi
+            
+            # Configuration method
+            echo -n "Use DHCP? (y/n): "
+            read -n 1 use_dhcp
+            echo
+            
+            log_message "Configuring network interface $iface"
+            
+            if [ "$use_dhcp" = "y" ] || [ "$use_dhcp" = "Y" ]; then
+                # Configure with DHCP
+                ip link set "$iface" up
+                udhcpc -i "$iface"
+                show_message "DHCP configuration attempted on $iface" "info"
+            else
+                # Manual configuration
+                echo -n "Enter IP address (e.g., 192.168.1.100/24): "
+                read ip_addr
+                
+                if [ -z "$ip_addr" ]; then
+                    show_message "No IP address specified" "error"
+                    return
+                fi
+                
+                echo -n "Enter gateway (e.g., 192.168.1.1): "
+                read gateway
+                
+                # Configure manually
+                ip link set "$iface" up
+                ip addr add "$ip_addr" dev "$iface"
+                
+                if [ -n "$gateway" ]; then
+                    ip route add default via "$gateway"
+                fi
+                
+                # Configure DNS
+                echo "nameserver 8.8.8.8" > /etc/resolv.conf
+                echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+                
+                show_message "Manual configuration applied to $iface" "info"
+            fi
+            ;;
+        2)
+            show_header
+            echo -e "${WHITE}Test Connectivity${RESET}"
+            echo
+            
+            echo -n "Enter hostname or IP to ping (e.g., google.com): "
+            read target
+            
+            if [ -z "$target" ]; then
+                target="8.8.8.8"
+                echo "No target specified, using default (8.8.8.8)"
+            fi
+            
+            log_message "Testing connectivity to $target"
+            
+            echo "Pinging $target (press Ctrl+C to stop)..."
+            ping -c 4 "$target"
+            
+            echo
+            show_footer
+            read -n 1 key
+            ;;
+        3)
+            show_header
+            echo -e "${WHITE}Network Status${RESET}"
+            echo
+            
+            log_message "Showing network status"
+            
+            echo -e "${CYAN}Interfaces:${RESET}"
+            ip addr
+            echo
+            
+            echo -e "${CYAN}Routing:${RESET}"
+            ip route
+            echo
+            
+            echo -e "${CYAN}DNS Configuration:${RESET}"
+            cat /etc/resolv.conf
+            echo
+            
+            show_footer
+            read -n 1 key
+            ;;
+        *)
+            # Back to main menu or invalid option
+            ;;
+    esac
+}
+
+# Function to handle data recovery operations
+data_recovery() {
+    show_header
+    echo -e "${WHITE}Data Recovery Operations${RESET}"
+    echo
+    
+    # Show data recovery submenu
+    echo "1. Recover deleted files (if available)"
+    echo "2. Copy files between partitions"
+    echo "3. Create disk image"
+    echo "4. Back to main menu"
+    echo
+    
+    echo -n "Select an option: "
+    read -n 1 recovery_option
+    echo
+    
+    case "$recovery_option" in
+        1)
+            # Check if recovery tools are available
+            if command -v photorec > /dev/null; then
+                log_message "Starting PhotoRec for file recovery"
+                show_message "Starting PhotoRec file recovery tool. Please follow the on-screen instructions." "info"
+                photorec
+            else
+                show_message "PhotoRec is not available in this build" "error"
+            fi
+            ;;
+        2)
+            show_header
+            echo -e "${WHITE}Copy Files Between Partitions${RESET}"
+            echo
+            
+            # Show mounted filesystems
+            echo -e "${CYAN}Mounted Partitions:${RESET}"
+            mount | grep -v tmpfs | grep -v proc | grep -v sysfs | grep -v devpts
+            echo
+            
+            # Get source
+            echo -n "Enter source path: "
+            read source_path
+            
+            if [ -z "$source_path" ] || [ ! -e "$source_path" ]; then
+                show_message "Invalid source path" "error"
+                return
+            fi
+            
+            # Get destination
+            echo -n "Enter destination path: "
+            read dest_path
+            
+            if [ -z "$dest_path" ]; then
+                show_message "Invalid destination path" "error"
+                return
+            fi
+            
+            # Create destination directory if it doesn't exist
+            mkdir -p "$(dirname "$dest_path")"
+            
+            log_message "Copying from $source_path to $dest_path"
+            
+            # Copy files
+            if cp -rv "$source_path" "$dest_path"; then
+                show_message "Files copied successfully" "success"
+            else
+                show_message "Failed to copy files" "error"
+            fi
+            ;;
+        3)
+            show_header
+            echo -e "${WHITE}Create Disk Image${RESET}"
+            echo
+            
+            # Show available disks
+            echo -e "${CYAN}Available Disks/Partitions:${RESET}"
+            lsblk -o NAME,SIZE,TYPE | grep -v loop
+            echo
+            
+            # Get source disk/partition
+            echo -n "Enter source disk/partition (e.g., sda1): "
+            read source_disk
+            
+            if [ -z "$source_disk" ] || [ ! -b "/dev/$source_disk" ]; then
+                show_message "Invalid disk/partition" "error"
+                return
+            fi
+            
+            # Get destination
+            echo -n "Enter destination path for image file: "
+            read dest_image
+            
+            if [ -z "$dest_image" ]; then
+                show_message "Invalid destination path" "error"
+                return
+            fi
+            
+            # Create destination directory if it doesn't exist
+            mkdir -p "$(dirname "$dest_image")"
+            
+            log_message "Creating disk image of /dev/$source_disk to $dest_image"
+            
+            # Check if destination has enough space
+            source_size=$(blockdev --getsize64 "/dev/$source_disk")
+            dest_dir=$(dirname "$dest_image")
+            dest_free=$(df -B1 "$dest_dir" | awk 'NR==2 {print $4}')
+            
+            if [ "$dest_free" -lt "$source_size" ]; then
+                show_message "Not enough free space in destination" "error"
+                return
+            fi
+            
+            # Create the image
+            show_message "Creating disk image. This may take a while..." "info"
+            
+            if dd if="/dev/$source_disk" of="$dest_image" bs=4M status=progress; then
+                show_message "Disk image created successfully" "success"
+            else
+                show_message "Failed to create disk image" "error"
+            fi
+            ;;
+        *)
+            # Back to main menu or invalid option
+            ;;
+    esac
+}
+
+# Function to show system logs
+show_logs() {
+    show_header
+    echo -e "${WHITE}System Logs${RESET}"
+    echo
+    
+    # Show logs submenu
+    echo "1. System log (dmesg)"
+    echo "2. OneRecovery operations log"
+    echo "3. Back to main menu"
+    echo
+    
+    echo -n "Select an option: "
+    read -n 1 log_option
+    echo
+    
+    case "$log_option" in
+        1)
+            show_header
+            echo -e "${WHITE}System Log (dmesg)${RESET}"
+            echo
+            dmesg | less
+            ;;
+        2)
+            show_header
+            echo -e "${WHITE}OneRecovery Operations Log${RESET}"
+            echo
+            cat "$LOG_FILE" | less
+            ;;
+        *)
+            # Back to main menu or invalid option
+            ;;
+    esac
+}
+
+# Function to show help
+show_help() {
+    show_header
+    echo -e "${WHITE}OneRecovery Help${RESET}"
+    echo
+    echo "OneRecovery is a lightweight Linux system for system recovery and maintenance."
+    echo
+    echo -e "${CYAN}Main Menu Options:${RESET}"
+    echo "1. System Information - Display hardware and system details"
+    echo "2. Disk Operations - Scan, mount, and manage storage devices"
+    echo "3. Network Operations - Configure and test network connectivity"
+    echo "4. Data Recovery - Tools for recovering lost data"
+    echo "5. ZFS Operations - Manage ZFS pools and datasets"
+    echo "6. View Logs - Access system and recovery logs"
+    echo "7. Shell - Access the command line interface"
+    echo "8. Help - Display this help information"
+    echo "9. Reboot - Restart the system"
+    echo "0. Shutdown - Power off the system"
+    echo
+    echo -e "${CYAN}Navigation:${RESET}"
+    echo "- Use the number keys to select menu options"
+    echo "- Press 'q' at any time to return to the main menu"
+    echo "- Press 'h' for help from any menu"
+    echo
+    echo -e "${CYAN}Common Tasks:${RESET}"
+    echo "- Mount a filesystem: Use option 2 > Mount Filesystem"
+    echo "- Copy files: Use option 4 > Copy Files Between Partitions"
+    echo "- Recover deleted files: Use option 4 > Recover Deleted Files"
+    echo "- Configure network: Use option 3 > Configure Network Interface"
+    echo
+    show_footer
+    read -n 1 key
+}
+
+# Function to handle disk operations submenu
+disk_operations() {
+    show_header
+    echo -e "${WHITE}Disk Operations${RESET}"
+    echo
+    
+    # Show disk operations submenu
+    echo "1. Scan disks"
+    echo "2. Mount filesystem"
+    echo "3. Unmount filesystem"
+    echo "4. Format partition"
+    echo "5. Check filesystem"
+    echo "6. Back to main menu"
+    echo
+    
+    echo -n "Select an option: "
+    read -n 1 disk_option
+    echo
+    
+    case "$disk_option" in
+        1) scan_disks ;;
+        2) mount_filesystem ;;
+        3) unmount_filesystem ;;
+        4)
+            show_message "Format functionality not yet implemented" "warning"
+            ;;
+        5)
+            show_message "Filesystem check functionality not yet implemented" "warning"
+            ;;
+        *)
+            # Back to main menu or invalid option
+            ;;
+    esac
+}
+
+# Function to show the main menu and handle user input
+main_menu() {
+    while true; do
+        show_header
+        echo -e "${WHITE}Main Menu${RESET}"
+        echo
+        echo "1. System Information"
+        echo "2. Disk Operations"
+        echo "3. Network Operations"
+        echo "4. Data Recovery"
+        echo "5. ZFS Operations"
+        echo "6. View Logs"
+        echo "7. Shell"
+        echo "8. Help"
+        echo "9. Reboot"
+        echo "0. Shutdown"
+        echo
+        
+        echo -n "Select an option: "
+        read -n 1 option
+        echo
+        
+        case "$option" in
+            1) show_system_info ;;
+            2) disk_operations ;;
+            3) network_operations ;;
+            4) data_recovery ;;
+            5) zfs_operations ;;
+            6) show_logs ;;
+            7)
+                echo "Launching shell. Type 'exit' to return to OneRecovery."
+                /bin/ash
+                ;;
+            8) show_help ;;
+            9)
+                log_message "User initiated reboot"
+                show_message "System will reboot now..." "warning"
+                reboot
+                ;;
+            0)
+                log_message "User initiated shutdown"
+                show_message "System will shut down now..." "warning"
+                poweroff
+                ;;
+            q|Q) 
+                log_message "Exiting OneRecovery TUI"
+                clear
+                exit 0
+                ;;
+            h|H) show_help ;;
+            *) show_message "Invalid option" "error" ;;
+        esac
+    done
+}
+
+# Initialize
+log_message "Starting OneRecovery TUI v$VERSION"
+detect_system_info
+main_menu

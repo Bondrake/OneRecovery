@@ -9,3 +9,12 @@ for script in /etc/profile.d/*.sh ; do
                 . $script
         fi
 done
+
+# Launch OneRecovery TUI if it exists and auto-start is enabled
+if [ -x /onerecovery-tui ] && [ "$ONERECOVERY_TUI_AUTOSTART" = "1" ]; then
+    # Only run on the first login (TTY1)
+    if [ "$(tty)" = "/dev/tty1" ]; then
+        echo "Starting OneRecovery TUI..."
+        /onerecovery-tui
+    fi
+fi

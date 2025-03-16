@@ -18,6 +18,7 @@ INCLUDE_BTRFS=false
 INCLUDE_RECOVERY_TOOLS=true
 INCLUDE_NETWORK_TOOLS=true
 INCLUDE_CRYPTO=true
+INCLUDE_TUI=true
 
 # Define config file location
 CONFIG_FILE="./build.conf"
@@ -124,6 +125,7 @@ INCLUDE_BTRFS=$INCLUDE_BTRFS
 INCLUDE_RECOVERY_TOOLS=$INCLUDE_RECOVERY_TOOLS
 INCLUDE_NETWORK_TOOLS=$INCLUDE_NETWORK_TOOLS
 INCLUDE_CRYPTO=$INCLUDE_CRYPTO
+INCLUDE_TUI=$INCLUDE_TUI
 EOF
     log "SUCCESS" "Configuration saved successfully"
 }
@@ -136,6 +138,7 @@ print_config() {
     log "INFO" "  Recovery tools: $(bool_to_str $INCLUDE_RECOVERY_TOOLS)"
     log "INFO" "  Network tools: $(bool_to_str $INCLUDE_NETWORK_TOOLS)"
     log "INFO" "  Crypto support: $(bool_to_str $INCLUDE_CRYPTO)"
+    log "INFO" "  Text User Interface: $(bool_to_str $INCLUDE_TUI)"
 }
 
 # Convert boolean to Yes/No string
@@ -161,6 +164,8 @@ usage_modules() {
     echo "  --without-network-tools  Exclude network tools"
     echo "  --with-crypto          Include encryption support (default: yes)"
     echo "  --without-crypto       Exclude encryption support"
+    echo "  --with-tui             Include Text User Interface (default: yes)"
+    echo "  --without-tui          Exclude Text User Interface"
     echo "  --minimal              Minimal build with only essential components"
     echo "  --full                 Full build with all available components"
     echo "  --save-config          Save current configuration as default"
@@ -245,12 +250,21 @@ process_args() {
                 INCLUDE_CRYPTO=false
                 shift
                 ;;
+            --with-tui)
+                INCLUDE_TUI=true
+                shift
+                ;;
+            --without-tui)
+                INCLUDE_TUI=false
+                shift
+                ;;
             --minimal)
                 INCLUDE_ZFS=false
                 INCLUDE_BTRFS=false
                 INCLUDE_RECOVERY_TOOLS=false
                 INCLUDE_NETWORK_TOOLS=false
                 INCLUDE_CRYPTO=false
+                INCLUDE_TUI=false
                 shift
                 ;;
             --full)
@@ -259,6 +273,7 @@ process_args() {
                 INCLUDE_RECOVERY_TOOLS=true
                 INCLUDE_NETWORK_TOOLS=true
                 INCLUDE_CRYPTO=true
+                INCLUDE_TUI=true
                 shift
                 ;;
             --save-config)

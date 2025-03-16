@@ -59,6 +59,12 @@ if [ "${INCLUDE_CRYPTO:-true}" = "true" ]; then
     log "INFO" "Including encryption support"
 fi
 
+# Add TUI dependencies if enabled
+if [ "${INCLUDE_TUI:-true}" = "true" ]; then
+    PACKAGES="$PACKAGES ncurses-terminfo-base less"
+    log "INFO" "Including TUI dependencies"
+fi
+
 cat > alpine-minirootfs/mk.sh << EOF
 #!/bin/ash
 set -e

@@ -52,6 +52,15 @@ cat ./zfiles/profile > ./alpine-minirootfs/etc/profile
 cat ./zfiles/shadow > ./alpine-minirootfs/etc/shadow
 cat ./zfiles/init > ./alpine-minirootfs/init
 chmod +x ./alpine-minirootfs/init
+
+# Install TUI script if enabled
+if [ "${INCLUDE_TUI:-true}" = "true" ]; then
+    log "INFO" "Installing Text User Interface"
+    cat ./zfiles/onerecovery-tui > ./alpine-minirootfs/onerecovery-tui
+    chmod +x ./alpine-minirootfs/onerecovery-tui
+else
+    log "INFO" "Skipping Text User Interface (disabled in configuration)"
+fi
 log "SUCCESS" "Configuration files copied"
 
 # Configure console settings

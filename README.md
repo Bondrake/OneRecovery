@@ -146,6 +146,7 @@ OneRecovery creates a single EFI executable file that contains a complete Linux 
 
 ### Key Features
 - **Non-invasive**: Runs without modifying existing systems
+- **Text-based UI**: Simple menu-driven interface for common recovery tasks
 - **Hardware access**: Direct access to hardware components (like PCIe WiFi cards)
 - **Filesystem support**: Handles ext4, ZFS, FAT32, etc.
 - **Disk management**: LVM, RAID, encryption (cryptsetup)
@@ -162,7 +163,7 @@ OneRecovery creates a single EFI executable file that contains a complete Linux 
 
 ## Building from Source
 
-OneRecovery can be built from source using the FoxBuild system. The build environment is based on Alpine Linux and the vanilla Linux kernel.
+OneRecovery can be built from source using the build system. The build environment is based on Alpine Linux and the vanilla Linux kernel.
 
 ### Prerequisites
 
@@ -296,6 +297,7 @@ Examples:
 - `./build.sh --without-zfs` - Build without ZFS support (smaller image)
 - `./build.sh --minimal` - Build with minimal components for a smaller image
 - `./build.sh --with-btrfs --without-crypto` - Custom component selection
+- `./build.sh --without-tui` - Build without the Text User Interface
 - `./build.sh --full` - Build with all available components
 
 ## License
