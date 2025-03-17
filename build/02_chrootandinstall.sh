@@ -58,8 +58,9 @@ fi
 # Add network tools if enabled
 if [ "${INCLUDE_NETWORK_TOOLS:-true}" = "true" ]; then
     # Note: We use dropbear-ssh instead of openssh-client to avoid conflicts
-    PACKAGES="$PACKAGES curl rsync iperf3 tcpdump"
-    log "INFO" "Including network tools"
+    # Added nftables as the modern replacement for iptables
+    PACKAGES="$PACKAGES curl rsync iperf3 tcpdump nftables"
+    log "INFO" "Including network tools with nftables (modern firewall)"
 fi
 
 # Add crypto support if enabled
