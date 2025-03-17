@@ -33,19 +33,42 @@ download_alpine_config() {
     
     log "INFO" "Downloading Alpine Linux LTS kernel config from $config_url"
     
-    # Use wget if available, otherwise curl
-    if command -v wget > /dev/null; then
-        wget -q -O "$output_file" "$config_url"
-    elif command -v curl > /dev/null; then
-        curl -s -o "$output_file" "$config_url"
-    else
-        log "ERROR" "Neither wget nor curl is available. Please install one of them."
-        return 1
-    fi
+    # Create the directory if it doesn't exist
+    mkdir -p "$(dirname "$output_file")"
+    
+    # Define multiple URLs to try (fallbacks)
+    local urls=(
+        "$config_url"
+        "https://raw.githubusercontent.com/alpinelinux/aports/master/main/linux-lts/config-lts.x86_64"
+    )
+    
+    # Try each URL in sequence
+    local download_success=false
+    for url in "${urls[@]}"; do
+        log "INFO" "Trying to download from: $url"
+        
+        # Use wget if available, otherwise curl
+        if command -v wget > /dev/null; then
+            if wget -q --timeout=30 --tries=3 -O "$output_file" "$url"; then
+                download_success=true
+                log "SUCCESS" "Downloaded using wget from $url"
+                break
+            fi
+        elif command -v curl > /dev/null; then
+            if curl -s --connect-timeout 30 --retry 3 -o "$output_file" "$url"; then
+                download_success=true
+                log "SUCCESS" "Downloaded using curl from $url"
+                break
+            fi
+        else
+            log "ERROR" "Neither wget nor curl is available. Please install one of them."
+            return 1
+        fi
+    done
     
     # Check if download was successful
     if [ ! -f "$output_file" ] || [ ! -s "$output_file" ]; then
-        log "ERROR" "Failed to download Alpine Linux LTS kernel config"
+        log "ERROR" "Failed to download Alpine Linux LTS kernel config from all sources"
         return 1
     fi
     
@@ -61,12 +84,21 @@ download_alpine_config() {
     log "SUCCESS" "Downloaded Alpine Linux LTS kernel config to $output_file"
     
     # Create standard config
+    mkdir -p "$base_dir/kernel-configs"
     cp "$output_file" "$base_dir/kernel-configs/standard.config"
     log "INFO" "Created standard config at $base_dir/kernel-configs/standard.config"
     
     # Create minimal config
     cp "$output_file" "$base_dir/kernel-configs/minimal.config"
     log "INFO" "Created minimal config at $base_dir/kernel-configs/minimal.config"
+    
+    # Additional safety: verify files exist
+    if [ ! -f "$base_dir/kernel-configs/standard.config" ] || [ ! -f "$base_dir/kernel-configs/minimal.config" ]; then
+        log "WARNING" "Verification failed - config files not created properly"
+        # Try one more time with direct approach
+        cat "$output_file" > "$base_dir/kernel-configs/standard.config"
+        cat "$output_file" > "$base_dir/kernel-configs/minimal.config"
+    fi
     
     return 0
 }
@@ -80,7 +112,16 @@ minimize_config() {
     # Check if minimize script exists
     if [ ! -f "$minimize_script" ]; then
         log "ERROR" "Minimize script not found: $minimize_script"
-        return 1
+        
+        # Check if the script is in the tools directory
+        if [ -f "$base_dir/tools/minimize-kernel-config.sh" ]; then
+            log "INFO" "Found minimize script in tools directory, copying it"
+            cp "$base_dir/tools/minimize-kernel-config.sh" "$minimize_script"
+            chmod +x "$minimize_script"
+        else
+            log "WARNING" "Could not find minimize script, skipping minimization"
+            return 0  # Continue without minimization
+        fi
     fi
     
     # Make script executable if needed
@@ -88,11 +129,21 @@ minimize_config() {
         chmod +x "$minimize_script"
     fi
     
+    # Check if the minimal config exists
+    if [ ! -f "$minimal_config" ]; then
+        log "ERROR" "Kernel config file not found: $minimal_config"
+        log "WARNING" "Cannot minimize non-existent config, skipping"
+        return 0  # Continue without minimization
+    fi
+    
     # Run minimization
     log "INFO" "Minimizing kernel configuration"
-    "$minimize_script" "$minimal_config"
+    "$minimize_script" "$minimal_config" || {
+        log "WARNING" "Minimization failed, but continuing with non-minimized config"
+        return 0  # Continue without minimization
+    }
     
-    return $?
+    return 0  # Always return success to continue build
 }
 
 # Main function

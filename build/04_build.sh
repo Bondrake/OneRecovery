@@ -120,8 +120,25 @@ cd ..
 
 # Execute the cross-environment build script
 log "INFO" "Executing cross-environment build script"
-log "INFO" "Command: ./85_cross_env_build.sh $BUILD_ARGS"
-./85_cross_env_build.sh $BUILD_ARGS
+
+# Define the path to the cross-environment build script
+CROSS_ENV_SCRIPT="${SCRIPT_DIR}/85_cross_env_build.sh"
+
+# Verify the script exists
+if [ ! -f "$CROSS_ENV_SCRIPT" ]; then
+    log "ERROR" "Cross-environment build script not found: $CROSS_ENV_SCRIPT"
+    log "ERROR" "This file is required for the build process"
+    exit 1
+fi
+
+# Make sure it's executable
+chmod +x "$CROSS_ENV_SCRIPT"
+
+# Log the command using the absolute path for clarity
+log "INFO" "Command: $CROSS_ENV_SCRIPT $BUILD_ARGS"
+
+# Execute with absolute path
+"$CROSS_ENV_SCRIPT" $BUILD_ARGS
 
 # Save the exit code
 EXIT_CODE=$?

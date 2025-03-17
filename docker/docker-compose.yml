@@ -6,7 +6,7 @@ services:
     image: onerecovery-builder-local:latest
     container_name: onerecovery-builder
     volumes:
-      # Mount source code
+      # Mount source code including all library scripts
       - ../build:/onerecovery/build:rw
       # Mount output directory
       - ../output:/onerecovery/output:rw

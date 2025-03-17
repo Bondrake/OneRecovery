@@ -114,15 +114,38 @@ cd /onerecovery/build
 
 # Define function to run build
 run_build() {
-    # Check for the library system
-    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ] && [ -f "85_cross_env_build.sh" ]; then
+    # Check for the core library script (85_cross_env_build.sh is optional since we'll handle it separately)
+    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ]; then
         # Use the library-based build system for consistent builds
         echo "Using library-based build system"
+        
+        # Make all library scripts executable
         chmod +x 80_common.sh
         chmod +x 81_error_handling.sh
         chmod +x 82_build_helper.sh
         chmod +x 83_config_helper.sh
-        chmod +x 85_cross_env_build.sh
+        
+        # Make sure the cross-environment build script exists and is executable
+        if [ -f "85_cross_env_build.sh" ]; then
+            chmod +x 85_cross_env_build.sh
+            echo "Found cross-environment build script: 85_cross_env_build.sh"
+        else
+            echo "WARNING: Cross-environment build script not found in container"
+            echo "Searching for the script in the build directory..."
+            
+            # Find the script in the mounted volumes
+            SCRIPT_PATH=$(find /onerecovery -name "85_cross_env_build.sh" -type f 2>/dev/null | head -n 1)
+            
+            if [ -n "$SCRIPT_PATH" ]; then
+                echo "Found script at: $SCRIPT_PATH"
+                echo "Creating symlink to make script accessible"
+                ln -sf "$SCRIPT_PATH" ./85_cross_env_build.sh
+                chmod +x 85_cross_env_build.sh
+            else
+                echo "ERROR: Critical file not found: 85_cross_env_build.sh"
+                echo "Please ensure the build directory is correctly mounted"
+            fi
+        fi
         
         # Use unified build script with cross-environment support
         
