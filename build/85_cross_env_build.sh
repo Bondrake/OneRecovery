@@ -748,21 +748,92 @@ build_zfs() {
         find /usr/include -name "xdr.h" || true
     fi
     
-    # Prepare kernel modules build system first
+    # Ensure CONFIG_MODULES=y is set in kernel config
+    log "INFO" "Ensuring CONFIG_MODULES is enabled for ZFS"
+    if [ -f "$KERNEL_DIR/.config" ]; then
+        log "INFO" "Checking kernel config for CONFIG_MODULES setting"
+        if ! grep -q "^CONFIG_MODULES=y" "$KERNEL_DIR/.config"; then
+            log "WARNING" "CONFIG_MODULES=y not found in kernel config, adding it explicitly"
+            # Remove any existing CONFIG_MODULES line and add the correct one
+            if is_restricted_environment; then
+                sudo sed -i '/CONFIG_MODULES=/d' "$KERNEL_DIR/.config" || sed -i '/CONFIG_MODULES=/d' "$KERNEL_DIR/.config"
+                echo "CONFIG_MODULES=y" | sudo tee -a "$KERNEL_DIR/.config" > /dev/null || echo "CONFIG_MODULES=y" >> "$KERNEL_DIR/.config"
+                
+                # Also ensure MODULE_UNLOAD is enabled
+                sudo sed -i '/CONFIG_MODULE_UNLOAD=/d' "$KERNEL_DIR/.config" || sed -i '/CONFIG_MODULE_UNLOAD=/d' "$KERNEL_DIR/.config"
+                echo "CONFIG_MODULE_UNLOAD=y" | sudo tee -a "$KERNEL_DIR/.config" > /dev/null || echo "CONFIG_MODULE_UNLOAD=y" >> "$KERNEL_DIR/.config"
+                
+                # Update the config
+                (cd "$KERNEL_DIR" && sudo make olddefconfig)
+            else
+                sed -i '/CONFIG_MODULES=/d' "$KERNEL_DIR/.config"
+                echo "CONFIG_MODULES=y" >> "$KERNEL_DIR/.config"
+                
+                # Also ensure MODULE_UNLOAD is enabled
+                sed -i '/CONFIG_MODULE_UNLOAD=/d' "$KERNEL_DIR/.config"
+                echo "CONFIG_MODULE_UNLOAD=y" >> "$KERNEL_DIR/.config"
+                
+                # Update the config
+                (cd "$KERNEL_DIR" && make olddefconfig)
+            fi
+            
+            # Verify change was made
+            if grep -q "^CONFIG_MODULES=y" "$KERNEL_DIR/.config"; then
+                log "SUCCESS" "Successfully enabled CONFIG_MODULES=y in kernel config"
+            else
+                log "ERROR" "Failed to enable CONFIG_MODULES=y in kernel config"
+                return 1
+            fi
+        else
+            log "INFO" "CONFIG_MODULES=y already set in kernel config"
+        fi
+    else
+        log "ERROR" "Kernel config file not found: $KERNEL_DIR/.config"
+        log "INFO" "Creating minimal config with MODULE support"
+        
+        # Create a minimal config
+        echo "# Minimal kernel configuration with module support" > "$KERNEL_DIR/.config"
+        echo "CONFIG_MODULES=y" >> "$KERNEL_DIR/.config"
+        echo "CONFIG_MODULE_UNLOAD=y" >> "$KERNEL_DIR/.config"
+        
+        # Generate a valid config
+        (cd "$KERNEL_DIR" && make defconfig)
+    fi
+
+    # Prepare kernel modules build system
     log "INFO" "Preparing kernel modules build system"
     (cd "$KERNEL_DIR" && make modules_prepare) || {
         log "WARNING" "modules_prepare failed, ZFS module build may not work correctly"
     }
 
+    # Dump kernel config for debugging
+    log "INFO" "Kernel config MODULE settings:"
+    grep -E "^CONFIG_MODULES=|^CONFIG_MODULE_" "$KERNEL_DIR/.config" || true
+    
+    # Verify config with zconfig tool if available
+    if [ -x "$KERNEL_DIR/scripts/config" ]; then
+        log "INFO" "Checking MODULE settings with config tool"
+        (cd "$KERNEL_DIR" && ./scripts/config --state MODULES)
+    fi
+
     # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
     ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
         log "ERROR" "ZFS configuration failed"
+        
+        # Print full kernel config for debugging
+        log "INFO" "Kernel config dump for debugging:"
+        head -n 50 "$KERNEL_DIR/.config"
+        
         # Print the config.log file for debugging
         if [ -f "config.log" ]; then
             log "INFO" "Contents of config.log:"
-            cat config.log | grep -E "rpc|tirpc|xdr|error|warning" || true
-        fi
+            cat config.log | grep -E "rpc|tirpc|xdr|error|warning|CONFIG_MODULES|support" || true
+            
+            # Find the specific error message about modules
+            log "INFO" "Searching for module error messages:"
+            grep -A 5 "checking whether CONFIG_MODULES is defined" config.log || true
+        }
         return 1
     }
     

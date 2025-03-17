@@ -137,6 +137,7 @@ jobs:
           CACHE_DIR: "~/.ccache"
           CCACHE_DIR: "~/.ccache"
           PATH: "/usr/lib/ccache:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+          INCLUDE_ZFS: "true"  # Explicitly enable ZFS
         run: |
           # Set a permissive umask for the entire build process
           # This ensures all files and directories created during build are world-writable
@@ -151,6 +152,14 @@ jobs:
           mkdir -p build output
           chmod -R 777 build output
           
+          # Create kernel config overlay directories with proper permissions
+          mkdir -p build/zfiles/kernel-configs/features
+          chmod -R 777 build/zfiles/kernel-configs
+          
+          # Create a direct kernel config with modules support
+          echo "CONFIG_MODULES=y" > build/kernel_modules.conf
+          echo "CONFIG_MODULE_UNLOAD=y" >> build/kernel_modules.conf
+          
           # Prepare for build with root permissions
           if [ -d "build/linux" ]; then
             echo "Configuring kernel build with root permissions"
@@ -158,17 +167,34 @@ jobs:
             # Copy the kernel config
             if [ -f "build/linux/.config" ]; then
               cp -f build/linux/.config build/linux/.config.bak
+            else
+              # Create a minimal config with modules support
+              echo "# Minimal configuration with module support" > build/linux/.config
+              echo "CONFIG_MODULES=y" >> build/linux/.config
+              echo "CONFIG_MODULE_UNLOAD=y" >> build/linux/.config
+              # Run make defconfig to generate a basic configuration
+              cd build/linux && make defconfig && cd ../..
+            fi
+            
+            # Force-enable modules in the kernel config
+            echo "Ensuring CONFIG_MODULES=y is set"
+            if [ -f "build/linux/.config" ]; then
+              sed -i '/CONFIG_MODULES=/d' build/linux/.config
+              echo "CONFIG_MODULES=y" >> build/linux/.config
+              sed -i '/CONFIG_MODULE_UNLOAD=/d' build/linux/.config
+              echo "CONFIG_MODULE_UNLOAD=y" >> build/linux/.config
             fi
             
             # Make sure kernel source is world-readable
             sudo chmod -R a+r build/linux
+            sudo chmod -R a+w build/linux/.config
             
             # Set environment variable to indicate root build
             echo "BUILD_AS_ROOT=true" >> $GITHUB_ENV
           fi
           
           # Run the build using sudo for the entire process
-          cd build && sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose
+          cd build && sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --standard-kernel --with-zfs --use-cache --use-swap --make-verbose
       
       - name: Check for build artifacts
         id: check_files
