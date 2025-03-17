@@ -28,7 +28,7 @@ download_alpine_config() {
     local base_dir="$1"
     local alpine_version="${2:-$ALPINE_VERSION}"  # Use the version from common library
     
-    local config_url="https://git.alpinelinux.org/aports/plain/main/linux-lts/config-lts.x86_64"
+    local config_url="https://git.alpinelinux.org/aports/plain/main/linux-lts/lts.x86_64.config"
     local output_file="$base_dir/kernel-configs/base/alpine-lts-$alpine_version.config"
     
     log "INFO" "Downloading Alpine Linux LTS kernel config from $config_url"
@@ -40,6 +40,8 @@ download_alpine_config() {
     local urls=(
         "$config_url"
         "https://raw.githubusercontent.com/alpinelinux/aports/master/main/linux-lts/config-lts.x86_64"
+        "https://git.alpinelinux.org/aports/plain/main/linux-lts/lts.x86_64.config"
+        "https://github.com/alpinelinux/aports/raw/refs/heads/master/main/linux-lts/lts.x86_64.config"
     )
     
     # Try each URL in sequence
@@ -92,12 +94,10 @@ download_alpine_config() {
     cp "$output_file" "$base_dir/kernel-configs/minimal.config"
     log "INFO" "Created minimal config at $base_dir/kernel-configs/minimal.config"
     
-    # Additional safety: verify files exist
-    if [ ! -f "$base_dir/kernel-configs/standard.config" ] || [ ! -f "$base_dir/kernel-configs/minimal.config" ]; then
-        log "WARNING" "Verification failed - config files not created properly"
-        # Try one more time with direct approach
-        cat "$output_file" > "$base_dir/kernel-configs/standard.config"
-        cat "$output_file" > "$base_dir/kernel-configs/minimal.config"
+    # Verify files exist and have content
+    if [ ! -s "$base_dir/kernel-configs/standard.config" ] || [ ! -s "$base_dir/kernel-configs/minimal.config" ]; then
+        log "ERROR" "Config files not created properly or are empty"
+        return 1
     fi
     
     return 0

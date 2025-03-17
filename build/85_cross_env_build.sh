@@ -534,20 +534,8 @@ build_kernel() {
             sudo touch "$KERNEL_DIR/include/config/auto.conf" 2>/dev/null || true
             sudo chmod -R 777 "$KERNEL_DIR/.tmp_versions" "$KERNEL_DIR/include/config" 2>/dev/null || true
             
-            # Set kernel options for minimal GitHub Actions build
-            echo "Using minimal kernel configuration for GitHub Actions"
-            sudo bash -c "cat > $KERNEL_DIR/.config << EOF
-# Minimal kernel configuration for GitHub Actions
-CONFIG_64BIT=y
-CONFIG_X86_64=y
-CONFIG_SMP=y
-# CONFIG_NETFILTER is not set
-# CONFIG_WIRELESS is not set
-# CONFIG_FW_LOADER is not set
-CONFIG_EFI=y
-CONFIG_EFI_STUB=y
-CONFIG_FB_EFI=y
-EOF"
+            # Use the proper configuration file for GitHub Actions
+            log "INFO" "Using standard kernel configuration for GitHub Actions"
             sudo chmod 777 "$KERNEL_DIR/.config" 2>/dev/null || true
         fi
     fi

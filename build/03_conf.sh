@@ -219,36 +219,34 @@ LEGACY_STANDARD_CONFIG="zfiles/.config"
 mkdir -p "$KERNEL_CONFIG_DIR/base"
 mkdir -p "$FEATURES_DIR"
 
-# Download Alpine kernel config if needed and not found
-if [ "${USE_ALPINE_KERNEL_CONFIG:-true}" = "true" ] && [ ! -f "$ALPINE_CONFIG_MINIMAL" ]; then
-    log "INFO" "Alpine kernel configs not found, attempting to download"
+# Download Alpine kernel config if needed
+if [ "${USE_ALPINE_KERNEL_CONFIG:-true}" = "true" ]; then
+    log "INFO" "Setting up Alpine Linux kernel configuration"
     if [ -f "./tools/get-alpine-kernel-config.sh" ]; then
         chmod +x ./tools/get-alpine-kernel-config.sh
         ./tools/get-alpine-kernel-config.sh --dir="$(pwd)" --version="${ALPINE_VERSION}"
         
         # Verify the download was successful
-        if [ ! -f "$ALPINE_CONFIG_MINIMAL" ]; then
-            log "WARNING" "Alpine kernel configs still not found after download attempt"
-            log "INFO" "Continuing with legacy kernel config."
+        if [ ! -f "$ALPINE_CONFIG_MINIMAL" ] || [ ! -s "$ALPINE_CONFIG_MINIMAL" ]; then
+            log "ERROR" "Failed to download Alpine kernel config. Check network connection."
+            log "INFO" "Falling back to legacy kernel config."
             USE_ALPINE_KERNEL_CONFIG=false
             
-            # Ensure we have a legacy kernel config
+            # Use legacy configs if available
             if [ -f "$LEGACY_MINIMAL_CONFIG" ]; then
-                log "INFO" "Found legacy minimal kernel config: $LEGACY_MINIMAL_CONFIG"
+                log "INFO" "Using legacy minimal kernel config: $LEGACY_MINIMAL_CONFIG"
                 mkdir -p "$(dirname "$ALPINE_CONFIG_MINIMAL")"
                 cp "$LEGACY_MINIMAL_CONFIG" "$ALPINE_CONFIG_MINIMAL"
+            else
+                log "ERROR" "No kernel configuration available."
+                exit 1
             fi
-            
-            if [ -f "$LEGACY_STANDARD_CONFIG" ]; then
-                log "INFO" "Found legacy standard kernel config: $LEGACY_STANDARD_CONFIG"
-                mkdir -p "$(dirname "$ALPINE_CONFIG_STANDARD")"
-                cp "$LEGACY_STANDARD_CONFIG" "$ALPINE_CONFIG_STANDARD"
-            fi
+        else
+            log "SUCCESS" "Alpine kernel configuration downloaded successfully"
         fi
     else
-        log "WARNING" "Alpine kernel config download script not found."
-        log "INFO" "Continuing with legacy kernel config."
-        USE_ALPINE_KERNEL_CONFIG=false
+        log "ERROR" "Alpine kernel config download script not found."
+        exit 1
     fi
 fi
 
