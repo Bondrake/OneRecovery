@@ -305,15 +305,20 @@ bool_to_str() {
 download_alpine() {
     print_section "Downloading Alpine Linux"
     
+    # Define architecture for fallback URLs
+    local arch="x86_64"
+    
     # Get the latest Alpine version using our helper function
-    local alpine_version=$(get_latest_alpine_version "$ALPINE_VERSION")
-    local arch="x86_64"  # Define architecture for fallback URLs
+    # Use the quiet parameter to avoid log output when capturing the result
+    local alpine_version=$(get_latest_alpine_version "$ALPINE_VERSION" "3" "5" "true")
     
     # Get the Alpine URL
     local alpine_url=$(get_alpine_minirootfs_url "$alpine_version" "$arch")
     local alpine_file=$(basename "$alpine_url")
     
-    log "INFO" "Using Alpine version: $alpine_version (URL: $alpine_url)"
+    # Now log the information after we have clean values
+    log "INFO" "Using Alpine version: $alpine_version"
+    log "INFO" "Alpine URL: $alpine_url"
     
     if [ ! -f "$BUILD_DIR/$alpine_file" ]; then
         log "INFO" "Downloading Alpine Linux minirootfs"
