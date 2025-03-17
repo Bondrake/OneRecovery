@@ -520,23 +520,18 @@ build_kernel() {
     
     # In GitHub Actions, we need to ensure all required directories have the right permissions
     if is_github_actions; then
-        log "INFO" "Setting GitHub Actions-specific permissions for build"
-        sudo chmod -R 777 "$KERNEL_DIR/scripts" 2>/dev/null || true
-        sudo mkdir -p "$KERNEL_DIR/scripts/basic" "$KERNEL_DIR/include/config" "$KERNEL_DIR/include/generated" 2>/dev/null || true
-        sudo chmod -R 777 "$KERNEL_DIR/scripts/basic" "$KERNEL_DIR/include" 2>/dev/null || true
+        log "INFO" "Setting up GitHub Actions environment for kernel build"
         
-        # Fix configuration directories that are needed for syncconfig
+        # Use our common function to create all required directories with proper permissions
+        fix_kernel_build_dirs "$KERNEL_DIR" true
+        
+        # Double-check the directory creation success with debugging info
         if [ -f "$KERNEL_DIR/.config" ]; then
-            log "INFO" "Creating minimal configuration scaffold in GitHub Actions"
+            log "INFO" "Verifying build directory structure:"
+            find "$KERNEL_DIR/arch/x86" -type d | sort
             
-            # Create basic config files to help syncconfig
-            sudo mkdir -p "$KERNEL_DIR/.tmp_versions" 2>/dev/null || true
-            sudo touch "$KERNEL_DIR/include/config/auto.conf" 2>/dev/null || true
-            sudo chmod -R 777 "$KERNEL_DIR/.tmp_versions" "$KERNEL_DIR/include/config" 2>/dev/null || true
-            
-            # Use the proper configuration file for GitHub Actions
-            log "INFO" "Using standard kernel configuration for GitHub Actions"
-            sudo chmod 777 "$KERNEL_DIR/.config" 2>/dev/null || true
+            # Display permissions on key directories
+            ls -la "$KERNEL_DIR/arch/x86/include" || true
         fi
     fi
     
