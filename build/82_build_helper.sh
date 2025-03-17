@@ -930,6 +930,32 @@ export -f fix_kernel_permissions
 export -f print_environment_info
 export -f fix_script_permissions
 export -f ensure_directory
+# Handle kernel permissions in a CI-friendly way
+# Some CI environments don't allow chmod on certain files
+handle_kernel_permissions() {
+    local kernel_dir="$1"
+    
+    if [ ! -d "$kernel_dir" ]; then
+        log "WARNING" "Kernel directory not found: $kernel_dir"
+        return 1
+    fi
+    
+    log "INFO" "Setting up kernel permissions in a CI-friendly way"
+    
+    # Make Makefile executable if allowed
+    if [ -f "$kernel_dir/Makefile" ]; then
+        chmod +x "$kernel_dir/Makefile" 2>/dev/null || log "WARNING" "Could not change Makefile permissions, continuing anyway"
+    fi
+    
+    # Handle script permissions more carefully
+    if [ -d "$kernel_dir/scripts" ]; then
+        find "$kernel_dir/scripts" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || log "WARNING" "Could not change script permissions, continuing anyway"
+    fi
+    
+    log "INFO" "Kernel permissions setup completed (with fallbacks if needed)"
+    return 0
+}
+
 export -f extract_archive
 export -f safe_copy
 export -f safe_symlink
@@ -946,3 +972,4 @@ export -f cleanup_chroot
 export -f run_in_chroot
 export -f get_latest_alpine_version
 export -f get_alpine_minirootfs_url
+export -f handle_kernel_permissions

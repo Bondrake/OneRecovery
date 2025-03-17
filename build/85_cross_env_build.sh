@@ -401,13 +401,19 @@ download_kernel() {
         # Create a symlink pointing to the kernel directory
         ln -sf "linux" "linux-${kernel_version}" 2>/dev/null || true
         
-        # Make sure key kernel build files are executable after extraction
+        # Set up kernel permissions in a CI-friendly way
         log "INFO" "Setting up kernel build environment"
-        if [ -f "$KERNEL_DIR/Makefile" ]; then
-            chmod +x "$KERNEL_DIR/Makefile"
+        # Use CI-friendly kernel permission handling
+        if type handle_kernel_permissions &>/dev/null; then
+            handle_kernel_permissions "$KERNEL_DIR"
+        else
+            # Fallback to direct method if the function isn't available
+            if [ -f "$KERNEL_DIR/Makefile" ]; then
+                chmod +x "$KERNEL_DIR/Makefile" 2>/dev/null || log "WARNING" "Could not change Makefile permissions, continuing anyway"
+            fi
+            # Process only the important files rather than recursively processing everything
+            find "$KERNEL_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || log "WARNING" "Could not change script permissions, continuing anyway"
         fi
-        # Process only the important files rather than recursively processing everything
-        find "$KERNEL_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
     else
         log "INFO" "Linux kernel already extracted"
     fi
