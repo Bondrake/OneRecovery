@@ -287,11 +287,19 @@ echo -e "${BLUE}[INFO]${NC} - CPUs: $DOCKER_CPUS"
 echo -e "${BLUE}[INFO]${NC} - Build flags: $BUILD_ARGS"
 
 # Run in interactive mode or normal build mode
+# Record build start time
+BUILD_START_TIME=$(date +%s)
+
 if [ "$INTERACTIVE" = true ]; then
     echo -e "${BLUE}[INFO]${NC} Starting interactive shell in container..."
     $COMPOSE_CMD run --rm $BUILD_OPTS onerecovery-builder /bin/bash
 else
     echo -e "${BLUE}[INFO]${NC} Starting OneRecovery build in container..."
+    
+    # Print timestamp
+    echo -e "${BLUE}[INFO]${NC} Build started at $(date)"
+    
+    # Run the container
     $COMPOSE_CMD up $BUILD_OPTS --remove-orphans
     COMPOSE_EXIT_CODE=$?
     
@@ -322,4 +330,11 @@ else
     fi
 fi
 
+# Calculate and display the total build time
+BUILD_END_TIME=$(date +%s)
+BUILD_DURATION=$((BUILD_END_TIME - BUILD_START_TIME))
+BUILD_MINUTES=$((BUILD_DURATION / 60))
+BUILD_SECONDS=$((BUILD_DURATION % 60))
+
+echo -e "${BLUE}[INFO]${NC} Total build time: ${BUILD_MINUTES}m ${BUILD_SECONDS}s"
 echo -e "${BLUE}[INFO]${NC} Process complete."

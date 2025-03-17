@@ -66,10 +66,13 @@ RUN mkdir -p /onerecovery/.buildcache/sources \
              /onerecovery/.buildcache/build && \
     chown -R builder:builder /onerecovery/.buildcache
 
-# Configure ccache
+# Configure ccache for better performance
 ENV CCACHE_DIR=/onerecovery/.buildcache/ccache
 ENV PATH=/usr/lib/ccache:$PATH
-RUN su builder -c "ccache -M 5G"
+RUN su builder -c "ccache -M 5G" && \
+    su builder -c "ccache -o compression=true" && \
+    su builder -c "ccache -o compression_level=6" && \
+    su builder -c "ccache -z"
 
 # Copy entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -125,12 +125,36 @@ run_build() {
         chmod +x 85_cross_env_build.sh
         
         # Use unified build script with cross-environment support
+        
+        # Add common options for better performance
         if [ -n "$BUILD_ARGS" ]; then
+            # Add our performance options if not already included
+            if [[ "$BUILD_ARGS" != *"--use-cache"* ]]; then
+                BUILD_ARGS="$BUILD_ARGS --use-cache"
+            fi
+            if [[ "$BUILD_ARGS" != *"--use-swap"* && "$BUILD_ARGS" != *"--no-swap"* ]]; then
+                BUILD_ARGS="$BUILD_ARGS --use-swap"
+            fi
+            
             echo "Running: ./85_cross_env_build.sh $BUILD_ARGS"
+            
+            # Display ccache stats before build
+            echo "CCache statistics before build:"
+            ccache -s
+            
+            # Run the build
             ./85_cross_env_build.sh $BUILD_ARGS
+            
+            # Display ccache stats after build
+            echo "CCache statistics after build:"
+            ccache -s
         else
-            echo "Running: ./85_cross_env_build.sh"
-            ./85_cross_env_build.sh
+            echo "Running: ./85_cross_env_build.sh with default options"
+            echo "CCache statistics before build:"
+            ccache -s
+            ./85_cross_env_build.sh --use-cache --use-swap
+            echo "CCache statistics after build:"
+            ccache -s
         fi
     else
         # Fall back to legacy build scripts
