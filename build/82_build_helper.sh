@@ -704,9 +704,17 @@ get_alpine_minirootfs_url() {
         version=$(get_latest_alpine_version "$version")
     fi
     
-    local major_minor=$(echo "$version" | cut -d. -f1,2)
+    # Clean and parse the version properly
+    local major_minor=$(echo "$version" | grep -oE '^[0-9]+\.[0-9]+')
+    if [ -z "$major_minor" ]; then
+        log "ERROR" "Invalid Alpine version format after resolution: $version"
+        # Fallback to a known good version format
+        major_minor="3.21"
+        version="3.21.3"
+    fi
+    
     local alpine_file="alpine-minirootfs-${version}-${arch}.tar.gz"
-    local alpine_url="http://dl-cdn.alpinelinux.org/alpine/v${major_minor}/releases/${arch}/${alpine_file}"
+    local alpine_url="https://dl-cdn.alpinelinux.org/alpine/v${major_minor}/releases/${arch}/${alpine_file}"
     
     echo "$alpine_url"
 }

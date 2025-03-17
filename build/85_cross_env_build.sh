@@ -307,19 +307,46 @@ download_alpine() {
     
     # Get the latest Alpine version using our helper function
     local alpine_version=$(get_latest_alpine_version "$ALPINE_VERSION")
+    local arch="x86_64"  # Define architecture for fallback URLs
     
     # Get the Alpine URL
-    local alpine_url=$(get_alpine_minirootfs_url "$alpine_version")
+    local alpine_url=$(get_alpine_minirootfs_url "$alpine_version" "$arch")
     local alpine_file=$(basename "$alpine_url")
     
     log "INFO" "Using Alpine version: $alpine_version (URL: $alpine_url)"
     
     if [ ! -f "$BUILD_DIR/$alpine_file" ]; then
         log "INFO" "Downloading Alpine Linux minirootfs"
-        wget -q --show-progress "$alpine_url" -O "$BUILD_DIR/$alpine_file" || {
-            log "ERROR" "Failed to download Alpine Linux"
-            return 1
-        }
+        
+        # Try downloading from the generated URL
+        wget -q --show-progress --tries=3 --timeout=30 "$alpine_url" -O "$BUILD_DIR/$alpine_file"
+        
+        # If that fails, try alternative URLs
+        if [ $? -ne 0 ]; then
+            log "WARNING" "Primary download failed, trying alternative URLs"
+            
+            # Try with HTTP if HTTPS fails
+            if [[ "$alpine_url" == https://* ]]; then
+                local http_url="${alpine_url/https:/http:}"
+                log "INFO" "Trying HTTP URL: $http_url"
+                wget -q --show-progress --tries=3 --timeout=30 "$http_url" -O "$BUILD_DIR/$alpine_file"
+            fi
+            
+            # If still fails, try CDN mirror
+            if [ $? -ne 0 ]; then
+                local mirror_url="https://dl-5.alpinelinux.org/alpine/v${alpine_version%.*}/releases/${arch:-x86_64}/alpine-minirootfs-${alpine_version}-${arch:-x86_64}.tar.gz"
+                log "INFO" "Trying mirror URL: $mirror_url"
+                wget -q --show-progress --tries=3 --timeout=30 "$mirror_url" -O "$BUILD_DIR/$alpine_file"
+            fi
+            
+            # Check if any of the alternative downloads worked
+            if [ $? -ne 0 ]; then
+                log "ERROR" "Failed to download Alpine Linux from all sources"
+                return 1
+            fi
+        fi
+        
+        log "SUCCESS" "Successfully downloaded Alpine Linux minirootfs"
     else
         log "INFO" "Alpine Linux minirootfs already downloaded"
     fi
