@@ -16,6 +16,9 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
+# Initialize script with standard header (prints banner)
+initialize_script
+
 # Check if we should resume from a checkpoint
 check_resume_point "$1"
 

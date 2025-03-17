@@ -381,6 +381,9 @@ create_efi() {
 
 # Main function
 main() {
+    # Initialize script with standard header (prints banner)
+    initialize_script
+    
     # Print environment information
     print_environment_info
     

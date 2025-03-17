@@ -16,6 +16,9 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
+# Initialize script with standard header (prints banner)
+initialize_script
+
 # RootFS variables
 ROOTFS="alpine-minirootfs"
 CACHEPATH="$ROOTFS/var/cache/apk/"

@@ -139,7 +139,9 @@ verify_scripts() {
 
 # Main function
 main() {
-    print_banner
+    # Initialize script with standard header (prints banner)
+    initialize_script
+    
     detect_os
     check_required_tools
     check_system_resources

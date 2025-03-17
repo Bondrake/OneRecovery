@@ -17,8 +17,8 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
-# Print banner
-print_banner
+# Initialize script with standard header (prints banner)
+initialize_script
 
 # Confirm cleanup with the user
 if [ "${FORCE_CLEANUP:-false}" != "true" ]; then

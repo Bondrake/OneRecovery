@@ -152,6 +152,16 @@ source_libraries() {
     return 0
 }
 
+# Function to initialize the script with a standard header
+# This should be the ONLY place that prints the banner
+initialize_script() {
+    # Print the banner
+    print_banner
+    
+    # Set flag to prevent duplicate banners
+    export BANNER_PRINTED=true
+}
+
 # Export all functions for use in other scripts
 export -f log
 export -f print_banner
@@ -162,3 +172,4 @@ export -f is_docker_container
 export -f is_restricted_environment
 export -f source_library
 export -f source_libraries
+export -f initialize_script

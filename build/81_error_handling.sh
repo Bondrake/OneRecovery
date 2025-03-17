@@ -211,29 +211,15 @@ check_prerequisites() {
     esac
 }
 
-# Print OneRecovery banner
-print_banner() {
-    # Local implementation 
-    echo -e "${BLUE}"
-    echo "      ____________  "
-    echo "    /|------------| "
-    echo "   /_|  .---.     | "
-    echo "  |    /     \    | "
-    echo "  |    \.6-6./    | "
-    echo "  |    /\`\_/\`\    | "
-    echo "  |   //  _  \\\   | "
-    echo "  |  | \     / |  | "
-    echo "  | /\`\_\`>  <_/\`\ | "
-    echo "  | \__/'---'\__/ | "
-    echo "  |_______________| "
-    echo "                    "
-    echo -e "${GREEN}   OneRecovery: $SCRIPT_NAME  ${NC}"
-    echo "----------------------------------------------------"
-}
+# Use the print_banner from 80_common.sh instead of duplicating it here
 
 # Function to print script start
 print_script_start() {
-    print_banner
+    # Only print the banner if it hasn't been printed already
+    if [[ "${BANNER_PRINTED:-false}" != "true" ]]; then
+        print_banner
+        export BANNER_PRINTED=true
+    fi
 }
 
 # Function to print script end
@@ -311,5 +297,7 @@ init_error_handling() {
     
     trap_errors
     check_prerequisites
-    print_script_start
+    
+    # We'll let the main script handle printing the banner
+    # This avoids duplicate banners when scripts call initialize_script
 }

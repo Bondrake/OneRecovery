@@ -441,25 +441,7 @@ print_section() {
     echo "===================================================================="
 }
 
-# Print OneRecovery banner with script name
-print_banner() {
-    local script_name=${1:-$(basename "$0")}
-    echo -e "${BLUE:-\\033[0;34m}"
-    echo "      ____________  "
-    echo "    /|------------| "
-    echo "   /_|  .---.     | "
-    echo "  |    /     \    | "
-    echo "  |    \.6-6./    | "
-    echo "  |    /\`\_/\`\    | "
-    echo "  |   //  _  \\\   | "
-    echo "  |  | \     / |  | "
-    echo "  | /\`\_\`>  <_/\`\ | "
-    echo "  | \__/'---'\__/ | "
-    echo "  |_______________| "
-    echo "                    "
-    echo -e "${GREEN:-\\033[0;32m}   OneRecovery: $script_name  ${NC:-\\033[0m}"
-    echo "----------------------------------------------------"
-}
+# Use print_banner from 80_common.sh instead of duplicating it here
 
 # Docker-specific extraction handling function
 docker_handle_extraction() {
@@ -556,6 +538,6 @@ export -f setup_kernel_config
 export -f setup_zfs
 export -f get_optimal_threads
 export -f print_section
-export -f print_banner
+# print_banner is now imported from 80_common.sh
 export -f docker_handle_extraction
 export -f prepare_alpine_minirootfs

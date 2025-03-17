@@ -894,7 +894,8 @@ run_build() {
 
 # Main function
 main() {
-    print_banner
+    # Initialize script with standard header (prints banner)
+    initialize_script
     
     # Process command line arguments
     process_args "$@"

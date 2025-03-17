@@ -252,6 +252,9 @@ extract_archive() {
 
 # Main function
 main() {
+    # Initialize script with standard header (prints banner)
+    initialize_script
+    
     # Check if we should resume from a checkpoint
     check_resume_point "$1"
 
