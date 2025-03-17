@@ -5,3 +5,25 @@ FoxBuild/alpine-minirootfs/
 FoxBuild/*.tar.*
 OneRecovery.efi
 FUTURE_IMPROVEMENTS.md
+.DS_Store
+CLAUDE.md
+
+# Build artifacts
+build/.build_progress
+build/alpine-minirootfs*
+build/build_error.log
+build/linux-6*
+build/linux/
+build/linux
+build/zfs-*
+build/zfs/
+build/zfs
+build/.extraction_complete
+build/*/.extraction_complete
+build/onerecovery-password.txt
+output/
+*.tar.gz
+*.tar.xz
+
+# Docker artifacts
+docker/.env
