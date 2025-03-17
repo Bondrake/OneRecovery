@@ -1,4 +1,11 @@
-FROM alpine:latest
+FROM --platform=$BUILDPLATFORM alpine:latest
+
+# Set build arguments with defaults
+ARG BUILDPLATFORM="linux/amd64"
+ARG TARGETPLATFORM="linux/amd64"
+
+# Print platform info for debugging
+RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM"
 
 # Install build dependencies
 RUN apk add --no-cache \

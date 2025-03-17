@@ -264,6 +264,17 @@ BUILD_OPTS=""
 if [ "$NO_CACHE" = true ]; then
     BUILD_OPTS="--build --no-cache"
     echo -e "${BLUE}[INFO]${NC} Building without cache."
+else
+    BUILD_OPTS="--build"
+fi
+
+# Check if Docker Buildx is available for better performance
+if docker buildx version &>/dev/null; then
+    echo -e "${BLUE}[INFO]${NC} Using Docker Buildx for improved build performance."
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+else
+    echo -e "${YELLOW}[WARNING]${NC} Docker Buildx not detected. Build performance may be reduced."
 fi
 
 # Change to the docker directory

@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   onerecovery-builder:
     build:
       context: .
       dockerfile: Dockerfile
-    image: onerecovery-builder:latest
+    image: onerecovery-builder-local:latest
     container_name: onerecovery-builder
     volumes:
       # Mount source code
