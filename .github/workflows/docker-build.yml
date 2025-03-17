@@ -34,10 +34,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             # For manual triggers, only build the selected type
-            echo "matrix={\"include\":[{\"name\":\"${{ github.event.inputs.build_type }}\",\"build_args\":\"${{ github.event.inputs.build_type == 'minimal' && '--minimal' || github.event.inputs.build_type == 'full' && '--full' || '--with-zfs --with-recovery-tools --with-network-tools' }}\"}]}" >> $GITHUB_OUTPUT
+            echo "matrix={\"include\":[{\"name\":\"${{ github.event.inputs.build_type }}\",\"build_args\":\"${{ github.event.inputs.build_type == 'minimal' && '--minimal' || github.event.inputs.build_type == 'full' && '--full' || '--with-zfs --with-recovery-tools --with-network-tools' }} --compression-tool=upx\"}]}" >> $GITHUB_OUTPUT
           else
-            # For automatic triggers, build all types
-            echo "matrix={\"include\":[{\"name\":\"minimal\",\"build_args\":\"--minimal\"},{\"name\":\"standard\",\"build_args\":\"--with-zfs --with-recovery-tools --with-network-tools\"},{\"name\":\"full\",\"build_args\":\"--full\"}]}" >> $GITHUB_OUTPUT
+            # For automatic triggers, build all types with UPX compression
+            echo "matrix={\"include\":[{\"name\":\"minimal\",\"build_args\":\"--minimal --compression-tool=upx\"},{\"name\":\"standard\",\"build_args\":\"--with-zfs --with-recovery-tools --with-network-tools --compression-tool=upx\"},{\"name\":\"full\",\"build_args\":\"--full --compression-tool=upx\"}]}" >> $GITHUB_OUTPUT
           fi
 
   # Build job using the unified build script
@@ -57,7 +57,7 @@ jobs:
       - name: Set up build environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip
+          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache
       
       - name: Make build scripts executable
         run: |
@@ -90,16 +90,35 @@ jobs:
           key: alpine-kernel-config-${{ hashFiles('build/80_common.sh') }}
           restore-keys: |
             alpine-kernel-config-
+      
+      - name: Set up ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ matrix.name }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ matrix.name }}-
+            ccache-${{ runner.os }}-
 
       - name: Run unified build script
         env:
           GITHUB_ACTIONS: "true"
           USE_ALPINE_KERNEL_CONFIG: "true"
           AUTO_KERNEL_CONFIG: "true"
+          USE_CACHE: "true"
+          CACHE_DIR: "~/.ccache"
+          CCACHE_DIR: "~/.ccache"
+          PATH: "/usr/lib/ccache:$PATH"
         run: |
           mkdir -p output
+          
+          # Configure ccache
+          ccache --max-size=5G
+          ccache -z  # Zero statistics
+          
+          # Build with enhanced options
           cd build
-          ./85_cross_env_build.sh ${{ matrix.build_args }}
+          ./85_cross_env_build.sh ${{ matrix.build_args }} --use-cache --use-swap --make-verbose
       
       - name: Check for build artifacts
         id: check_files
@@ -107,6 +126,10 @@ jobs:
           if [ -f "./output/OneRecovery.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
             du -h ./output/OneRecovery.efi
+            
+            # Display ccache statistics
+            echo "CCache Statistics:"
+            ccache -s
           else
             echo "efi_file=false" >> $GITHUB_OUTPUT
             echo "Build failed to produce OneRecovery.efi"
