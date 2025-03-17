@@ -151,30 +151,33 @@ jobs:
           mkdir -p build output
           chmod -R 777 build output
           
-          # Setup for out-of-tree kernel build using O= parameter
+          # Prepare for build with root permissions
           if [ -d "build/linux" ]; then
-            # Create a separate output directory with full permissions
-            mkdir -p build/linux-output
-            chmod -R 777 build/linux-output
+            echo "Configuring kernel build with root permissions"
             
-            # Create world-writable .config file in the output directory
-            cp -f build/linux/.config build/linux-output/.config 2>/dev/null || touch build/linux-output/.config
-            chmod 666 build/linux-output/.config
+            # Copy the kernel config
+            if [ -f "build/linux/.config" ]; then
+              cp -f build/linux/.config build/linux/.config.bak
+            fi
             
-            # Set environment variables for the build script to use O= parameter
-            echo "KERNEL_BUILD_OUTPUT_DIR=linux-output" >> $GITHUB_ENV
-            echo "USE_OUT_OF_TREE_BUILD=true" >> $GITHUB_ENV
+            # Make sure kernel source is world-readable
+            sudo chmod -R a+r build/linux
             
-            echo "Configured for out-of-tree kernel build using O=linux-output parameter"
+            # Set environment variable to indicate root build
+            echo "BUILD_AS_ROOT=true" >> $GITHUB_ENV
           fi
           
-          # Run the build using standard approach with unified script
-          cd build && ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose
+          # Run the build using sudo for the entire process
+          cd build && sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose
       
       - name: Check for build artifacts
         id: check_files
         run: |
-          /bin/bash -c 'if [ -f "./output/OneRecovery.efi" ]; then
+          # Fix permissions on output directory if needed
+          sudo chmod -R 777 ./output
+          
+          # Check if build produced the EFI file
+          if [ -f "./output/OneRecovery.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
             du -h ./output/OneRecovery.efi
             
@@ -185,7 +188,7 @@ jobs:
             echo "efi_file=false" >> $GITHUB_OUTPUT
             echo "Build failed to produce OneRecovery.efi"
             exit 1
-          fi'
+          fi
       
       - name: Upload build artifact
         if: steps.check_files.outputs.efi_file == 'true'

@@ -637,26 +637,17 @@ build_kernel() {
         local make_v="V=0"
     fi
     
-    # Set up out-of-tree build if requested
-    local output_dir=""
-    if [ "${USE_OUT_OF_TREE_BUILD:-false}" = "true" ] && [ -n "${KERNEL_BUILD_OUTPUT_DIR:-}" ]; then
-        if [ -d "../$KERNEL_BUILD_OUTPUT_DIR" ]; then
-            log "INFO" "Using out-of-tree build with O=../$KERNEL_BUILD_OUTPUT_DIR"
-            output_dir="O=../$KERNEL_BUILD_OUTPUT_DIR"
-        fi
-    fi
-    
     # Build with compiler cache if available
     if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
         log "INFO" "Using compiler cache for faster builds"
-        log "INFO" "Make command: make $make_v $output_dir -j$threads CC=\"ccache gcc\" HOSTCC=\"ccache gcc\""
-        nice -n 19 make $make_v $output_dir -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
+        log "INFO" "Make command: make $make_v -j$threads CC=\"ccache gcc\" HOSTCC=\"ccache gcc\""
+        nice -n 19 make $make_v -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
             log "ERROR" "Kernel build failed"
             return 1
         }
     else
-        log "INFO" "Make command: make $make_v $output_dir -j$threads"
-        nice -n 19 make $make_v $output_dir -j$threads || {
+        log "INFO" "Make command: make $make_v -j$threads"
+        nice -n 19 make $make_v -j$threads || {
             log "ERROR" "Kernel build failed"
             return 1
         }
@@ -665,14 +656,14 @@ build_kernel() {
     # Build modules
     log "INFO" "Building kernel modules"
     if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
-        log "INFO" "Make modules command: make $make_v $output_dir modules -j$threads"
-        nice -n 19 make $make_v $output_dir modules -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
+        log "INFO" "Make modules command: make $make_v modules -j$threads"
+        nice -n 19 make $make_v modules -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
             log "ERROR" "Module build failed"
             return 1
         }
     else
-        log "INFO" "Make modules command: make $make_v $output_dir modules -j$threads"
-        nice -n 19 make $make_v $output_dir modules -j$threads || {
+        log "INFO" "Make modules command: make $make_v modules -j$threads"
+        nice -n 19 make $make_v modules -j$threads || {
             log "ERROR" "Module build failed"
             return 1
         }
@@ -680,8 +671,8 @@ build_kernel() {
     
     # Install modules
     log "INFO" "Installing kernel modules"
-    log "INFO" "Make modules_install command: make $make_v $output_dir INSTALL_MOD_PATH=\"$ROOTFS_DIR\" modules_install"
-    INSTALL_MOD_PATH="$ROOTFS_DIR" make $output_dir modules_install
+    log "INFO" "Make modules_install command: make $make_v INSTALL_MOD_PATH=\"$ROOTFS_DIR\" modules_install"
+    INSTALL_MOD_PATH="$ROOTFS_DIR" make modules_install
     
     log "SUCCESS" "Kernel and modules built successfully"
     
@@ -790,36 +781,28 @@ create_efi() {
     
     # Create modules.dep
     log "INFO" "Creating modules.dep"
-    if [ "${USE_OUT_OF_TREE_BUILD:-false}" = "true" ] && [ -n "${KERNEL_BUILD_OUTPUT_DIR:-}" ]; then
-        if [ -f "../$KERNEL_BUILD_OUTPUT_DIR/System.map" ]; then
-            log "INFO" "Using System.map from out-of-tree build directory"
-            depmod -b "$ROOTFS_DIR" -F "../$KERNEL_BUILD_OUTPUT_DIR/System.map" "$kernel_version"
-        else
-            log "WARNING" "System.map not found in out-of-tree build, trying standard location"
-            depmod -b "$ROOTFS_DIR" -F System.map "$kernel_version" || true
-        fi
-    else
-        depmod -b "$ROOTFS_DIR" -F System.map "$kernel_version" || true
-    fi
+    depmod -b "$ROOTFS_DIR" -F System.map "$kernel_version" || true
     
     # Create EFI file
     log "INFO" "Creating OneRecovery.efi"
-    if [ "${USE_OUT_OF_TREE_BUILD:-false}" = "true" ] && [ -n "${KERNEL_BUILD_OUTPUT_DIR:-}" ]; then
-        if [ -f "../$KERNEL_BUILD_OUTPUT_DIR/arch/x86/boot/bzImage" ]; then
-            log "INFO" "Using bzImage from out-of-tree build directory"
-            cp "../$KERNEL_BUILD_OUTPUT_DIR/arch/x86/boot/bzImage" "$OUTPUT_DIR/OneRecovery.efi"
+    cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
+        log "ERROR" "Failed to find kernel bzImage"
+        return 1
+    }
+    
+    # If building as root, fix permissions on the output directory
+    if [ "${BUILD_AS_ROOT:-false}" = "true" ]; then
+        log "INFO" "Fixing permissions on output directory after root build"
+        if [ -n "$SUDO_UID" ] && [ -n "$SUDO_GID" ]; then
+            # We're running with sudo, fix ownership to the original user
+            chown -R "$SUDO_UID:$SUDO_GID" "$OUTPUT_DIR" || true
+        elif [ -n "$RUNNER_UID" ]; then
+            # GitHub Actions specific handling
+            chown -R "$RUNNER_UID:$RUNNER_GID" "$OUTPUT_DIR" || true
         else
-            log "WARNING" "bzImage not found in out-of-tree build, trying standard location"
-            cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
-                log "ERROR" "Failed to find kernel bzImage"
-                return 1
-            }
+            # Fallback to making everything world-writable
+            chmod -R 777 "$OUTPUT_DIR" || true
         fi
-    else
-        cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
-            log "ERROR" "Failed to find kernel bzImage"
-            return 1
-        }
     fi
     
     # Record original size
