@@ -648,6 +648,69 @@ run_in_chroot() {
     return $exit_code
 }
 
+# Get the latest Alpine Linux minor version for a major version
+get_latest_alpine_version() {
+    local base_version="${1:-$ALPINE_VERSION}"  # Default to global ALPINE_VERSION
+    local fallback_patch="${2:-3}"              # Default patch version if check fails
+    local timeout_seconds="${3:-5}"             # Default timeout of 5 seconds
+    
+    # Extract major.minor version
+    local major_minor=$(echo "$base_version" | grep -oE '^[0-9]+\.[0-9]+')
+    if [ -z "$major_minor" ]; then
+        log "ERROR" "Invalid Alpine version format: $base_version"
+        echo "${major_minor}.${fallback_patch}"
+        return 1
+    fi
+    
+    log "INFO" "Checking for latest Alpine $major_minor.x release..."
+    
+    # Create a temporary file for the version information
+    local tmp_file=$(mktemp)
+    
+    # Try to get the latest version from the Alpine website
+    if timeout "$timeout_seconds" wget -q -O "$tmp_file" "https://alpinelinux.org/downloads/" 2>/dev/null; then
+        # Extract the latest version for the major.minor series
+        local latest_version=$(grep -oE "alpine-minirootfs-${major_minor}\.[0-9]+-x86_64\.tar\.gz" "$tmp_file" | sort -V | tail -n1 | grep -oE "${major_minor}\.[0-9]+" || echo "")
+        
+        # Clean up
+        rm -f "$tmp_file"
+        
+        if [ -n "$latest_version" ]; then
+            log "SUCCESS" "Found latest Alpine version: $latest_version"
+            echo "$latest_version"
+            return 0
+        fi
+    else
+        log "WARNING" "Failed to check for latest Alpine version (timeout)"
+    fi
+    
+    # Clean up in case of failure
+    rm -f "$tmp_file" 2>/dev/null || true
+    
+    # Fall back to default patch version
+    local fallback_version="${major_minor}.${fallback_patch}"
+    log "INFO" "Using fallback Alpine version: $fallback_version"
+    echo "$fallback_version"
+    return 0
+}
+
+# Function to get Alpine minirootfs URL
+get_alpine_minirootfs_url() {
+    local version="${1:-$ALPINE_VERSION}"
+    local arch="${2:-x86_64}"
+    
+    # If version is just major.minor, try to get the latest patch version
+    if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        version=$(get_latest_alpine_version "$version")
+    fi
+    
+    local major_minor=$(echo "$version" | cut -d. -f1,2)
+    local alpine_file="alpine-minirootfs-${version}-${arch}.tar.gz"
+    local alpine_url="http://dl-cdn.alpinelinux.org/alpine/v${major_minor}/releases/${arch}/${alpine_file}"
+    
+    echo "$alpine_url"
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
@@ -669,3 +732,5 @@ export -f prepare_alpine_minirootfs
 export -f prepare_chroot
 export -f cleanup_chroot
 export -f run_in_chroot
+export -f get_latest_alpine_version
+export -f get_alpine_minirootfs_url
