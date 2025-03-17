@@ -6,23 +6,15 @@
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
-# Source the library scripts in correct order
-if [ -f "./80_common.sh" ]; then
-    source ./80_common.sh
+# Source the core library first (required)
+if [ ! -f "./80_common.sh" ]; then
+    echo "ERROR: Critical library file not found: ./80_common.sh"
+    exit 1
 fi
+source ./80_common.sh
 
-if [ -f "./81_error_handling.sh" ]; then
-    source ./81_error_handling.sh
-    # Initialize error handling
-    init_error_handling
-else
-    echo "WARNING: 81_error_handling.sh not found, using legacy error handling"
-    # Legacy fallback
-    if [ -f "./error_handling.sh" ]; then
-        source ./error_handling.sh
-        init_error_handling
-    fi
-fi
+# Source all library scripts using the source_libraries function
+source_libraries "."
 
 # Define component versions
 alpineminirootfsfile="alpine-minirootfs-3.21.3-x86_64.tar.gz"

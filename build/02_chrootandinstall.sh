@@ -6,11 +6,15 @@
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
-# Source common error handling
-source ./error_handling.sh
+# Source the core library first (required)
+if [ ! -f "./80_common.sh" ]; then
+    echo "ERROR: Critical library file not found: ./80_common.sh"
+    exit 1
+fi
+source ./80_common.sh
 
-# Initialize error handling
-init_error_handling
+# Source all library scripts using the source_libraries function
+source_libraries "."
 
 # Check if we should resume from a checkpoint
 check_resume_point "$1"

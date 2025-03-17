@@ -107,6 +107,51 @@ is_restricted_environment() {
     is_github_actions || is_container
 }
 
+# Function to safely source library files with error checking
+source_library() {
+    local library_file=$1
+    local required=${2:-false}
+    
+    if [ -f "$library_file" ]; then
+        # Source the library
+        source "$library_file"
+        return 0
+    else
+        if [ "$required" = "true" ]; then
+            echo -e "${RED}[ERROR]${NC} Required library file not found: $library_file"
+            exit 1
+        else
+            echo -e "${YELLOW}[WARNING]${NC} Library file not found: $library_file"
+            return 1
+        fi
+    fi
+}
+
+# Function to initialize all standard libraries
+source_libraries() {
+    local script_path=${1:-"."}
+    
+    # Common utilities (must be available)
+    source_library "$script_path/80_common.sh" true
+    
+    # Error handling
+    source_library "$script_path/81_error_handling.sh"
+    if [ $? -eq 0 ]; then
+        # Initialize error handling if available
+        init_error_handling
+    else
+        echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
+    fi
+    
+    # Build helpers
+    source_library "$script_path/82_build_helper.sh"
+    
+    # Optional configuration helpers
+    source_library "$script_path/83_config_helper.sh" false
+    
+    return 0
+}
+
 # Export all functions for use in other scripts
 export -f log
 export -f print_banner
@@ -115,3 +160,5 @@ export -f is_container
 export -f is_github_actions
 export -f is_docker_container
 export -f is_restricted_environment
+export -f source_library
+export -f source_libraries

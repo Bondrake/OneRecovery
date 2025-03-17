@@ -56,50 +56,19 @@ CONFIG_FILE="./build.conf"
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
-# Source common error handling if available
-if [ -f "./error_handling.sh" ]; then
-    source ./error_handling.sh
-else
-    # Minimal error handling if the file is not available
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[0;33m'
-    BLUE='\033[0;34m'
-    NC='\033[0m' # No Color
-    
-    log() {
-        local level=$1
-        local message=$2
-        case "$level" in
-            "INFO") echo -e "${BLUE}[INFO]${NC} $message" ;;
-            "WARNING") echo -e "${YELLOW}[WARNING]${NC} $message" ;;
-            "ERROR") echo -e "${RED}[ERROR]${NC} $message" ;;
-            "SUCCESS") echo -e "${GREEN}[SUCCESS]${NC} $message" ;;
-            *) echo -e "$message" ;;
-        esac
-    }
-    
-    print_banner() {
-        echo -e "${BLUE}"
-        echo "      ____________  "
-        echo "    /|------------| "
-        echo "   /_|  .---.     | "
-        echo "  |    /     \    | "
-        echo "  |    \.6-6./    | "
-        echo "  |    /\`\_/\`\    | "
-        echo "  |   //  _  \\\   | "
-        echo "  |  | \     / |  | "
-        echo "  | /\`\_\`>  <_/\`\ | "
-        echo "  | \__/'---'\__/ | "
-        echo "  |_______________| "
-        echo "                    "
-        echo -e "${GREEN}   OneRecovery Builder  ${NC}"
-        echo "----------------------------------------------------"
-    }
-    
-    trap 'echo -e "${RED}[ERROR]${NC} An error occurred at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
-    set -e
+# Source the core library first (required)
+if [ ! -f "./80_common.sh" ]; then
+    echo "ERROR: Critical library file not found: ./80_common.sh"
+    exit 1
 fi
+source ./80_common.sh
+
+# Source all library scripts using the source_libraries function
+source_libraries "."
+
+# Set error handling
+trap 'echo -e "${RED}[ERROR]${NC} An error occurred at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
+set -e
 
 # Display usage information
 usage() {
