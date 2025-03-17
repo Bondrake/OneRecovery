@@ -38,8 +38,8 @@ PACKAGES="openrc nano mc bash parted dropbear dropbear-ssh efibootmgr \
 
 # Add ZFS support if enabled
 if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
-    # Add ZFS and required dependencies
-    PACKAGES="$PACKAGES zfs util-linux-dev uuid-dev libuuid1 libblkid-dev"
+    # Add ZFS and required dependencies - Alpine uses different package names than Ubuntu
+    PACKAGES="$PACKAGES zfs util-linux-dev util-linux-misc util-linux util-linux-bash-completion"
     log "INFO" "Including ZFS support with development libraries"
 fi
 
