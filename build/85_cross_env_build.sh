@@ -819,12 +819,30 @@ build_zfs() {
     # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
     
-    # Quick check if ZLIB_DEFLATE is enabled
-    if ! grep -q "^CONFIG_ZLIB_DEFLATE=" "$KERNEL_DIR/.config"; then
-        log "WARNING" "CONFIG_ZLIB_DEFLATE not found in kernel config, adding it explicitly"
-        echo "CONFIG_ZLIB_DEFLATE=y" >> "$KERNEL_DIR/.config"
-        # Update config
+    # Ensure ZFS kernel config dependencies are present with the overlay system
+    log "INFO" "Ensuring ZFS kernel config dependencies are present"
+    local zfs_overlay="$ZFILES_DIR/kernel-configs/features/zfs-support.conf"
+    local overlay_tool="$BUILD_DIR/tools/apply-config-overlay.sh"
+    
+    if [ -f "$zfs_overlay" ] && [ -f "$overlay_tool" ]; then
+        log "INFO" "Applying ZFS kernel config overlay for module dependencies"
+        chmod +x "$overlay_tool"
+        "$overlay_tool" "$zfs_overlay" "$KERNEL_DIR/.config"
+        
+        # Update the config after applying the overlay
+        log "INFO" "Updating kernel config with new ZFS requirements"
         (cd "$KERNEL_DIR" && make olddefconfig)
+    fi
+    
+    # Verify critical ZFS dependencies are present
+    log "INFO" "Verifying critical ZFS kernel dependencies:"
+    if ! grep -q "^CONFIG_ZLIB_DEFLATE=y" "$KERNEL_DIR/.config"; then
+        log "ERROR" "CONFIG_ZLIB_DEFLATE=y still not set in kernel config, this will cause ZFS build failure"
+        log "INFO" "Adding CONFIG_ZLIB_DEFLATE=y directly"
+        echo "CONFIG_ZLIB_DEFLATE=y" >> "$KERNEL_DIR/.config"
+        (cd "$KERNEL_DIR" && make olddefconfig)
+    else
+        log "SUCCESS" "CONFIG_ZLIB_DEFLATE=y properly set in kernel config"
     fi
     
     ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
