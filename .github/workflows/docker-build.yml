@@ -156,9 +156,41 @@ jobs:
           mkdir -p build/zfiles/kernel-configs/features
           chmod -R 777 build/zfiles/kernel-configs
           
-          # Create a direct kernel config with modules support
+          # Create the ZFS overlay config to ensure all required ZFS settings
+          cat > build/zfiles/kernel-configs/features/zfs-support.conf << 'EOF'
+# ZFS File System Support
+# Required kernel options for ZFS module support
+
+# Required for loadable modules support
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+
+# Core ZFS options
+CONFIG_SPL=m
+CONFIG_ZFS=m
+
+# Required compression algorithms for ZFS
+CONFIG_ZLIB_DEFLATE=y
+CONFIG_ZLIB_INFLATE=y
+CONFIG_LZ4_COMPRESS=y
+CONFIG_ZSTD_COMPRESS=y
+
+# Required crypto components
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_SHA256=y
+CONFIG_CRYPTO_SHA512=y
+CONFIG_CRYPTO_CRC32C=y
+
+# Required device-mapper support
+CONFIG_BLK_DEV_DM=y
+EOF
+          chmod 666 build/zfiles/kernel-configs/features/zfs-support.conf
+          
+          # Create a direct kernel config with modules support (backup method)
           echo "CONFIG_MODULES=y" > build/kernel_modules.conf
           echo "CONFIG_MODULE_UNLOAD=y" >> build/kernel_modules.conf
+          echo "CONFIG_ZLIB_DEFLATE=y" >> build/kernel_modules.conf
+          echo "CONFIG_ZLIB_INFLATE=y" >> build/kernel_modules.conf
           
           # Prepare for build with root permissions
           if [ -d "build/linux" ]; then
@@ -183,6 +215,28 @@ jobs:
               echo "CONFIG_MODULES=y" >> build/linux/.config
               sed -i '/CONFIG_MODULE_UNLOAD=/d' build/linux/.config
               echo "CONFIG_MODULE_UNLOAD=y" >> build/linux/.config
+            fi
+            
+            # Apply the ZFS config overlay if the tools are available
+            if [ -f "build/tools/apply-config-overlay.sh" ] && [ -f "build/zfiles/kernel-configs/features/zfs-support.conf" ]; then
+              echo "Applying ZFS kernel config overlay for module dependencies"
+              chmod +x build/tools/apply-config-overlay.sh
+              build/tools/apply-config-overlay.sh build/zfiles/kernel-configs/features/zfs-support.conf build/linux/.config
+              
+              # Verify the config has the critical ZFS dependencies
+              echo "Verifying ZFS dependencies are set:"
+              grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=" build/linux/.config || {
+                echo "WARNING: ZFS dependencies not found after overlay, adding manually"
+                echo "CONFIG_ZLIB_DEFLATE=y" >> build/linux/.config
+                echo "CONFIG_ZLIB_INFLATE=y" >> build/linux/.config
+              }
+              
+              # Update the config to resolve dependencies
+              cd build/linux && make olddefconfig && cd ../..
+            else
+              echo "WARNING: ZFS config overlay tools not available, using fallback method"
+              echo "CONFIG_ZLIB_DEFLATE=y" >> build/linux/.config
+              echo "CONFIG_ZLIB_INFLATE=y" >> build/linux/.config
             fi
             
             # Make sure kernel source is world-readable
