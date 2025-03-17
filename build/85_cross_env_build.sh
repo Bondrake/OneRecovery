@@ -1,13 +1,40 @@
 #!/bin/bash
 #
-# OneRecovery Cross-Environment Build Script
+# OneRecovery Cross-Environment Build Script (85_cross_env_build.sh)
 # Works in GitHub Actions, Docker, and local environments
+# Unified build system that standardizes build across all environments
+# This is part of the library scripts (80-89 range)
 #
 set -e
 
-# Source the build helper functions
+# Define script name for error handling
+SCRIPT_NAME=$(basename "$0")
+
+# Source the library scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/build_helper.sh"
+
+# Source common functions first
+if [ -f "$SCRIPT_DIR/80_common.sh" ]; then
+    source "$SCRIPT_DIR/80_common.sh"
+else
+    echo "WARNING: 80_common.sh not found - some functions may be unavailable"
+fi
+
+# Source error handling next
+if [ -f "$SCRIPT_DIR/81_error_handling.sh" ]; then
+    source "$SCRIPT_DIR/81_error_handling.sh"
+    # Initialize error handling
+    init_error_handling
+else
+    echo "WARNING: 81_error_handling.sh not found - error handling will be limited"
+fi
+
+# Source build helper last
+if [ -f "$SCRIPT_DIR/82_build_helper.sh" ]; then
+    source "$SCRIPT_DIR/82_build_helper.sh"
+else
+    echo "WARNING: 82_build_helper.sh not found - some build functions may be unavailable"
+fi
 
 # Define color codes for output
 RED='\033[0;31m'
@@ -23,6 +50,8 @@ KERNEL_DIR="$BUILD_DIR/linux"
 ZFS_DIR="$BUILD_DIR/zfs"
 ZFILES_DIR="$BUILD_DIR/zfiles"
 OUTPUT_DIR="$BUILD_DIR/../output"
+
+# Banner is now provided by error_handling.sh
 
 # Log function
 log() {

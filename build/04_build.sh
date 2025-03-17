@@ -221,11 +221,19 @@ else
     make olddefconfig
 fi
 
+# Determine verbosity level
+if [ "${MAKE_VERBOSE:-0}" = "1" ] || [ "${VERBOSE:-false}" = "true" ]; then
+    MAKE_V="V=1"
+    log "INFO" "Using verbose build output"
+else
+    MAKE_V="V=0"
+fi
+
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
     log "INFO" "Using compiler cache for faster builds"
-    nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+    nice -n 19 make $MAKE_V -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
 else
-    nice -n 19 make -s -j$THREADS
+    nice -n 19 make $MAKE_V -j$THREADS
 fi
 
 ##########################
@@ -236,9 +244,9 @@ echo "----------------------------------------------------"
 log "INFO" "Building kernel modules using $THREADS threads"
 
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
-    nice -n 19 make -s modules -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+    nice -n 19 make $MAKE_V modules -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
 else
-    nice -n 19 make -s modules -j$THREADS
+    nice -n 19 make $MAKE_V modules -j$THREADS
 fi
 
 # Copying kernel modules in root filesystem
@@ -297,9 +305,9 @@ log "INFO" "Rebuilding kernel with all modules using $THREADS threads"
 # Apply memory-saving optimizations for final build too
 # No need to reconfigure here, as we're just rebuilding with modules
 if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
-    nice -n 19 make -s -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
+    nice -n 19 make $MAKE_V -j$THREADS CC="ccache gcc" HOSTCC="ccache gcc"
 else
-    nice -n 19 make -s -j$THREADS
+    nice -n 19 make $MAKE_V -j$THREADS
 fi
 
 

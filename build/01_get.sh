@@ -6,11 +6,23 @@
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
-# Source common error handling
-source ./error_handling.sh
+# Source the library scripts in correct order
+if [ -f "./80_common.sh" ]; then
+    source ./80_common.sh
+fi
 
-# Initialize error handling
-init_error_handling
+if [ -f "./81_error_handling.sh" ]; then
+    source ./81_error_handling.sh
+    # Initialize error handling
+    init_error_handling
+else
+    echo "WARNING: 81_error_handling.sh not found, using legacy error handling"
+    # Legacy fallback
+    if [ -f "./error_handling.sh" ]; then
+        source ./error_handling.sh
+        init_error_handling
+    fi
+fi
 
 # Define component versions
 alpineminirootfsfile="alpine-minirootfs-3.21.3-x86_64.tar.gz"
@@ -173,6 +185,12 @@ extract_archive() {
         fi
     fi
     
+    # Check if target directory already exists and has a completion marker
+    if [ -d "$target" ] && [ -f "$target/.extraction_complete" ]; then
+        log "SUCCESS" "$component already extracted completely (found marker file)"
+        return 0
+    fi
+    
     # Create target directory if it doesn't exist
     [ ! -d "$target" ] && mkdir -p "$target"
     
@@ -233,6 +251,9 @@ extract_archive() {
         fi
     fi
     
+    # Create a marker file to indicate successful extraction
+    touch "$target/.extraction_complete"
+    
     log "SUCCESS" "Extracted $component successfully"
     return 0
 }
@@ -280,17 +301,34 @@ main() {
             exit 1
         fi
         
-        if ! extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS"; then
-            log "ERROR" "Failed to extract OpenZFS"
-            exit 1
+        # First check if both directories exist - if so, clean up the redundant one
+        if [ -d "zfs-${zfsver}" ] && [ -d "zfs" ]; then
+            log "INFO" "Found both zfs and zfs-${zfsver} directories, removing zfs-${zfsver}"
+            rm -rf "zfs-${zfsver}"
         fi
-
-        # Rename ZFS directory
-        if [ -d "zfs-${zfsver}" ] && [ ! -d "zfs" ]; then
-            mv "zfs-${zfsver}" zfs
-            log "INFO" "Renamed ZFS directory"
-        elif [ -d "zfs" ]; then
-            log "INFO" "ZFS directory already exists"
+        
+        # If zfs directory exists, extract directly to it
+        if [ -d "zfs" ]; then
+            if ! extract_archive "zfs-${zfsver}.tar.gz" "zfs" "OpenZFS"; then
+                log "ERROR" "Failed to extract OpenZFS"
+                exit 1
+            fi
+            log "INFO" "Extracted OpenZFS to existing zfs directory"
+        else
+            # Extract to temporary directory and rename
+            if ! extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS"; then
+                log "ERROR" "Failed to extract OpenZFS"
+                exit 1
+            fi
+            
+            # Rename ZFS directory
+            if [ -d "zfs-${zfsver}" ]; then
+                mv "zfs-${zfsver}" zfs
+                log "INFO" "Renamed ZFS directory from zfs-${zfsver} to zfs"
+            else
+                log "ERROR" "Expected zfs-${zfsver} directory not found after extraction"
+                exit 1
+            fi
         fi
     else
         log "INFO" "Step 3: Skipping OpenZFS (disabled in configuration)"

@@ -49,6 +49,8 @@ usage() {
     echo "  --max-resources       Use maximum available system resources"
     echo "  --balanced-resources  Use balanced system resources (default)"
     echo "  --min-resources       Use minimal system resources"
+    echo "  --make-verbose        Enable verbose make output (V=1)"
+    echo "  --make-quiet          Use quiet make output (V=0, default)"
     echo ""
     echo "Examples:"
     echo "  $0                    Build with default settings"
@@ -57,6 +59,8 @@ usage() {
     echo "  $0 -i                 Launch interactive shell in the container"
     echo "  $0 --max-resources    Use maximum available system resources"
     echo "  $0 -b \"--full\" --max-resources  Build with all features using max resources"
+    echo "  $0 --make-verbose     Build with verbose make output (V=1)"
+    echo "  $0 --make-quiet       Build with quiet make output (V=0, default)"
     echo ""
 }
 
@@ -69,6 +73,7 @@ INTERACTIVE=false
 PULL=false
 NO_CACHE=false
 RESOURCES="balanced"
+MAKE_VERBOSE=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -114,6 +119,26 @@ while [[ $# -gt 0 ]]; do
             ;;
         --min-resources)
             RESOURCES="min"
+            shift
+            ;;
+        --make-verbose)
+            MAKE_VERBOSE=1
+            # Append to existing build args if they exist
+            if [[ -n "$BUILD_ARGS" ]]; then
+                BUILD_ARGS="$BUILD_ARGS --make-verbose"
+            else
+                BUILD_ARGS="--make-verbose"
+            fi
+            shift
+            ;;
+        --make-quiet)
+            MAKE_VERBOSE=0
+            # Append to existing build args if they exist
+            if [[ -n "$BUILD_ARGS" ]]; then
+                BUILD_ARGS="$BUILD_ARGS --make-quiet"
+            else
+                BUILD_ARGS="--make-quiet"
+            fi
             shift
             ;;
         *)

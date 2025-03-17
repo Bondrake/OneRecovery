@@ -1,7 +1,9 @@
 #!/bin/bash
 #
-# OneRecovery Build Helper
+# OneRecovery Build Helper (82_build_helper.sh)
 # Cross-environment build utilities for consistent builds in any environment
+# Provides file operations, environment detection, and build utilities
+# This is part of the library scripts (80-89 range)
 #
 
 # Detect environment types
@@ -439,6 +441,26 @@ print_section() {
     echo "===================================================================="
 }
 
+# Print OneRecovery banner with script name
+print_banner() {
+    local script_name=${1:-$(basename "$0")}
+    echo -e "${BLUE:-\\033[0;34m}"
+    echo "      ____________  "
+    echo "    /|------------| "
+    echo "   /_|  .---.     | "
+    echo "  |    /     \    | "
+    echo "  |    \.6-6./    | "
+    echo "  |    /\`\_/\`\    | "
+    echo "  |   //  _  \\\   | "
+    echo "  |  | \     / |  | "
+    echo "  | /\`\_\`>  <_/\`\ | "
+    echo "  | \__/'---'\__/ | "
+    echo "  |_______________| "
+    echo "                    "
+    echo -e "${GREEN:-\\033[0;32m}   OneRecovery: $script_name  ${NC:-\\033[0m}"
+    echo "----------------------------------------------------"
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
@@ -454,3 +476,4 @@ export -f setup_kernel_config
 export -f setup_zfs
 export -f get_optimal_threads
 export -f print_section
+export -f print_banner

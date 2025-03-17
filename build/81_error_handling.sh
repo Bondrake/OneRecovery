@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# Common error handling framework for OneRecovery build scripts
-# Source this file in each build script
+# OneRecovery Error Handling Framework (81_error_handling.sh)
+# Provides error handling, recovery options, and prerequisite checks
+# This is part of the library scripts (80-89 range)
 #
 
 # Color codes for better visibility
@@ -212,6 +213,7 @@ check_prerequisites() {
 
 # Print OneRecovery banner
 print_banner() {
+    # Local implementation 
     echo -e "${BLUE}"
     echo "      ____________  "
     echo "    /|------------| "
