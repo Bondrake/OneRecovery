@@ -99,6 +99,17 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ matrix.name }}-
             ccache-${{ runner.os }}-
+            
+      - name: Fix potential PATH issues
+        run: |
+          echo "Checking shell and PATH configuration..."
+          echo $SHELL
+          echo $PATH
+          which mkdir
+          which bash
+          which sh
+          sudo ln -sf /bin/mkdir /usr/local/bin/mkdir || true
+          mkdir --help
 
       - name: Run unified build script
         env:
@@ -108,22 +119,24 @@ jobs:
           USE_CACHE: "true"
           CACHE_DIR: "~/.ccache"
           CCACHE_DIR: "~/.ccache"
-          PATH: "/usr/lib/ccache:$PATH"
+          PATH: "/usr/lib/ccache:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
         run: |
-          mkdir -p output
+          # Ensure we're using a proper shell with full PATH
+          /bin/bash -c 'echo "Current path: $PATH"'
+          /bin/bash -c 'which mkdir'
+          /bin/bash -c 'mkdir -p output'
           
           # Configure ccache
-          ccache --max-size=5G
-          ccache -z  # Zero statistics
+          /bin/bash -c 'ccache --max-size=5G'
+          /bin/bash -c 'ccache -z'  # Zero statistics
           
           # Build with enhanced options
-          cd build
-          ./85_cross_env_build.sh ${{ matrix.build_args }} --use-cache --use-swap --make-verbose
+          /bin/bash -c 'cd build && ./85_cross_env_build.sh ${{ matrix.build_args }} --use-cache --use-swap --make-verbose'
       
       - name: Check for build artifacts
         id: check_files
         run: |
-          if [ -f "./output/OneRecovery.efi" ]; then
+          /bin/bash -c 'if [ -f "./output/OneRecovery.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
             du -h ./output/OneRecovery.efi
             
@@ -134,7 +147,7 @@ jobs:
             echo "efi_file=false" >> $GITHUB_OUTPUT
             echo "Build failed to produce OneRecovery.efi"
             exit 1
-          fi
+          fi'
       
       - name: Upload build artifact
         if: steps.check_files.outputs.efi_file == 'true'
@@ -157,7 +170,7 @@ jobs:
       
       - name: Create release package
         run: |
-          mkdir -p release
+          /bin/bash -c 'mkdir -p release
           # Only copy files that exist
           if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
             cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
@@ -169,7 +182,7 @@ jobs:
             cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
           fi
           cd release
-          zip -r OneRecovery-release.zip *.efi
+          zip -r OneRecovery-release.zip *.efi'
       
       - name: Upload release package
         uses: actions/upload-artifact@v4
