@@ -818,6 +818,15 @@ build_zfs() {
 
     # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
+    
+    # Quick check if ZLIB_DEFLATE is enabled
+    if ! grep -q "^CONFIG_ZLIB_DEFLATE=" "$KERNEL_DIR/.config"; then
+        log "WARNING" "CONFIG_ZLIB_DEFLATE not found in kernel config, adding it explicitly"
+        echo "CONFIG_ZLIB_DEFLATE=y" >> "$KERNEL_DIR/.config"
+        # Update config
+        (cd "$KERNEL_DIR" && make olddefconfig)
+    fi
+    
     ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
         log "ERROR" "ZFS configuration failed"
         
@@ -825,14 +834,22 @@ build_zfs() {
         log "INFO" "Kernel config dump for debugging:"
         head -n 50 "$KERNEL_DIR/.config"
         
+        # Check for critical configs
+        log "INFO" "Checking for critical ZFS dependencies in kernel config:"
+        grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=|CONFIG_SPL=|CONFIG_ZFS=" "$KERNEL_DIR/.config" || true
+        
         # Print the config.log file for debugging
         if [ -f "config.log" ]; then
             log "INFO" "Contents of config.log:"
-            cat config.log | grep -E "rpc|tirpc|xdr|error|warning|CONFIG_MODULES|support" || true
+            cat config.log | grep -E "rpc|tirpc|xdr|error|warning|CONFIG_MODULES|support|ZLIB" || true
             
             # Find the specific error message about modules
             log "INFO" "Searching for module error messages:"
             grep -A 5 "checking whether CONFIG_MODULES is defined" config.log || true
+            
+            # Search for ZLIB errors
+            log "INFO" "Searching for ZLIB error messages:"
+            grep -A 5 "checking.*ZLIB" config.log || true
         fi
         return 1
     }
