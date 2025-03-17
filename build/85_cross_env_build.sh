@@ -833,7 +833,7 @@ build_zfs() {
             # Find the specific error message about modules
             log "INFO" "Searching for module error messages:"
             grep -A 5 "checking whether CONFIG_MODULES is defined" config.log || true
-        }
+        fi
         return 1
     }
     
