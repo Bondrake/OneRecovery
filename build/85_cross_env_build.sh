@@ -518,21 +518,10 @@ build_kernel() {
         fix_kernel_permissions "$KERNEL_DIR"
     fi
     
-    # In GitHub Actions, we need to ensure all required directories have the right permissions
+    # Environment-aware build adjustments
     if is_github_actions; then
-        log "INFO" "Setting up GitHub Actions environment for kernel build"
-        
-        # Use our common function to create all required directories with proper permissions
-        fix_kernel_build_dirs "$KERNEL_DIR" true
-        
-        # Double-check the directory creation success with debugging info
-        if [ -f "$KERNEL_DIR/.config" ]; then
-            log "INFO" "Verifying build directory structure:"
-            find "$KERNEL_DIR/arch/x86" -type d | sort
-            
-            # Display permissions on key directories
-            ls -la "$KERNEL_DIR/arch/x86/include" || true
-        fi
+        log "INFO" "Running in GitHub Actions environment"
+        log "INFO" "Permissions should be handled by umask 0000 in the workflow"
     fi
     
     # Detect available system memory

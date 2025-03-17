@@ -138,35 +138,35 @@ jobs:
           CCACHE_DIR: "~/.ccache"
           PATH: "/usr/lib/ccache:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
         run: |
-          # Ensure we're using a proper shell with full PATH
-          /bin/bash -c 'echo "Current path: $PATH"'
-          /bin/bash -c 'which mkdir'
-          /bin/bash -c 'mkdir -p output'
+          # Set a permissive umask for the entire build process
+          # This ensures all files and directories created during build are world-writable
+          umask 0000
+          echo "Set umask to 0000 (world-writable permissions for all new files/directories)"
           
           # Configure ccache
-          /bin/bash -c 'ccache --max-size=5G'
-          /bin/bash -c 'ccache -z'  # Zero statistics
+          ccache --max-size=5G
+          ccache -z  # Zero statistics
           
-          # Prepare a clean .config file for the kernel
-          echo "Setting up a clean minimal kernel configuration"
-          # First make sure build directory exists
-          mkdir -p build
-          cd build || true
-          # Make sure build directory is writable
-          sudo chmod -R 777 . || true
-          if [ -d "linux" ]; then
-            sudo rm -f linux/.config || true
-            sudo rm -rf linux/include/config || true
-            sudo touch linux/.config || true
-            sudo chmod 777 linux/.config || true
+          # Create build and output directories with world-writable permissions
+          mkdir -p build output
+          chmod -R 777 build output
+          
+          # Prepare a clean environment for the kernel build
+          # This high-level approach avoids the need for per-directory fixes
+          if [ -d "build/linux" ]; then
+            # Create a world-writable .config file
+            touch build/linux/.config
+            chmod 666 build/linux/.config
+            
+            # Apply world-writable permissions recursively to the kernel source tree
+            # This ensures any new directory created during the build will be writable
+            sudo chmod -R 777 build/linux
+            
+            echo "Applied global permission fix to build/linux directory"
           fi
           
-          # Return to main directory and ensure build scripts are accessible
-          cd ..
-          ls -la build/
-          
-          # Build with minimal configuration to reduce complexity
-          /bin/bash -c 'cd build && pwd && ls -la && chmod +x *.sh && ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose'
+          # Run the build using standard approach with unified script
+          cd build && ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose
       
       - name: Check for build artifacts
         id: check_files

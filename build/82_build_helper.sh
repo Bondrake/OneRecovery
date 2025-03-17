@@ -940,87 +940,19 @@ handle_kernel_permissions() {
         return 1
     fi
     
-    log "INFO" "Setting up kernel permissions in a CI-friendly way"
+    log "INFO" "Ensuring kernel build scripts are executable"
     
-    # Make Makefile executable if allowed
+    # Make Makefile executable
     if [ -f "$kernel_dir/Makefile" ]; then
         chmod +x "$kernel_dir/Makefile" 2>/dev/null || log "WARNING" "Could not change Makefile permissions, continuing anyway"
     fi
     
-    # Handle script permissions more carefully
+    # Make shell scripts executable (only necessary permissions, not directory creation)
     if [ -d "$kernel_dir/scripts" ]; then
         find "$kernel_dir/scripts" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || log "WARNING" "Could not change script permissions, continuing anyway"
     fi
     
-    # Check if we're in GitHub Actions and need special handling
-    if is_github_actions; then
-        fix_kernel_build_dirs "$kernel_dir" true
-    fi
-    
-    log "INFO" "Kernel permissions setup completed (with fallbacks if needed)"
-    return 0
-}
-
-# Fix kernel build directories in CI environments
-fix_kernel_build_dirs() {
-    local kernel_dir="$1"
-    local use_sudo="${2:-false}"
-    
-    if [ ! -d "$kernel_dir" ]; then
-        log "WARNING" "Kernel directory not found: $kernel_dir"
-        return 1
-    fi
-    
-    log "INFO" "Creating essential kernel build directories"
-    
-    # Define critical directories needed by the kernel build
-    local critical_dirs=(
-        "scripts/basic"
-        "include/config"
-        "include/generated"
-        "arch/x86/include/generated"
-        "arch/x86/include/generated/uapi"
-        "arch/x86/include/generated/uapi/asm"
-        "arch/x86/include/generated/asm"
-        "arch/x86/entry/syscalls"
-        ".tmp_versions"
-    )
-    
-    # Create directories and set permissions
-    for dir in "${critical_dirs[@]}"; do
-        if [ "$use_sudo" = "true" ]; then
-            sudo mkdir -p "$kernel_dir/$dir" 2>/dev/null || true
-            sudo chmod 777 "$kernel_dir/$dir" 2>/dev/null || true
-        else
-            mkdir -p "$kernel_dir/$dir" 2>/dev/null || true
-            chmod 777 "$kernel_dir/$dir" 2>/dev/null || true
-        fi
-    done
-    
-    # Set entire parent directories to writable in one command
-    if [ "$use_sudo" = "true" ]; then
-        sudo chmod -R 777 "$kernel_dir/scripts" "$kernel_dir/include" "$kernel_dir/arch" 2>/dev/null || true
-        
-        # Touch empty files needed by build system
-        sudo touch "$kernel_dir/include/config/auto.conf" 2>/dev/null || true
-        
-        # Make sure .config is writable
-        if [ -f "$kernel_dir/.config" ]; then
-            sudo chmod 666 "$kernel_dir/.config" 2>/dev/null || true
-        fi
-    else
-        chmod -R 777 "$kernel_dir/scripts" "$kernel_dir/include" "$kernel_dir/arch" 2>/dev/null || true
-        
-        # Touch empty files needed by build system
-        touch "$kernel_dir/include/config/auto.conf" 2>/dev/null || true
-        
-        # Make sure .config is writable
-        if [ -f "$kernel_dir/.config" ]; then
-            chmod 666 "$kernel_dir/.config" 2>/dev/null || true
-        fi
-    fi
-    
-    log "INFO" "Kernel build directories created with write permissions"
+    log "INFO" "Script permissions set"
     return 0
 }
 
@@ -1041,4 +973,3 @@ export -f run_in_chroot
 export -f get_latest_alpine_version
 export -f get_alpine_minirootfs_url
 export -f handle_kernel_permissions
-export -f fix_kernel_build_dirs
