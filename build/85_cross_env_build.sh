@@ -483,6 +483,14 @@ configure_system() {
         config_type="minimal"
     fi
     
+    # Set directory permissions for CI environments
+    if is_github_actions; then
+        log "INFO" "Setting GitHub Actions-specific permissions on kernel directory"
+        chmod -R 777 "$KERNEL_DIR" 2>/dev/null || true
+        sudo mkdir -p "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
+        sudo chmod -R 777 "$KERNEL_DIR/scripts" "$KERNEL_DIR/.config" 2>/dev/null || true
+    fi
+    
     setup_kernel_config "$KERNEL_DIR" "$config_type" "$ZFILES_DIR"
     
     if [ "$INCLUDE_ZFS" = "true" ]; then
@@ -500,6 +508,14 @@ build_kernel() {
     if type -t fix_kernel_permissions >/dev/null; then
         log "INFO" "Fixing kernel permissions before build"
         fix_kernel_permissions "$KERNEL_DIR"
+    fi
+    
+    # In GitHub Actions, we need to ensure the scripts directory has the right permissions
+    if is_github_actions; then
+        log "INFO" "Setting GitHub Actions-specific permissions for build"
+        sudo chmod -R 777 "$KERNEL_DIR/scripts" 2>/dev/null || true
+        sudo mkdir -p "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
+        sudo chmod -R 777 "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
     fi
     
     # Detect available system memory

@@ -61,7 +61,13 @@ jobs:
           
           # Create build directory with appropriate permissions
           mkdir -p build
+          # Ensure we have complete ownership of the source directory
+          sudo chown -R $USER:$USER .
           sudo chmod -R 777 build
+          
+          # Create critical directories with proper permissions
+          mkdir -p build/output build/scripts
+          sudo chmod -R 777 build/output build/scripts
       
       - name: Make build scripts executable
         run: |
