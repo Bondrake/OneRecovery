@@ -157,33 +157,31 @@ jobs:
           chmod -R 777 build/zfiles/kernel-configs
           
           # Create the ZFS overlay config to ensure all required ZFS settings
-          cat > build/zfiles/kernel-configs/features/zfs-support.conf << 'EOF'
-# ZFS File System Support
-# Required kernel options for ZFS module support
-
-# Required for loadable modules support
-CONFIG_MODULES=y
-CONFIG_MODULE_UNLOAD=y
-
-# Core ZFS options
-CONFIG_SPL=m
-CONFIG_ZFS=m
-
-# Required compression algorithms for ZFS
-CONFIG_ZLIB_DEFLATE=y
-CONFIG_ZLIB_INFLATE=y
-CONFIG_LZ4_COMPRESS=y
-CONFIG_ZSTD_COMPRESS=y
-
-# Required crypto components
-CONFIG_CRYPTO=y
-CONFIG_CRYPTO_SHA256=y
-CONFIG_CRYPTO_SHA512=y
-CONFIG_CRYPTO_CRC32C=y
-
-# Required device-mapper support
-CONFIG_BLK_DEV_DM=y
-EOF
+          echo "# ZFS File System Support" > build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Required kernel options for ZFS module support" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Required for loadable modules support" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_MODULES=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_MODULE_UNLOAD=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Core ZFS options" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_SPL=m" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_ZFS=m" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Required compression algorithms for ZFS" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_ZLIB_DEFLATE=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_ZLIB_INFLATE=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_LZ4_COMPRESS=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_ZSTD_COMPRESS=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Required crypto components" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_CRYPTO=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_CRYPTO_SHA256=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_CRYPTO_SHA512=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_CRYPTO_CRC32C=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "# Required device-mapper support" >> build/zfiles/kernel-configs/features/zfs-support.conf
+          echo "CONFIG_BLK_DEV_DM=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
           chmod 666 build/zfiles/kernel-configs/features/zfs-support.conf
           
           # Create a direct kernel config with modules support (backup method)
