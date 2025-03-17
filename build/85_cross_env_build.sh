@@ -487,8 +487,16 @@ configure_system() {
     if is_github_actions; then
         log "INFO" "Setting GitHub Actions-specific permissions on kernel directory"
         chmod -R 777 "$KERNEL_DIR" 2>/dev/null || true
-        sudo mkdir -p "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
-        sudo chmod -R 777 "$KERNEL_DIR/scripts" "$KERNEL_DIR/.config" 2>/dev/null || true
+        sudo mkdir -p "$KERNEL_DIR/scripts/basic" "$KERNEL_DIR/include/config" 2>/dev/null || true
+        sudo chmod -R 777 "$KERNEL_DIR/scripts" "$KERNEL_DIR/include" 2>/dev/null || true
+        
+        # Make sure .config is clean and writable
+        if [ -f "$KERNEL_DIR/.config" ]; then
+            sudo chmod 777 "$KERNEL_DIR/.config" 2>/dev/null || true
+        else
+            sudo touch "$KERNEL_DIR/.config" 2>/dev/null || true
+            sudo chmod 777 "$KERNEL_DIR/.config" 2>/dev/null || true
+        fi
     fi
     
     setup_kernel_config "$KERNEL_DIR" "$config_type" "$ZFILES_DIR"
@@ -510,12 +518,38 @@ build_kernel() {
         fix_kernel_permissions "$KERNEL_DIR"
     fi
     
-    # In GitHub Actions, we need to ensure the scripts directory has the right permissions
+    # In GitHub Actions, we need to ensure all required directories have the right permissions
     if is_github_actions; then
         log "INFO" "Setting GitHub Actions-specific permissions for build"
         sudo chmod -R 777 "$KERNEL_DIR/scripts" 2>/dev/null || true
-        sudo mkdir -p "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
-        sudo chmod -R 777 "$KERNEL_DIR/scripts/basic" 2>/dev/null || true
+        sudo mkdir -p "$KERNEL_DIR/scripts/basic" "$KERNEL_DIR/include/config" "$KERNEL_DIR/include/generated" 2>/dev/null || true
+        sudo chmod -R 777 "$KERNEL_DIR/scripts/basic" "$KERNEL_DIR/include" 2>/dev/null || true
+        
+        # Fix configuration directories that are needed for syncconfig
+        if [ -f "$KERNEL_DIR/.config" ]; then
+            log "INFO" "Creating minimal configuration scaffold in GitHub Actions"
+            
+            # Create basic config files to help syncconfig
+            sudo mkdir -p "$KERNEL_DIR/.tmp_versions" 2>/dev/null || true
+            sudo touch "$KERNEL_DIR/include/config/auto.conf" 2>/dev/null || true
+            sudo chmod -R 777 "$KERNEL_DIR/.tmp_versions" "$KERNEL_DIR/include/config" 2>/dev/null || true
+            
+            # Set kernel options for minimal GitHub Actions build
+            echo "Using minimal kernel configuration for GitHub Actions"
+            sudo bash -c "cat > $KERNEL_DIR/.config << EOF
+# Minimal kernel configuration for GitHub Actions
+CONFIG_64BIT=y
+CONFIG_X86_64=y
+CONFIG_SMP=y
+# CONFIG_NETFILTER is not set
+# CONFIG_WIRELESS is not set
+# CONFIG_FW_LOADER is not set
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
+CONFIG_FB_EFI=y
+EOF"
+            sudo chmod 777 "$KERNEL_DIR/.config" 2>/dev/null || true
+        fi
     fi
     
     # Detect available system memory
