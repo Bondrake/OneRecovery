@@ -358,6 +358,7 @@ download_alpine() {
     
     if [ ! -d "$ROOTFS_DIR" ]; then
         log "INFO" "Extracting Alpine Linux minirootfs"
+        # Normal extraction for Alpine (small archive)
         extract_archive "$BUILD_DIR/$alpine_file" "$ROOTFS_DIR"
     else
         log "INFO" "Alpine Linux minirootfs already extracted"
@@ -389,12 +390,24 @@ download_kernel() {
     fi
     
     if [ ! -d "$KERNEL_DIR" ]; then
-        log "INFO" "Extracting Linux kernel"
+        log "INFO" "Extracting Linux kernel from $kernel_file"
         mkdir -p "$KERNEL_DIR"
-        extract_archive "$BUILD_DIR/$kernel_file" "$KERNEL_DIR" 1
+        
+        # Use optimized extraction for kernel (large archive)
+        # Add true for skip_ownership to avoid the slow ownership changes for large kernel source
+        log "INFO" "Using optimized extraction for kernel source (large archive)"
+        extract_archive "$BUILD_DIR/$kernel_file" "$KERNEL_DIR" 1 true
         
         # Create a symlink pointing to the kernel directory
         ln -sf "linux" "linux-${kernel_version}" 2>/dev/null || true
+        
+        # Make sure key kernel build files are executable after extraction
+        log "INFO" "Setting up kernel build environment"
+        if [ -f "$KERNEL_DIR/Makefile" ]; then
+            chmod +x "$KERNEL_DIR/Makefile"
+        fi
+        # Process only the important files rather than recursively processing everything
+        find "$KERNEL_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
     else
         log "INFO" "Linux kernel already extracted"
     fi
@@ -429,9 +442,21 @@ download_zfs() {
     fi
     
     if [ ! -d "$ZFS_DIR" ]; then
-        log "INFO" "Extracting ZFS"
+        log "INFO" "Extracting ZFS from $zfs_file"
         mkdir -p "$ZFS_DIR"
+        
+        # Use optimized extraction for ZFS (medium-sized archive)
+        # We can keep ownership changes for ZFS since it's not as large as the kernel
+        log "INFO" "Using optimized extraction for ZFS"
         extract_archive "$BUILD_DIR/$zfs_file" "$ZFS_DIR" 1
+        
+        # Make scripts executable
+        if [ -f "$ZFS_DIR/autogen.sh" ]; then
+            chmod +x "$ZFS_DIR/autogen.sh"
+        fi
+        if [ -f "$ZFS_DIR/configure" ]; then
+            chmod +x "$ZFS_DIR/configure"
+        fi
     else
         log "INFO" "ZFS already extracted"
     fi

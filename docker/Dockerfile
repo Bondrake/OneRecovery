@@ -48,7 +48,10 @@ RUN apk add --no-cache \
     bc \
     rsync \
     shadow \
-    su-exec
+    su-exec \
+    # Performance optimizations for archive extraction
+    pigz \
+    pv
 
 # Create non-root user to run the build as
 RUN adduser -D -u 1000 builder && \

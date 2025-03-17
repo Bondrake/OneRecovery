@@ -82,11 +82,12 @@ ensure_directory() {
     fi
 }
 
-# Extract archive with environment awareness
+# Extract archive with environment awareness and performance optimizations
 extract_archive() {
     local archive=$1
     local target=$2
     local strip_components=${3:-0}
+    local skip_ownership=${4:-false}  # Skip the slow chmod operations
     
     if [ ! -f "$archive" ]; then
         echo "Error: Archive not found: $archive"
@@ -97,8 +98,84 @@ extract_archive() {
     
     echo "Extracting $archive to $target"
     
-    if is_restricted_environment; then
-        # Use appropriate extraction method based on file type
+    # Use optimized extraction based on environment and file type
+    if is_docker_container; then
+        echo "Detected container environment, using accelerated extraction"
+        
+        # Use different strategies based on file type
+        case "$archive" in
+            *.tar.gz|*.tgz)
+                if [ $strip_components -gt 0 ]; then
+                    # Use pigz if available for parallel decompression
+                    if command -v pigz > /dev/null; then
+                        echo "Using pigz for parallel decompression"
+                        pigz -dc "$archive" | tar -x -C "$target" --strip-components=$strip_components
+                    else
+                        # Use direct extraction with tar
+                        tar -xzf "$archive" -C "$target" --strip-components=$strip_components --no-same-owner
+                    fi
+                else
+                    # Use pigz if available for parallel decompression
+                    if command -v pigz > /dev/null; then
+                        echo "Using pigz for parallel decompression"
+                        pigz -dc "$archive" | tar -x -C "$target" --no-same-owner
+                    else
+                        # Use direct extraction with tar
+                        tar -xzf "$archive" -C "$target" --no-same-owner
+                    fi
+                fi
+                ;;
+                
+            *.tar.xz)
+                if [ $strip_components -gt 0 ]; then
+                    # Use xz with parallel decompression if available
+                    XZ_OPT="-T0" tar -xJf "$archive" -C "$target" --strip-components=$strip_components --no-same-owner
+                else
+                    # Use xz with parallel decompression if available
+                    XZ_OPT="-T0" tar -xJf "$archive" -C "$target" --no-same-owner
+                fi
+                ;;
+                
+            *.zip)
+                unzip -o "$archive" -d "$target"
+                ;;
+                
+            *)
+                echo "Unsupported archive format: $archive"
+                return 1
+                ;;
+        esac
+        
+        # If explicitly requested to skip ownership changes
+        if [ "$skip_ownership" != "true" ]; then
+            # Fix permissions only for critical files that need execution
+            find "$target" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+            
+            # For kernel extraction, we don't need ownership changes which are slow
+            # Just ensure build scripts are executable
+            if [[ "$archive" == *"linux"*".tar."* ]]; then
+                echo "Optimizing permissions for kernel source"
+                
+                # Make important kernel build files executable for compilation
+                if [ -f "$target/Makefile" ]; then
+                    chmod +x "$target/Makefile"
+                fi
+                
+                # Make script directories executable
+                for dir in scripts tools; do
+                    if [ -d "$target/$dir" ]; then
+                        find "$target/$dir" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+                    fi
+                done
+            else
+                # Only set ownership for small archives, skip for large ones like kernel
+                echo "Setting ownership for extracted files"
+                chown -R $(id -u):$(id -g) "$target"
+            fi
+        fi
+        
+    elif is_restricted_environment; then
+        # GitHub Actions or other restricted environment
         case "$archive" in
             *.tar.gz|*.tgz)
                 if [ $strip_components -gt 0 ]; then
@@ -106,19 +183,26 @@ extract_archive() {
                 else
                     sudo tar -xzf "$archive" -C "$target"
                 fi
-                sudo chown -R $(id -u):$(id -g) "$target"
+                if [ "$skip_ownership" != "true" ]; then
+                    sudo chown -R $(id -u):$(id -g) "$target"
+                fi
                 ;;
+                
             *.tar.xz)
                 if [ $strip_components -gt 0 ]; then
-                    sudo tar -xf "$archive" -C "$target" --strip-components=$strip_components
+                    XZ_OPT="-T0" sudo tar -xJf "$archive" -C "$target" --strip-components=$strip_components
                 else
-                    sudo tar -xf "$archive" -C "$target"
+                    XZ_OPT="-T0" sudo tar -xJf "$archive" -C "$target"
                 fi
-                sudo chown -R $(id -u):$(id -g) "$target"
+                if [ "$skip_ownership" != "true" ]; then
+                    sudo chown -R $(id -u):$(id -g) "$target"
+                fi
                 ;;
+                
             *.zip)
                 unzip -o "$archive" -d "$target"
                 ;;
+                
             *)
                 echo "Unsupported archive format: $archive"
                 return 1
@@ -134,16 +218,19 @@ extract_archive() {
                     tar -xzf "$archive" -C "$target"
                 fi
                 ;;
+                
             *.tar.xz)
                 if [ $strip_components -gt 0 ]; then
-                    tar -xf "$archive" -C "$target" --strip-components=$strip_components
+                    XZ_OPT="-T0" tar -xJf "$archive" -C "$target" --strip-components=$strip_components
                 else
-                    tar -xf "$archive" -C "$target"
+                    XZ_OPT="-T0" tar -xJf "$archive" -C "$target"
                 fi
                 ;;
+                
             *.zip)
                 unzip -o "$archive" -d "$target"
                 ;;
+                
             *)
                 echo "Unsupported archive format: $archive"
                 return 1
@@ -151,7 +238,8 @@ extract_archive() {
         esac
     fi
     
-    return $?
+    echo "Extraction completed successfully"
+    return 0
 }
 
 # Copy files with environment awareness

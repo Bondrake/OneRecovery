@@ -99,13 +99,13 @@ is_container() {
     return $?
 }
 
-# Function to extract using busybox tar
+# Function to extract using busybox tar (slowest method)
 extract_with_busybox() {
     local file=$1
     local target=$2
     local strip=$3
     
-    log "INFO" "Using busybox tar for extraction"
+    log "INFO" "Using busybox tar for extraction (slow method)"
     if [ "$strip" -gt 0 ]; then
         busybox tar -xf "$file" -C "$target" --strip-components=$strip
     else
@@ -114,30 +114,89 @@ extract_with_busybox() {
     return $?
 }
 
-# Function to extract using pipe method (decompress | extract)
+# Function to extract using pipe method with best available tools
 extract_with_pipe() {
     local file=$1
     local target=$2
     local strip=$3
     
-    log "INFO" "Using pipe-based extraction (decompress | extract)"
+    log "INFO" "Using optimized pipe-based extraction"
     
     if [[ "$file" == *.tar.gz ]]; then
-        if [ "$strip" -gt 0 ]; then
-            gzip -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+        # Use pigz for parallel gzip decompression if available
+        if command -v pigz > /dev/null; then
+            log "INFO" "Using pigz for parallel decompression (faster)"
+            if [ "$strip" -gt 0 ]; then
+                pigz -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+            else
+                pigz -dc "$file" | tar -x -C "$target" --no-same-owner
+            fi
         else
-            gzip -dc "$file" | tar -x -C "$target" --no-same-owner
+            # Fall back to regular gzip
+            log "INFO" "Using standard gzip decompression"
+            if [ "$strip" -gt 0 ]; then
+                gzip -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+            else
+                gzip -dc "$file" | tar -x -C "$target" --no-same-owner
+            fi
         fi
     elif [[ "$file" == *.tar.xz ]]; then
+        # Use XZ_OPT to enable parallel decompression for xz
+        log "INFO" "Using parallel XZ decompression (XZ_OPT=-T0)"
         if [ "$strip" -gt 0 ]; then
-            xz -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
+            XZ_OPT="-T0" xz -dc "$file" | tar -x -C "$target" --strip-components=$strip --no-same-owner
         else
-            xz -dc "$file" | tar -x -C "$target" --no-same-owner
+            XZ_OPT="-T0" xz -dc "$file" | tar -x -C "$target" --no-same-owner
         fi
     else
         return 1
     fi
     return $?
+}
+
+# Optimized extraction for large files like kernel source
+extract_optimized() {
+    local file=$1
+    local target=$2
+    local strip=$3
+    local component=$4
+    
+    # Check if it's a large file that needs optimized extraction
+    if [[ "$component" == "Linux kernel" ]]; then
+        log "INFO" "Using optimized extraction for kernel source (large file)"
+        
+        # For kernel extraction, we'll optimize for performance
+        if [[ "$file" == *.tar.xz ]]; then
+            log "INFO" "Using parallel XZ extraction with minimal ownership changes"
+            
+            # Ensure target directory exists
+            mkdir -p "$target"
+            
+            # Use XZ_OPT for parallel extraction and --no-same-owner to avoid slow ownership changes
+            if [ "$strip" -gt 0 ]; then
+                XZ_OPT="-T0" tar -xJf "$file" -C "$target" --strip-components=$strip --no-same-owner
+            else
+                XZ_OPT="-T0" tar -xJf "$file" -C "$target" --no-same-owner
+            fi
+            
+            # Only make critical scripts executable
+            if [ -f "$target/Makefile" ]; then
+                chmod +x "$target/Makefile"
+            fi
+            
+            # Make script directories executable
+            for dir in scripts tools; do
+                if [ -d "$target/$dir" ]; then
+                    find "$target/$dir" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+                fi
+            done
+            
+            return $?
+        fi
+    fi
+    
+    # If not a special case, return false to try other methods
+    return 1
 }
 
 # Function to try cached version if extraction fails
@@ -202,44 +261,104 @@ extract_archive() {
             handle_extraction "$file" "$target" && return 0
         fi
         
-        # Try extraction methods in sequence until one succeeds
-        if command -v busybox &> /dev/null; then
-            extract_with_busybox "$file" "$target" "$strip_components" && return 0
-        fi
+        # Try extraction methods in order of efficiency
         
+        # First try optimized extraction for specific components
+        extract_optimized "$file" "$target" "$strip_components" "$component" && return 0
+        
+        # Next try pipe-based extraction (good balance of speed and compatibility)
         extract_with_pipe "$file" "$target" "$strip_components" && return 0
         
+        # If pipe extraction fails, try using cached version
         if [ "${USE_CACHE:-false}" = "true" ]; then
             try_cached_version "$file" "$target" "$component" && return 0
         fi
         
+        # Last resort - busybox tar (slowest but most compatible)
+        if command -v busybox &> /dev/null; then
+            extract_with_busybox "$file" "$target" "$strip_components" && return 0
+        fi
+        
         # Final attempt - try using sudo if available
         if command -v sudo &> /dev/null; then
-            log "INFO" "Attempting extraction with sudo"
+            log "INFO" "Attempting extraction with sudo (privileged method)"
+            
+            # Create target directory
+            sudo mkdir -p "$target"
+            local success=1
+            
             if [[ "$file" == *.tar.gz ]]; then
-                sudo mkdir -p "$target"
-                sudo tar -xzf "$file" -C "$target" && sudo chown -R $(id -u):$(id -g) "$target" && return 0
+                # Use pigz if available
+                if command -v pigz > /dev/null; then
+                    log "INFO" "Using sudo with pigz for parallel decompression"
+                    sudo sh -c "pigz -dc \"$file\" | tar -x -C \"$target\" --no-same-owner"
+                    success=$?
+                else
+                    # Fall back to regular tar with gzip
+                    sudo tar -xzf "$file" -C "$target" --no-same-owner
+                    success=$?
+                fi
             elif [[ "$file" == *.tar.xz ]]; then
-                sudo mkdir -p "$target"
-                sudo tar -xf "$file" -C "$target" --strip-components="$strip_components" && sudo chown -R $(id -u):$(id -g) "$target" && return 0
+                # Use parallel XZ decompression 
+                log "INFO" "Using sudo with parallel XZ decompression"
+                sudo sh -c "XZ_OPT='-T0' tar -xJf \"$file\" -C \"$target\" --strip-components=\"$strip_components\" --no-same-owner"
+                success=$?
+            fi
+            
+            # Handle permissions based on success and file type
+            if [ $success -eq 0 ]; then
+                if [[ "$component" == "Linux kernel" ]]; then
+                    # For kernel, only make critical files executable
+                    log "INFO" "Using targeted permission fixes for kernel source"
+                    sudo find "$target/scripts" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
+                    sudo chmod +x "$target/Makefile" 2>/dev/null || true
+                else
+                    # For other components, standard ownership change
+                    sudo chown -R $(id -u):$(id -g) "$target"
+                fi
+                return 0
             fi
         fi
         
         log "ERROR" "All extraction methods failed for $file"
         return 1
     else
-        # Standard extraction for non-container environments
+        # Standard extraction for non-container environments - using optimized methods
+        log "INFO" "Using optimized extraction in standard environment"
+        
+        # Create target directory if it doesn't exist
+        mkdir -p "$target"
+        
         if [[ "$file" == *.tar.gz ]]; then
-            tar -C "$target" -xf "$file" || return 1
-        elif [[ "$file" == *.tar.xz ]]; then
-            if [ "$strip_components" -gt 0 ]; then
-                tar -xf "$file" -C "$target" --strip-components=$strip_components --no-same-owner || return 1
+            # Use pigz for parallel decompression if available
+            if command -v pigz > /dev/null; then
+                log "INFO" "Using pigz for parallel decompression"
+                pigz -dc "$file" | tar -x -C "$target" --no-same-owner || return 1
             else
-                tar -xf "$file" --no-same-owner || return 1
+                # Fall back to standard tar
+                tar -C "$target" -xf "$file" || return 1
+            fi
+        elif [[ "$file" == *.tar.xz ]]; then
+            # Use parallel XZ decompression
+            log "INFO" "Using parallel XZ decompression"
+            if [ "$strip_components" -gt 0 ]; then
+                XZ_OPT="-T0" tar -xJf "$file" -C "$target" --strip-components=$strip_components --no-same-owner || return 1
+            else
+                XZ_OPT="-T0" tar -xJf "$file" -C "$target" --no-same-owner || return 1
             fi
         else
             log "ERROR" "Unknown archive format: $file"
             return 1
+        fi
+        
+        # Special handling for Linux kernel
+        if [[ "$component" == "Linux kernel" ]]; then
+            log "INFO" "Using optimized permissions for kernel source"
+            # Make critical scripts executable
+            if [ -f "$target/Makefile" ]; then
+                chmod +x "$target/Makefile"
+            fi
+            find "$target/scripts" -name "*.sh" -type f -exec chmod +x {} \; 2>/dev/null || true
         fi
     fi
     
