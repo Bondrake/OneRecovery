@@ -730,10 +730,39 @@ build_zfs() {
         export HOSTCC="ccache gcc"
     fi
     
-    # Configure ZFS for the kernel
+    # Check for required development packages
+    log "INFO" "Checking for RPC development libraries"
+    if [ -f "/usr/include/rpc/xdr.h" ]; then
+        log "INFO" "Found system RPC headers in /usr/include/rpc/"
+    elif [ -f "/usr/include/tirpc/rpc/xdr.h" ]; then
+        log "INFO" "Found libtirpc headers in /usr/include/tirpc/"
+    else
+        # List installed packages for debugging
+        if command -v dpkg-query > /dev/null; then
+            log "INFO" "Installed packages containing 'rpc' or 'tirpc':"
+            dpkg-query -W "*rpc*" "*tirpc*" || true
+        fi
+        
+        # Check paths for RPC headers
+        log "INFO" "Searching for RPC headers..."
+        find /usr/include -name "xdr.h" || true
+    fi
+    
+    # Prepare kernel modules build system first
+    log "INFO" "Preparing kernel modules build system"
+    (cd "$KERNEL_DIR" && make modules_prepare) || {
+        log "WARNING" "modules_prepare failed, ZFS module build may not work correctly"
+    }
+
+    # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
-    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake || {
+    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
         log "ERROR" "ZFS configuration failed"
+        # Print the config.log file for debugging
+        if [ -f "config.log" ]; then
+            log "INFO" "Contents of config.log:"
+            cat config.log | grep -E "rpc|tirpc|xdr|error|warning" || true
+        fi
         return 1
     }
     
