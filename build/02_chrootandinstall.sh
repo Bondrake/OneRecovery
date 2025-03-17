@@ -35,7 +35,8 @@ PACKAGES="openrc nano mc bash parted dropbear dropbear-ssh efibootmgr \
 
 # Add ZFS support if enabled
 if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
-    PACKAGES="$PACKAGES zfs"
+    # Add ZFS and required dependencies
+    PACKAGES="$PACKAGES zfs util-linux-dev"
     log "INFO" "Including ZFS support"
 fi
 
@@ -143,6 +144,10 @@ echo onerecovery > /etc/hostname && hostname -F /etc/hostname
 echo 127.0.1.1 onerecovery onerecovery >> /etc/hosts
 
 echo "[INFO] Updating package lists"
+apk update
+
+# Enable community repository for dev packages
+echo "http://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories
 apk update
 
 echo "[INFO] Upgrading installed packages"

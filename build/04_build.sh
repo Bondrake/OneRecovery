@@ -261,6 +261,13 @@ if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
         export HOSTCC="ccache gcc"
     fi
     
+    # Check for required dependencies
+    log "INFO" "Verifying ZFS build dependencies"
+    if [ ! -e "../$ROOTFS/usr/include/uuid/uuid.h" ]; then
+        log "WARNING" "UUID development headers missing - installing util-linux-dev in chroot"
+        chroot "../$ROOTFS" /bin/ash -c "apk add util-linux-dev"
+    fi
+    
     ./autogen.sh
     ./configure --with-linux=$(pwd)/../$KERNELPATH --with-linux-obj=$(pwd)/../$KERNELPATH --prefix=/fake
     log "INFO" "Building ZFS modules with $THREADS threads"
