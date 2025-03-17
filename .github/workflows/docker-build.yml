@@ -59,15 +59,22 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev
           
+          # List checkout directory contents
+          echo "Current directory: $(pwd)"
+          ls -la
+          
           # Create build directory with appropriate permissions
-          mkdir -p build
+          mkdir -p build output
           # Ensure we have complete ownership of the source directory
           sudo chown -R $USER:$USER .
-          sudo chmod -R 777 build
+          sudo chmod -R 777 build output
           
           # Create critical directories with proper permissions
           mkdir -p build/output build/scripts
           sudo chmod -R 777 build/output build/scripts
+          
+          # Show the directory structure after setup
+          find . -type d -maxdepth 2 | sort
       
       - name: Make build scripts executable
         run: |
@@ -142,16 +149,24 @@ jobs:
           
           # Prepare a clean .config file for the kernel
           echo "Setting up a clean minimal kernel configuration"
-          cd build
+          # First make sure build directory exists
+          mkdir -p build
+          cd build || true
+          # Make sure build directory is writable
+          sudo chmod -R 777 . || true
           if [ -d "linux" ]; then
-            sudo rm -f linux/.config
-            sudo rm -rf linux/include/config
-            sudo touch linux/.config
-            sudo chmod 777 linux/.config
+            sudo rm -f linux/.config || true
+            sudo rm -rf linux/include/config || true
+            sudo touch linux/.config || true
+            sudo chmod 777 linux/.config || true
           fi
           
+          # Return to main directory and ensure build scripts are accessible
+          cd ..
+          ls -la build/
+          
           # Build with minimal configuration to reduce complexity
-          /bin/bash -c 'cd build && ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose'
+          /bin/bash -c 'cd build && pwd && ls -la && chmod +x *.sh && ./85_cross_env_build.sh ${{ matrix.build_args }} --minimal-kernel --use-cache --use-swap --make-verbose'
       
       - name: Check for build artifacts
         id: check_files
