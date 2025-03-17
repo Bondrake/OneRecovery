@@ -461,6 +461,86 @@ print_banner() {
     echo "----------------------------------------------------"
 }
 
+# Docker-specific extraction handling function
+docker_handle_extraction() {
+    local src_file="$1"
+    local dest_dir="$2"
+    
+    log "INFO" "Special handling for extraction of $src_file to $dest_dir"
+    
+    # Create temporary extraction directory
+    local temp_extract_dir="/tmp/onerecovery_extract_temp"
+    mkdir -p "$temp_extract_dir"
+    chmod 777 "$temp_extract_dir" 2>/dev/null || true
+    
+    # Create destination directory first
+    mkdir -p "$dest_dir"
+    
+    # Extract as root first to a temp location
+    if [[ "$src_file" == *.tar.gz ]]; then
+        tar -xzf "$src_file" -C "$temp_extract_dir"
+    elif [[ "$src_file" == *.tar.xz ]]; then
+        # For .tar.xz files, must decompress and extract separately
+        xz -dc "$src_file" | tar -x -C "$temp_extract_dir"
+    fi
+    
+    # Check if extraction succeeded
+    if [ $? -ne 0 ] || [ -z "$(ls -A "$temp_extract_dir")" ]; then
+        log "WARNING" "Initial extraction failed, trying alternative method"
+        # Try using tar with xf directly
+        if [[ "$src_file" == *.tar.xz ]]; then
+            tar -xf "$src_file" -C "$temp_extract_dir" --no-same-owner
+        fi
+    fi
+    
+    # Check again if extraction succeeded
+    if [ -z "$(ls -A "$temp_extract_dir")" ]; then
+        log "ERROR" "All extraction methods failed for $src_file"
+        return 1
+    fi
+    
+    # Copy files to final location with correct permissions
+    cp -a "$temp_extract_dir"/* "$dest_dir"/ || true
+    
+    # Clean up
+    rm -rf "$temp_extract_dir"/*
+    
+    # Set permissions if possible
+    chmod -R 755 "$dest_dir" 2>/dev/null || true
+    
+    # Verify final directory has content
+    if [ -z "$(ls -A "$dest_dir")" ]; then
+        log "ERROR" "Failed to extract content to $dest_dir"
+        return 1
+    fi
+    
+    log "SUCCESS" "Extraction completed successfully to $dest_dir"
+    return 0
+}
+
+# Docker-specific Alpine minirootfs preparation
+prepare_alpine_minirootfs() {
+    local rootfs_dir=${1:-"alpine-minirootfs"}
+    
+    if [ ! -d "$rootfs_dir" ]; then
+        log "WARNING" "Alpine minirootfs directory not found: $rootfs_dir"
+        return 1
+    fi
+    
+    log "INFO" "Preparing Alpine minirootfs for Docker environment"
+    
+    # Ensure permissions allow writing to all subdirectories
+    find "$rootfs_dir" -type d -exec chmod 755 {} \; 2>/dev/null || true
+    
+    # Make sure root-owned directories are writable by all users
+    # This is necessary for the build scripts to create symlinks
+    mkdir -p "$rootfs_dir/etc/runlevels/sysinit"
+    chmod -R 777 "$rootfs_dir/etc/runlevels" 2>/dev/null || true
+    
+    log "SUCCESS" "Set proper permissions on Alpine minirootfs"
+    return 0
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
@@ -477,3 +557,5 @@ export -f setup_zfs
 export -f get_optimal_threads
 export -f print_section
 export -f print_banner
+export -f docker_handle_extraction
+export -f prepare_alpine_minirootfs

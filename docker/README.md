@@ -78,6 +78,8 @@ Options:
 - `Dockerfile`: Defines the containerized build environment
 - `docker-compose.yml`: Configuration for Docker Compose
 - `build-onerecovery.sh`: Main build script to interact with the Docker environment
+- `entrypoint.sh`: Docker container entry point that bootstraps the build process 
+- `auto-resources.sh`: Helper script to automatically detect and configure system resources
 - `.env.example`: Example environment variable file
 
 ## Build Artifacts
@@ -140,3 +142,18 @@ To clear the build cache:
 ## Integration with CI/CD
 
 This Docker build system can be easily integrated with CI/CD pipelines like GitHub Actions. See the `.github/workflows` directory for examples.
+
+## Build System Architecture
+
+The Docker build system has been integrated with the standardized library-based build system:
+
+1. **Library-Based Build**: The Docker entrypoint automatically detects and uses the library system (80-89 range):
+   - `80_common.sh`: Logging, banners, environment detection
+   - `81_error_handling.sh`: Error handling and prerequisite checks
+   - `82_build_helper.sh`: Docker-specific functions for extraction and file handling
+   - `83_config_helper.sh`: Configuration management
+   - `85_cross_env_build.sh`: Environment-aware unified build system
+
+2. **Fallback Mode**: If the library files are not detected, the system falls back to the legacy build process using build.sh directly
+
+3. **Environment Detection**: The container automatically marks `IN_DOCKER_CONTAINER=true` for proper environment-specific handling

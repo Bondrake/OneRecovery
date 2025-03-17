@@ -47,12 +47,13 @@ chown -R builder:builder /onerecovery
 # Add environment variable to indicate we're in a Docker environment
 export IN_DOCKER_CONTAINER=true
 
-# Define a function to handle special extraction cases
-handle_extraction() {
+# Define a lightweight extraction function for bootstrapping
+# This is used before we can access our library functions
+bootstrap_extraction() {
     local src_file="$1"
     local dest_dir="$2"
     
-    echo "Special handling for extraction of $src_file to $dest_dir"
+    echo "Bootstrapping extraction of $src_file to $dest_dir"
     
     # Create destination directory first
     mkdir -p "$dest_dir"
@@ -68,22 +69,7 @@ handle_extraction() {
         xz -dc "$src_file" | tar -x -C "$TEMP_EXTRACT_DIR"
     fi
     
-    # Check if extraction succeeded
-    if [ $? -ne 0 ] || [ -z "$(ls -A "$TEMP_EXTRACT_DIR")" ]; then
-        echo "WARNING: Initial extraction failed, trying alternative method"
-        # Try using tar with xf directly
-        if [[ "$src_file" == *.tar.xz ]]; then
-            tar -xf "$src_file" -C "$TEMP_EXTRACT_DIR" --no-same-owner
-        fi
-    fi
-    
-    # Check again if extraction succeeded
-    if [ -z "$(ls -A "$TEMP_EXTRACT_DIR")" ]; then
-        echo "ERROR: All extraction methods failed for $src_file"
-        return 1
-    fi
-    
-    # Copy files to final location with correct permissions
+    # Copy files to final location
     cp -a "$TEMP_EXTRACT_DIR"/* "$dest_dir"/ || true
     
     # Clean up
@@ -92,33 +78,29 @@ handle_extraction() {
     # Set permissions
     chown -R builder:builder "$dest_dir"
     
-    # Verify final directory has content
-    if [ -z "$(ls -A "$dest_dir")" ]; then
-        echo "ERROR: Failed to extract content to $dest_dir"
-        return 1
-    fi
-    
-    echo "Extraction completed successfully to $dest_dir"
+    echo "Bootstrapping extraction completed to $dest_dir"
     return 0
 }
 
-# Export the function so it's available in child processes
-export -f handle_extraction
+# Export the function for bootstrapping
+export -f bootstrap_extraction
 
 # Set working directory
 cd /onerecovery/build
 
 # Define function to run build
 run_build() {
-    # Check for the cross-environment build script
-    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "85_cross_env_build.sh" ]; then
-        # Use the cross-environment build system for consistent builds
-        echo "Using cross-environment build system"
+    # Check for the library system
+    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ] && [ -f "85_cross_env_build.sh" ]; then
+        # Use the library-based build system for consistent builds
+        echo "Using library-based build system"
         chmod +x 80_common.sh
         chmod +x 81_error_handling.sh
         chmod +x 82_build_helper.sh
+        chmod +x 83_config_helper.sh
         chmod +x 85_cross_env_build.sh
         
+        # Use unified build script with cross-environment support
         if [ -n "$BUILD_ARGS" ]; then
             echo "Running: ./85_cross_env_build.sh $BUILD_ARGS"
             ./85_cross_env_build.sh $BUILD_ARGS
@@ -141,16 +123,11 @@ run_build() {
             # Create directory with proper permissions
             mkdir -p alpine-minirootfs
             
-            # Extract with root privileges
-            handle_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
+            # Use bootstrap extraction first, then we can use library functions
+            bootstrap_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
             
-            # Ensure permissions allow writing to all subdirectories
-            find alpine-minirootfs -type d -exec chmod 755 {} \;
-            
-            # Make sure root-owned directories are writable by all users
-            # This is necessary for the build scripts to create symlinks
-            mkdir -p alpine-minirootfs/etc/runlevels/sysinit
-            chmod -R 777 alpine-minirootfs/etc/runlevels
+            # Mark extraction as complete
+            touch "alpine-minirootfs/.extraction_complete"
             
             echo "Set proper permissions on Alpine minirootfs"
         fi

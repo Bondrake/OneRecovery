@@ -65,6 +65,7 @@ jobs:
           chmod +x build/80_common.sh
           chmod +x build/81_error_handling.sh
           chmod +x build/82_build_helper.sh
+          chmod +x build/83_config_helper.sh
           chmod +x build/85_cross_env_build.sh
           
           # Make all build scripts executable

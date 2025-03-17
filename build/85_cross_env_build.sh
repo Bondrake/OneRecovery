@@ -13,28 +13,15 @@ SCRIPT_NAME=$(basename "$0")
 # Source the library scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source common functions first
-if [ -f "$SCRIPT_DIR/80_common.sh" ]; then
-    source "$SCRIPT_DIR/80_common.sh"
-else
-    echo "WARNING: 80_common.sh not found - some functions may be unavailable"
+# Source the core library first (required)
+if [ ! -f "$SCRIPT_DIR/80_common.sh" ]; then
+    echo "ERROR: Critical library file not found: $SCRIPT_DIR/80_common.sh"
+    exit 1
 fi
+source "$SCRIPT_DIR/80_common.sh"
 
-# Source error handling next
-if [ -f "$SCRIPT_DIR/81_error_handling.sh" ]; then
-    source "$SCRIPT_DIR/81_error_handling.sh"
-    # Initialize error handling
-    init_error_handling
-else
-    echo "WARNING: 81_error_handling.sh not found - error handling will be limited"
-fi
-
-# Source build helper last
-if [ -f "$SCRIPT_DIR/82_build_helper.sh" ]; then
-    source "$SCRIPT_DIR/82_build_helper.sh"
-else
-    echo "WARNING: 82_build_helper.sh not found - some build functions may be unavailable"
-fi
+# Source all library scripts using the source_libraries function
+source_libraries "$SCRIPT_DIR"
 
 # Define color codes for output
 RED='\033[0;31m'
