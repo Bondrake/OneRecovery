@@ -39,8 +39,8 @@ PACKAGES="openrc nano mc bash parted dropbear dropbear-ssh efibootmgr \
 # Add ZFS support if enabled
 if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
     # Add ZFS and required dependencies
-    PACKAGES="$PACKAGES zfs util-linux-dev"
-    log "INFO" "Including ZFS support"
+    PACKAGES="$PACKAGES zfs util-linux-dev uuid-dev libuuid1 libblkid-dev"
+    log "INFO" "Including ZFS support with development libraries"
 fi
 
 # Add BTRFS support if enabled

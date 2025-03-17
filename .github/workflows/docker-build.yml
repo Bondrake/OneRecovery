@@ -57,7 +57,7 @@ jobs:
       - name: Set up build environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache
+          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev
       
       - name: Make build scripts executable
         run: |
