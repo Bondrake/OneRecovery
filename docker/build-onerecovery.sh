@@ -282,22 +282,32 @@ if [ "$INTERACTIVE" = true ]; then
 else
     echo -e "${BLUE}[INFO]${NC} Starting OneRecovery build in container..."
     $COMPOSE_CMD up $BUILD_OPTS --remove-orphans
+    COMPOSE_EXIT_CODE=$?
     
-    # Check if the build was successful
-    if [ $? -eq 0 ]; then
+    # Check for the output file first as the primary indicator of success
+    if [ -f "$PROJECT_DIR/output/OneRecovery.efi" ]; then
         echo -e "${GREEN}[SUCCESS]${NC} OneRecovery build completed successfully!"
-        
-        # Check for the output file
-        if [ -f "$PROJECT_DIR/output/OneRecovery.efi" ]; then
-            FILE_SIZE=$(du -h "$PROJECT_DIR/output/OneRecovery.efi" | cut -f1)
-            echo -e "${GREEN}[SUCCESS]${NC} Created OneRecovery.efi (Size: $FILE_SIZE)"
-            echo -e "${BLUE}[INFO]${NC} Output file: $PROJECT_DIR/output/OneRecovery.efi"
-        else
-            echo -e "${YELLOW}[WARNING]${NC} Output file not found. Check container logs for details."
-        fi
+        FILE_SIZE=$(du -h "$PROJECT_DIR/output/OneRecovery.efi" | cut -f1)
+        echo -e "${GREEN}[SUCCESS]${NC} Created OneRecovery.efi (Size: $FILE_SIZE)"
+        echo -e "${BLUE}[INFO]${NC} Output file: $PROJECT_DIR/output/OneRecovery.efi"
     else
-        echo -e "${RED}[ERROR]${NC} OneRecovery build failed. See container logs for details."
-        exit 1
+        # Check if compose itself failed 
+        if [ $COMPOSE_EXIT_CODE -ne 0 ]; then
+            echo -e "${RED}[ERROR]${NC} Docker Compose execution failed with exit code $COMPOSE_EXIT_CODE."
+            echo -e "${RED}[ERROR]${NC} OneRecovery build failed. See container logs for details."
+            exit 1
+        else
+            # Compose succeeded but no output file - container likely exited with error
+            echo -e "${RED}[ERROR]${NC} Build process failed. Container exited without creating output file."
+            echo -e "${YELLOW}[WARNING]${NC} Check container logs for details."
+            
+            # Look for build errors in container logs
+            if $COMPOSE_CMD logs | grep -i "error\|fail\|fatal" > /dev/null; then
+                echo -e "${YELLOW}[WARNING]${NC} Found error messages in container logs:"
+                $COMPOSE_CMD logs | grep -i "error\|fail\|fatal" | tail -n 10
+            fi
+            exit 1
+        fi
     fi
 fi
 

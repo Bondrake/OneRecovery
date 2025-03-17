@@ -523,6 +523,131 @@ prepare_alpine_minirootfs() {
     return 0
 }
 
+# Cross-environment chroot helpers
+# -------------------------------------
+
+# Prepares a chroot environment with proper mount handling based on environment
+prepare_chroot() {
+    local chroot_dir="$1"
+    local mount_special=${2:-true}
+    
+    # Make sure the directory exists
+    if [ ! -d "$chroot_dir" ]; then
+        log "ERROR" "Chroot directory not found: $chroot_dir"
+        return 1
+    fi
+    
+    log "INFO" "Preparing chroot environment: $chroot_dir"
+    
+    # Create essential directories
+    mkdir -p "$chroot_dir/proc" "$chroot_dir/sys" "$chroot_dir/dev" "$chroot_dir/dev/pts" 2>/dev/null || true
+    
+    # Check if we're running in a Docker container
+    if is_docker_container; then
+        log "INFO" "Running in Docker container - using simplified chroot preparation"
+        
+        # In Docker, just mount proc if requested and it's not already mounted
+        if [ "$mount_special" = true ] && ! mountpoint -q "$chroot_dir/proc" 2>/dev/null; then
+            log "INFO" "Mounting proc filesystem"
+            mount -t proc none "$chroot_dir/proc" 2>/dev/null || log "WARNING" "Could not mount proc (this is normal in Docker)"
+        fi
+        
+        # Set safe permissions on special directories
+        chmod 555 "$chroot_dir/proc" 2>/dev/null || true
+        if [ -d "$chroot_dir/var/empty" ]; then
+            chmod 555 "$chroot_dir/var/empty" 2>/dev/null || true
+        fi
+    else
+        # Standard non-Docker environment
+        log "INFO" "Preparing standard chroot environment"
+        
+        if [ "$mount_special" = true ]; then
+            # Mount special filesystems if they're not already mounted
+            if ! mountpoint -q "$chroot_dir/proc" 2>/dev/null; then
+                mount -t proc none "$chroot_dir/proc" || log "WARNING" "Could not mount proc"
+            fi
+            
+            if ! mountpoint -q "$chroot_dir/sys" 2>/dev/null; then
+                mount -t sysfs none "$chroot_dir/sys" || log "WARNING" "Could not mount sysfs"
+            fi
+            
+            if ! mountpoint -q "$chroot_dir/dev" 2>/dev/null; then
+                mount -o bind /dev "$chroot_dir/dev" || log "WARNING" "Could not bind mount /dev"
+            fi
+            
+            if ! mountpoint -q "$chroot_dir/dev/pts" 2>/dev/null; then
+                mount -o bind /dev/pts "$chroot_dir/dev/pts" || log "WARNING" "Could not bind mount /dev/pts"
+            fi
+        fi
+    fi
+    
+    # Copy resolv.conf for network connectivity
+    if [ -f "/etc/resolv.conf" ]; then
+        cp "/etc/resolv.conf" "$chroot_dir/etc/resolv.conf" 2>/dev/null || log "WARNING" "Could not copy resolv.conf"
+    fi
+    
+    return 0
+}
+
+# Cleans up a chroot environment by unmounting filesystems
+cleanup_chroot() {
+    local chroot_dir="$1"
+    
+    log "INFO" "Cleaning up chroot environment: $chroot_dir"
+    
+    # Check if we're running in a Docker container
+    if is_docker_container; then
+        log "INFO" "Running in Docker container - using simplified chroot cleanup"
+        
+        # In Docker, just try to unmount proc
+        if mountpoint -q "$chroot_dir/proc" 2>/dev/null; then
+            umount "$chroot_dir/proc" 2>/dev/null || log "WARNING" "Could not unmount proc (this is normal in Docker)"
+        fi
+    else
+        # Normal full chroot cleanup
+        log "INFO" "Cleaning up standard chroot environment"
+        
+        # Unmount special filesystems in reverse order
+        if mountpoint -q "$chroot_dir/dev/pts" 2>/dev/null; then
+            umount "$chroot_dir/dev/pts" 2>/dev/null || log "WARNING" "Could not unmount dev/pts"
+        fi
+        
+        if mountpoint -q "$chroot_dir/dev" 2>/dev/null; then
+            umount "$chroot_dir/dev" 2>/dev/null || log "WARNING" "Could not unmount dev"
+        fi
+        
+        if mountpoint -q "$chroot_dir/sys" 2>/dev/null; then
+            umount "$chroot_dir/sys" 2>/dev/null || log "WARNING" "Could not unmount sys"
+        fi
+        
+        if mountpoint -q "$chroot_dir/proc" 2>/dev/null; then
+            umount "$chroot_dir/proc" 2>/dev/null || log "WARNING" "Could not unmount proc"
+        fi
+    fi
+    
+    return 0
+}
+
+# Runs a command in the chroot environment
+run_in_chroot() {
+    local chroot_dir="$1"
+    local command="$2"
+    local mount_special=${3:-true}
+    
+    # Prepare the chroot environment
+    prepare_chroot "$chroot_dir" "$mount_special"
+    
+    # Run the command
+    log "INFO" "Running command in chroot: $command"
+    chroot "$chroot_dir" /bin/sh -c "$command"
+    local exit_code=$?
+    
+    # Clean up the chroot environment
+    cleanup_chroot "$chroot_dir"
+    
+    return $exit_code
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
@@ -541,3 +666,6 @@ export -f print_section
 # print_banner is now imported from 80_common.sh
 export -f docker_handle_extraction
 export -f prepare_alpine_minirootfs
+export -f prepare_chroot
+export -f cleanup_chroot
+export -f run_in_chroot

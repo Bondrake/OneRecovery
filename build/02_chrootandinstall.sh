@@ -170,9 +170,32 @@ EOF
 chmod +x alpine-minirootfs/mk.sh
 log "INFO" "Installation script created and made executable"
 
-# Execute chroot
+# Execute chroot using the environment-aware helper
 log "INFO" "Entering chroot environment to install packages"
-chroot alpine-minirootfs /bin/ash /mk.sh
+
+# Use our cross-environment chroot helper
+if type prepare_chroot >/dev/null 2>&1 && type cleanup_chroot >/dev/null 2>&1; then
+    # Prepare the chroot environment
+    prepare_chroot "alpine-minirootfs"
+    
+    # Execute the chroot command
+    log "INFO" "Running installation script..."
+    chroot alpine-minirootfs /bin/ash /mk.sh
+    chroot_status=$?
+    
+    # Clean up the chroot environment
+    cleanup_chroot "alpine-minirootfs"
+    
+    if [ $chroot_status -ne 0 ]; then
+        log "ERROR" "Chroot installation failed with status: $chroot_status"
+        exit $chroot_status
+    fi
+else
+    # Fall back to simple chroot if the helpers aren't available
+    log "WARNING" "Chroot helpers not available, using basic chroot"
+    chroot alpine-minirootfs /bin/ash /mk.sh
+fi
+
 log "SUCCESS" "Chroot installation completed successfully"
 
 # Clean up installation script

@@ -41,8 +41,32 @@ if [ "$USER_ID" != "1000" ] || [ "$GROUP_ID" != "1000" ]; then
     echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
 fi
 
-# Set proper ownership for build directories
-chown -R builder:builder /onerecovery
+# Set proper ownership for build directories, excluding special directories
+log_info() {
+    echo "[INFO] $1"
+}
+
+log_warn() {
+    echo "[WARN] $1"
+}
+
+log_info "Setting ownership for build directories..."
+# The following command will ignore errors for special directories
+find /onerecovery -not -path "*/\.*" -not -path "*/proc/*" -not -path "*/dev/*" -not -path "*/sys/*" -not -path "*/alpine-minirootfs/var/empty*" -not -path "*/alpine-minirootfs/proc*" -exec chown -R builder:builder {} \; 2>/dev/null || true
+
+# Ensure specific directories exist with correct permissions
+if [ -d "/onerecovery/build/alpine-minirootfs" ]; then
+    log_info "Setting up special directories in alpine-minirootfs..."
+    
+    # Create and set permissions for key directories
+    if [ -d "/onerecovery/build/alpine-minirootfs/proc" ]; then
+        chmod 555 "/onerecovery/build/alpine-minirootfs/proc" 2>/dev/null || log_warn "Could not set permissions on /proc (this is normal in Docker)"
+    fi
+    
+    if [ -d "/onerecovery/build/alpine-minirootfs/var/empty" ]; then
+        chmod 555 "/onerecovery/build/alpine-minirootfs/var/empty" 2>/dev/null || log_warn "Could not set permissions on /var/empty (this is normal in Docker)"
+    fi
+fi
 
 # Add environment variable to indicate we're in a Docker environment
 export IN_DOCKER_CONTAINER=true
