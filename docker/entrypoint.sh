@@ -50,9 +50,21 @@ log_warn() {
     echo "[WARN] $1"
 }
 
-log_info "Setting ownership for build directories..."
-# The following command will ignore errors for special directories
-find /onerecovery -not -path "*/\.*" -not -path "*/proc/*" -not -path "*/dev/*" -not -path "*/sys/*" -not -path "*/alpine-minirootfs/var/empty*" -not -path "*/alpine-minirootfs/proc*" -exec chown -R builder:builder {} \; 2>/dev/null || true
+log_info "Setting up build environment..."
+# Instead of changing ownership of all mounted volumes (which is slow),
+# we'll change Docker's approach to use the host user's UID/GID directly
+
+# Ensure runtime directories exist and have correct permissions
+mkdir -p /onerecovery/build /onerecovery/output /onerecovery/.buildcache
+chmod 755 /onerecovery/build /onerecovery/output /onerecovery/.buildcache
+
+# Set ownership of the .buildcache directory which is a Docker volume with persistence
+# This is necessary for proper ccache operation
+chown -R builder:builder /onerecovery/.buildcache 2>/dev/null || true
+
+# For mounted host volumes (build and output), we skip ownership changes
+# This is much faster and works better with bind mounts from the host
+log_info "Using host's ownership for mounted volumes"
 
 # Ensure specific directories exist with correct permissions
 if [ -d "/onerecovery/build/alpine-minirootfs" ]; then
@@ -70,6 +82,44 @@ fi
 
 # Add environment variable to indicate we're in a Docker environment
 export IN_DOCKER_CONTAINER=true
+
+# Set up performance optimizations
+log_info "Setting up build performance optimizations"
+
+# Configure ccache for better performance
+export CCACHE_DIR=/onerecovery/.buildcache/ccache
+export PATH=/usr/lib/ccache:$PATH
+
+# Check if we have enough memory for parallel builds
+if [ -f "/proc/meminfo" ]; then
+    available_memory_kb=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+    if [ "$available_memory_kb" -gt 0 ]; then
+        available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
+        log_info "Available memory: ${available_memory_gb}GB"
+        
+        # Calculate optimal number of jobs based on memory
+        # Each job needs about 2GB for kernel compilation
+        optimal_jobs=$(awk "BEGIN {print int($available_memory_kb/1024/1024/2)}")
+        # Ensure at least 1 job and get the minimum of this and the number of CPUs
+        cpu_count=$(nproc 2>/dev/null || echo 2)
+        optimal_jobs=$(( optimal_jobs < 1 ? 1 : optimal_jobs ))
+        optimal_jobs=$(( optimal_jobs > cpu_count ? cpu_count : optimal_jobs ))
+        
+        log_info "Automatically using $optimal_jobs parallel jobs based on available memory"
+        export BUILD_JOBS=$optimal_jobs
+        
+        # Add to BUILD_ARGS if not already specified
+        if [ -n "$BUILD_ARGS" ] && [[ "$BUILD_ARGS" != *"--jobs="* ]]; then
+            BUILD_ARGS="$BUILD_ARGS --jobs=$optimal_jobs"
+        fi
+    fi
+fi
+
+# Initialize ccache with optimal settings
+ccache -M 5G 2>/dev/null || true
+ccache -o compression=true 2>/dev/null || true
+ccache -o compression_level=6 2>/dev/null || true
+ccache -z 2>/dev/null || true
 
 # Define a lightweight extraction function for bootstrapping
 # This is used before we can access our library functions
