@@ -280,7 +280,7 @@ if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
     cd $(pwd)/../$KERNELPATH
 else
     echo "----------------------------------------------------"
-    echo "Skipping ZFS module build (disabled in configuration)"
+    echo "Skipping ZFS module build - disabled in configuration"
 fi
 
 
