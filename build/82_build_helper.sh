@@ -653,16 +653,17 @@ get_latest_alpine_version() {
     local base_version="${1:-$ALPINE_VERSION}"  # Default to global ALPINE_VERSION
     local fallback_patch="${2:-3}"              # Default patch version if check fails
     local timeout_seconds="${3:-5}"             # Default timeout of 5 seconds
+    local quiet="${4:-false}"                  # Whether to suppress logging
     
     # Extract major.minor version
     local major_minor=$(echo "$base_version" | grep -oE '^[0-9]+\.[0-9]+')
     if [ -z "$major_minor" ]; then
-        log "ERROR" "Invalid Alpine version format: $base_version"
-        echo "${major_minor}.${fallback_patch}"
+        [ "$quiet" != "true" ] && log "ERROR" "Invalid Alpine version format: $base_version"
+        echo "${base_version}.${fallback_patch}"
         return 1
     fi
     
-    log "INFO" "Checking for latest Alpine $major_minor.x release..."
+    [ "$quiet" != "true" ] && log "INFO" "Checking for latest Alpine $major_minor.x release..."
     
     # Create a temporary file for the version information
     local tmp_file=$(mktemp)
@@ -676,12 +677,12 @@ get_latest_alpine_version() {
         rm -f "$tmp_file"
         
         if [ -n "$latest_version" ]; then
-            log "SUCCESS" "Found latest Alpine version: $latest_version"
+            [ "$quiet" != "true" ] && log "SUCCESS" "Found latest Alpine version: $latest_version"
             echo "$latest_version"
             return 0
         fi
     else
-        log "WARNING" "Failed to check for latest Alpine version (timeout)"
+        [ "$quiet" != "true" ] && log "WARNING" "Failed to check for latest Alpine version (timeout)"
     fi
     
     # Clean up in case of failure
@@ -689,7 +690,7 @@ get_latest_alpine_version() {
     
     # Fall back to default patch version
     local fallback_version="${major_minor}.${fallback_patch}"
-    log "INFO" "Using fallback Alpine version: $fallback_version"
+    [ "$quiet" != "true" ] && log "INFO" "Using fallback Alpine version: $fallback_version"
     echo "$fallback_version"
     return 0
 }
@@ -698,16 +699,19 @@ get_latest_alpine_version() {
 get_alpine_minirootfs_url() {
     local version="${1:-$ALPINE_VERSION}"
     local arch="${2:-x86_64}"
+    local quiet="${3:-false}"
     
     # If version is just major.minor, try to get the latest patch version
     if [[ "$version" =~ ^[0-9]+\.[0-9]+$ ]]; then
-        version=$(get_latest_alpine_version "$version")
+        # Use quiet=true to avoid log messages interfering with URL output
+        version=$(get_latest_alpine_version "$version" "3" "5" "true")
     fi
     
     # Clean and parse the version properly
     local major_minor=$(echo "$version" | grep -oE '^[0-9]+\.[0-9]+')
     if [ -z "$major_minor" ]; then
-        log "ERROR" "Invalid Alpine version format after resolution: $version"
+        # Use stderr for logging to avoid capturing in output
+        [ "$quiet" != "true" ] && log "ERROR" "Invalid Alpine version format after resolution: $version" >&2
         # Fallback to a known good version format
         major_minor="3.21"
         version="3.21.3"

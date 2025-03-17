@@ -312,8 +312,8 @@ download_alpine() {
     # Use the quiet parameter to avoid log output when capturing the result
     local alpine_version=$(get_latest_alpine_version "$ALPINE_VERSION" "3" "5" "true")
     
-    # Get the Alpine URL
-    local alpine_url=$(get_alpine_minirootfs_url "$alpine_version" "$arch")
+    # Get the Alpine URL - use quiet mode to avoid log messages in output
+    local alpine_url=$(get_alpine_minirootfs_url "$alpine_version" "$arch" "true")
     local alpine_file=$(basename "$alpine_url")
     
     # Now log the information after we have clean values
