@@ -61,8 +61,20 @@ jobs:
       
       - name: Make build scripts executable
         run: |
-          chmod +x build/build_helper.sh
-          chmod +x build/cross_env_build.sh
+          # Make all library scripts executable
+          chmod +x build/80_common.sh
+          chmod +x build/81_error_handling.sh
+          chmod +x build/82_build_helper.sh
+          chmod +x build/85_cross_env_build.sh
+          
+          # Make all build scripts executable
+          chmod +x build/00_prepare.sh
+          chmod +x build/01_get.sh
+          chmod +x build/02_chrootandinstall.sh
+          chmod +x build/03_conf.sh
+          chmod +x build/04_build.sh
+          chmod +x build/99_cleanup.sh
+          chmod +x build/build.sh
       
       - name: Run unified build script
         env:
@@ -70,7 +82,7 @@ jobs:
         run: |
           mkdir -p output
           cd build
-          ./cross_env_build.sh ${{ matrix.build_args }}
+          ./85_cross_env_build.sh ${{ matrix.build_args }}
       
       - name: Check for build artifacts
         id: check_files

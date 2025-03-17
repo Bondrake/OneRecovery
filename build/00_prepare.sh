@@ -7,11 +7,23 @@
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
-# Source common error handling
-source ./error_handling.sh
+# Source the library scripts in correct order
+if [ -f "./80_common.sh" ]; then
+    source ./80_common.sh
+fi
 
-# Initialize error handling
-init_error_handling
+if [ -f "./81_error_handling.sh" ]; then
+    source ./81_error_handling.sh
+    # Initialize error handling
+    init_error_handling
+else
+    echo "WARNING: 81_error_handling.sh not found, using legacy error handling"
+    # Legacy fallback
+    if [ -f "./error_handling.sh" ]; then
+        source ./error_handling.sh
+        init_error_handling
+    fi
+fi
 
 # Function to check if we're running as root/sudo
 check_root() {

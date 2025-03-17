@@ -111,18 +111,20 @@ cd /onerecovery/build
 # Define function to run build
 run_build() {
     # Check for the cross-environment build script
-    if [ -f "build_helper.sh" ] && [ -f "cross_env_build.sh" ]; then
-        # Use the cross-environment build script for consistent builds
+    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "85_cross_env_build.sh" ]; then
+        # Use the cross-environment build system for consistent builds
         echo "Using cross-environment build system"
-        chmod +x build_helper.sh
-        chmod +x cross_env_build.sh
+        chmod +x 80_common.sh
+        chmod +x 81_error_handling.sh
+        chmod +x 82_build_helper.sh
+        chmod +x 85_cross_env_build.sh
         
         if [ -n "$BUILD_ARGS" ]; then
-            echo "Running: ./cross_env_build.sh $BUILD_ARGS"
-            ./cross_env_build.sh $BUILD_ARGS
+            echo "Running: ./85_cross_env_build.sh $BUILD_ARGS"
+            ./85_cross_env_build.sh $BUILD_ARGS
         else
-            echo "Running: ./cross_env_build.sh"
-            ./cross_env_build.sh
+            echo "Running: ./85_cross_env_build.sh"
+            ./85_cross_env_build.sh
         fi
     else
         # Fall back to legacy build scripts
