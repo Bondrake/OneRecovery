@@ -27,3 +27,6 @@ output/
 
 # Docker artifacts
 docker/.env
+
+# Claude working directory
+zclaude/

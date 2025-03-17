@@ -76,10 +76,26 @@ jobs:
           chmod +x build/04_build.sh
           chmod +x build/99_cleanup.sh
           chmod +x build/build.sh
+          
+          # Make tool scripts executable
+          mkdir -p build/tools
+          if [ -d "build/tools" ]; then
+            chmod +x build/tools/*.sh 2>/dev/null || true
+          fi
       
+      - name: Cache Alpine kernel configs
+        uses: actions/cache@v4
+        with:
+          path: build/zfiles/kernel-configs
+          key: alpine-kernel-config-${{ hashFiles('build/80_common.sh') }}
+          restore-keys: |
+            alpine-kernel-config-
+
       - name: Run unified build script
         env:
           GITHUB_ACTIONS: "true"
+          USE_ALPINE_KERNEL_CONFIG: "true"
+          AUTO_KERNEL_CONFIG: "true"
         run: |
           mkdir -p output
           cd build

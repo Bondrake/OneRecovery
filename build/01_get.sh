@@ -16,13 +16,13 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
-# Define component versions
-alpineminirootfsfile="alpine-minirootfs-3.21.3-x86_64.tar.gz"
-linuxver="linux-6.12.19"
-zfsver="2.3.0"
+# Define component versions using centralized variables from 80_common.sh
+alpineminirootfsfile="alpine-minirootfs-3.21.3-x86_64.tar.gz"  # Specific point release for the rootfs
+linuxver="linux-${KERNEL_VERSION}"
+zfsver="${ZFS_VERSION}"
 
 # Define download URLs
-ALPINE_URL="http://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/$alpineminirootfsfile"
+ALPINE_URL="http://dl-cdn.alpinelinux.org/alpine/v${ALPINE_VERSION}/releases/x86_64/$alpineminirootfsfile"
 KERNEL_URL="http://cdn.kernel.org/pub/linux/kernel/v6.x/$linuxver.tar.xz"
 ZFS_URL="https://github.com/openzfs/zfs/releases/download/zfs-${zfsver}/zfs-${zfsver}.tar.gz"
 

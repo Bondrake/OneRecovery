@@ -207,26 +207,123 @@ log "SUCCESS" "Console settings configured"
 log "INFO" "Setting up kernel configuration"
 mkdir -p alpine-minirootfs/lib/
 
+# Kernel configuration paths
+KERNEL_CONFIG_DIR="zfiles/kernel-configs"
+FEATURES_DIR="$KERNEL_CONFIG_DIR/features"
+ALPINE_CONFIG_MINIMAL="$KERNEL_CONFIG_DIR/minimal.config"
+ALPINE_CONFIG_STANDARD="$KERNEL_CONFIG_DIR/standard.config"
+LEGACY_MINIMAL_CONFIG="zfiles/kernel-minimal.config"
+LEGACY_STANDARD_CONFIG="zfiles/.config"
+
+# Download Alpine kernel config if needed and not found
+if [ "${USE_ALPINE_KERNEL_CONFIG:-true}" = "true" ] && [ ! -f "$ALPINE_CONFIG_MINIMAL" ]; then
+    log "INFO" "Alpine kernel configs not found, attempting to download"
+    if [ -f "./tools/get-alpine-kernel-config.sh" ]; then
+        ./tools/get-alpine-kernel-config.sh --dir="$(pwd)" --version="${ALPINE_VERSION}"
+    else
+        log "WARNING" "Alpine kernel config download script not found."
+        log "INFO" "Continuing with legacy kernel config."
+        USE_ALPINE_KERNEL_CONFIG=false
+    fi
+fi
+
 # Check for custom kernel configuration
 if [ -n "${CUSTOM_KERNEL_CONFIG:-}" ] && [ -f "${CUSTOM_KERNEL_CONFIG}" ]; then
     log "INFO" "Using custom kernel configuration: ${CUSTOM_KERNEL_CONFIG}"
     cp "${CUSTOM_KERNEL_CONFIG}" linux/.config
-# Use appropriate kernel config based on build type
-elif [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
-    if [ ! -f "zfiles/kernel-minimal.config" ]; then
-        log "ERROR" "Minimal kernel configuration file not found: zfiles/kernel-minimal.config"
-        exit 1
+
+# Use Alpine-based config if enabled
+elif [ "${USE_ALPINE_KERNEL_CONFIG:-true}" = "true" ]; then
+    if [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
+        if [ ! -f "$ALPINE_CONFIG_MINIMAL" ]; then
+            log "ERROR" "Alpine minimal kernel config not found: $ALPINE_CONFIG_MINIMAL"
+            log "INFO" "Falling back to legacy kernel config"
+            
+            if [ ! -f "$LEGACY_MINIMAL_CONFIG" ]; then
+                log "ERROR" "Legacy minimal kernel config not found: $LEGACY_MINIMAL_CONFIG"
+                exit 1
+            fi
+            cp "$LEGACY_MINIMAL_CONFIG" linux/.config
+        else
+            log "INFO" "Using Alpine-based minimal kernel configuration"
+            cp "$ALPINE_CONFIG_MINIMAL" linux/.config
+        fi
+    else
+        if [ ! -f "$ALPINE_CONFIG_STANDARD" ]; then
+            log "ERROR" "Alpine standard kernel config not found: $ALPINE_CONFIG_STANDARD"
+            log "INFO" "Falling back to legacy kernel config"
+            
+            if [ ! -f "$LEGACY_STANDARD_CONFIG" ]; then
+                log "ERROR" "Legacy standard kernel config not found: $LEGACY_STANDARD_CONFIG"
+                exit 1
+            fi
+            cp "$LEGACY_STANDARD_CONFIG" linux/.config
+        else
+            log "INFO" "Using Alpine-based standard kernel configuration"
+            cp "$ALPINE_CONFIG_STANDARD" linux/.config
+        fi
     fi
-    log "INFO" "Using minimal kernel configuration for smaller size"
-    cp zfiles/kernel-minimal.config linux/.config
+
+    # Apply feature overlays based on package selection
+    if [ "${AUTO_KERNEL_CONFIG:-true}" = "true" ]; then
+        APPLY_OVERLAY="./tools/apply-config-overlay.sh"
+        
+        if [ -f "$APPLY_OVERLAY" ]; then
+            # Apply ZFS overlay if enabled
+            if [ "${INCLUDE_ZFS:-true}" = "true" ] && [ -f "$FEATURES_DIR/zfs-support.conf" ]; then
+                log "INFO" "Applying ZFS kernel config overlay"
+                "$APPLY_OVERLAY" "$FEATURES_DIR/zfs-support.conf" "linux/.config"
+            fi
+            
+            # Apply BTRFS overlay if enabled
+            if [ "${INCLUDE_BTRFS:-false}" = "true" ] && [ -f "$FEATURES_DIR/btrfs-support.conf" ]; then
+                log "INFO" "Applying BTRFS kernel config overlay"
+                "$APPLY_OVERLAY" "$FEATURES_DIR/btrfs-support.conf" "linux/.config"
+            fi
+            
+            # Apply network tools overlay if enabled
+            if [ "${INCLUDE_NETWORK_TOOLS:-true}" = "true" ] && [ -f "$FEATURES_DIR/network-tools.conf" ]; then
+                log "INFO" "Applying network tools kernel config overlay"
+                "$APPLY_OVERLAY" "$FEATURES_DIR/network-tools.conf" "linux/.config"
+            fi
+            
+            # Apply crypto overlay if enabled
+            if [ "${INCLUDE_CRYPTO:-true}" = "true" ] && [ -f "$FEATURES_DIR/crypto-support.conf" ]; then
+                log "INFO" "Applying crypto support kernel config overlay"
+                "$APPLY_OVERLAY" "$FEATURES_DIR/crypto-support.conf" "linux/.config"
+            fi
+            
+            # Apply advanced filesystem overlay if enabled
+            if [ "${INCLUDE_ADVANCED_FS:-false}" = "true" ] && [ -f "$FEATURES_DIR/advanced-fs.conf" ]; then
+                log "INFO" "Applying advanced filesystems kernel config overlay"
+                "$APPLY_OVERLAY" "$FEATURES_DIR/advanced-fs.conf" "linux/.config"
+            fi
+        else
+            log "WARNING" "Config overlay utility not found: $APPLY_OVERLAY"
+            log "INFO" "Continuing without applying feature-specific kernel options"
+        fi
+    fi
+
+# Use legacy kernel configs
 else
-    if [ ! -f "zfiles/.config" ]; then
-        log "ERROR" "Standard kernel configuration file not found: zfiles/.config"
-        exit 1
+    # Use appropriate kernel config based on build type
+    if [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
+        if [ ! -f "$LEGACY_MINIMAL_CONFIG" ]; then
+            log "ERROR" "Minimal kernel configuration file not found: $LEGACY_MINIMAL_CONFIG"
+            exit 1
+        fi
+        log "INFO" "Using legacy minimal kernel configuration"
+        cp "$LEGACY_MINIMAL_CONFIG" linux/.config
+    else
+        if [ ! -f "$LEGACY_STANDARD_CONFIG" ]; then
+            log "ERROR" "Standard kernel configuration file not found: $LEGACY_STANDARD_CONFIG"
+            exit 1
+        fi
+        log "INFO" "Using legacy standard kernel configuration"
+        cp "$LEGACY_STANDARD_CONFIG" linux/.config
     fi
-    log "INFO" "Using standard kernel configuration"
-    cp zfiles/.config linux/
 fi
+
 log "SUCCESS" "Kernel configuration copied"
 
 # Legacy commented code preserved for reference
