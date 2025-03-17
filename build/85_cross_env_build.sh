@@ -490,6 +490,12 @@ configure_system() {
 build_kernel() {
     print_section "Building Linux kernel"
     
+    # Fix kernel permissions before building
+    if type -t fix_kernel_permissions >/dev/null; then
+        log "INFO" "Fixing kernel permissions before build"
+        fix_kernel_permissions "$KERNEL_DIR"
+    fi
+    
     # Detect available system memory
     local available_memory_kb=0
     local total_cores=0

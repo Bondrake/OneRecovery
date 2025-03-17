@@ -83,6 +83,34 @@ fi
 # Add environment variable to indicate we're in a Docker environment
 export IN_DOCKER_CONTAINER=true
 
+# Function to fix kernel permissions (called before build)
+fix_kernel_permissions() {
+    log_info "Checking for kernel source directory permissions"
+    
+    # Check if linux directory exists
+    if [ -d "/onerecovery/build/linux" ]; then
+        log_info "Fixing permissions for kernel source directory"
+        
+        # Find problematic directories with incorrect permissions
+        find /onerecovery/build/linux -type d -not -perm -u+rwx -exec chmod u+rwx {} \; 2>/dev/null || true
+        
+        # Find problematic files with incorrect permissions
+        find /onerecovery/build/linux -type f -not -perm -u+rw -exec chmod u+rw {} \; 2>/dev/null || true
+        
+        # Specifically handle common problem areas
+        chmod -R u+rwX /onerecovery/build/linux/include 2>/dev/null || true
+        chmod -R u+rwX /onerecovery/build/linux/arch 2>/dev/null || true
+        chmod -R u+rwX /onerecovery/build/linux/scripts 2>/dev/null || true
+        
+        # Make sure scripts are executable
+        find /onerecovery/build/linux/scripts -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+        
+        log_info "Kernel source permissions fixed"
+    else
+        log_info "Kernel source directory not found, skipping permission fix"
+    fi
+}
+
 # Set up performance optimizations
 log_info "Setting up build performance optimizations"
 
@@ -164,6 +192,9 @@ cd /onerecovery/build
 
 # Define function to run build
 run_build() {
+    # Fix kernel permissions to avoid build errors
+    fix_kernel_permissions
+    
     # Check for the core library script (85_cross_env_build.sh is optional since we'll handle it separately)
     if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ]; then
         # Use the library-based build system for consistent builds

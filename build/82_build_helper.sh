@@ -811,10 +811,122 @@ get_alpine_minirootfs_url() {
     echo "$alpine_url"
 }
 
+# Check if extraction is needed based on target directory contents
+needs_extraction() {
+    local target_dir="$1"
+    local component_type="$2"
+    
+    # Return true if target directory doesn't exist (needs extraction)
+    if [ ! -d "$target_dir" ]; then
+        return 0
+    fi
+    
+    # Check for extraction completion marker
+    if [ -f "$target_dir/.extraction_complete" ]; then
+        log "INFO" "Component already extracted (found marker file)"
+        return 1
+    fi
+    
+    # Component-specific checks
+    case "$component_type" in
+        "kernel")
+            # For Linux kernel, check if key files exist that would indicate extraction is complete
+            if [ -f "$target_dir/Makefile" ] && [ -d "$target_dir/scripts" ]; then
+                log "INFO" "Linux kernel appears to be already extracted"
+                # Create the marker file for future checks
+                touch "$target_dir/.extraction_complete"
+                return 1
+            fi
+            ;;
+        "alpine")
+            # For Alpine Linux, check if /etc/alpine-release exists
+            if [ -f "$target_dir/etc/alpine-release" ]; then
+                log "INFO" "Alpine Linux appears to be already extracted"
+                # Create the marker file for future checks
+                touch "$target_dir/.extraction_complete"
+                return 1
+            fi
+            ;;
+        "zfs")
+            # For ZFS, check if configure or autogen.sh exists
+            if [ -f "$target_dir/configure" ] || [ -f "$target_dir/autogen.sh" ]; then
+                log "INFO" "OpenZFS appears to be already extracted"
+                # Create the marker file for future checks
+                touch "$target_dir/.extraction_complete"
+                return 1
+            fi
+            ;;
+        *)
+            # For unknown components, check if directory is not empty
+            if [ "$(ls -A "$target_dir" 2>/dev/null)" ]; then
+                log "INFO" "Directory not empty, assuming already extracted"
+                # Create the marker file for future checks
+                touch "$target_dir/.extraction_complete"
+                return 1
+            fi
+            ;;
+    esac
+    
+    # If we reach here, extraction is needed
+    return 0
+}
+
+# Mark extraction as complete
+mark_extraction_complete() {
+    local target_dir="$1"
+    
+    if [ -d "$target_dir" ]; then
+        touch "$target_dir/.extraction_complete"
+        log "INFO" "Marked extraction as complete"
+    fi
+}
+
+# Fix kernel permissions to avoid build errors
+fix_kernel_permissions() {
+    local kernel_dir="${1:-linux}"
+    log "INFO" "Ensuring proper permissions for kernel source at $kernel_dir"
+    
+    if [ ! -d "$kernel_dir" ]; then
+        log "WARNING" "Kernel directory not found: $kernel_dir"
+        return 1
+    fi
+    
+    # Check if we're in a container environment
+    if is_docker_container || is_restricted_environment; then
+        log "INFO" "Detected container environment, applying special permission fixes"
+        
+        # Fix directory permissions with u+rwx
+        find "$kernel_dir" -type d -not -perm -u+rwx -exec chmod u+rwx {} \; 2>/dev/null || true
+        
+        # Fix file permissions with u+rw
+        find "$kernel_dir" -type f -not -perm -u+rw -exec chmod u+rw {} \; 2>/dev/null || true
+        
+        # Specifically handle critical directories
+        for dir in include arch scripts tools; do
+            if [ -d "$kernel_dir/$dir" ]; then
+                log "INFO" "Fixing permissions for $kernel_dir/$dir"
+                chmod -R u+rwX "$kernel_dir/$dir" 2>/dev/null || true
+            fi
+        done
+        
+        # Ensure scripts are executable
+        find "$kernel_dir/scripts" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    else
+        # For non-container environments, just ensure scripts are executable
+        find "$kernel_dir/scripts" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    fi
+    
+    log "SUCCESS" "Kernel source permissions fixed"
+    return 0
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
 export -f is_restricted_environment
+export -f needs_extraction
+export -f mark_extraction_complete
+export -f fix_kernel_permissions
 export -f print_environment_info
 export -f fix_script_permissions
 export -f ensure_directory

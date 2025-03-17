@@ -9,28 +9,31 @@
 # Define script name for error handling
 SCRIPT_NAME=$(basename "$0")
 
+# Determine the absolute path to the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Source the core library first (required)
-if [ ! -f "./80_common.sh" ]; then
-    echo "ERROR: Critical library file not found: ./80_common.sh"
+if [ ! -f "${SCRIPT_DIR}/80_common.sh" ]; then
+    echo "ERROR: Critical library file not found: ${SCRIPT_DIR}/80_common.sh"
     exit 1
 fi
-source ./80_common.sh
+source "${SCRIPT_DIR}/80_common.sh"
 
 # Source all library scripts using the source_libraries function
-source_libraries "."
+source_libraries "${SCRIPT_DIR}"
 
 # Initialize script with standard header (prints banner)
 initialize_script
 
 # Check for cross-environment build script
-if [ ! -f "./85_cross_env_build.sh" ]; then
-    log "ERROR" "Cross-environment build script not found: ./85_cross_env_build.sh"
+if [ ! -f "${SCRIPT_DIR}/85_cross_env_build.sh" ]; then
+    log "ERROR" "Cross-environment build script not found: ${SCRIPT_DIR}/85_cross_env_build.sh"
     log "ERROR" "Please ensure all build system scripts are available"
     exit 1
 fi
 
 # Make sure cross-environment build script is executable
-chmod +x ./85_cross_env_build.sh
+chmod +x "${SCRIPT_DIR}/85_cross_env_build.sh"
 
 # Map legacy environment variables to modern build arguments
 BUILD_ARGS=""
@@ -115,12 +118,6 @@ log "INFO" "Please consider using 85_cross_env_build.sh directly."
 # Record the start time to measure build duration
 BUILD_START_TIME=$(date +%s)
 
-# Change back to the build directory
-cd ..
-
-# Execute the cross-environment build script
-log "INFO" "Executing cross-environment build script"
-
 # Define the path to the cross-environment build script
 CROSS_ENV_SCRIPT="${SCRIPT_DIR}/85_cross_env_build.sh"
 
@@ -131,10 +128,15 @@ if [ ! -f "$CROSS_ENV_SCRIPT" ]; then
     exit 1
 fi
 
+# Make sure we're in the build directory (don't change directories)
+# The SCRIPT_DIR already points to the correct directory
+cd "${SCRIPT_DIR}"
+
 # Make sure it's executable
 chmod +x "$CROSS_ENV_SCRIPT"
 
-# Log the command using the absolute path for clarity
+# Execute the cross-environment build script
+log "INFO" "Executing cross-environment build script"
 log "INFO" "Command: $CROSS_ENV_SCRIPT $BUILD_ARGS"
 
 # Execute with absolute path

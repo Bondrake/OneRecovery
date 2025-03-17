@@ -384,9 +384,16 @@ main() {
         exit 1
     fi
     
-    if ! extract_archive "$alpineminirootfsfile" "./alpine-minirootfs" "Alpine Linux"; then
-        log "ERROR" "Failed to extract Alpine Linux"
-        exit 1
+    # Check if extraction is needed using our library function
+    if needs_extraction "./alpine-minirootfs" "alpine"; then
+        if ! extract_archive "$alpineminirootfsfile" "./alpine-minirootfs" "Alpine Linux"; then
+            log "ERROR" "Failed to extract Alpine Linux"
+            exit 1
+        fi
+        # Mark extraction as complete
+        mark_extraction_complete "./alpine-minirootfs"
+    else
+        log "INFO" "Skipping Alpine Linux extraction - already completed"
     fi
 
     # Step 2: Download and extract Linux kernel
@@ -396,9 +403,16 @@ main() {
         exit 1
     fi
     
-    if ! extract_archive "$linuxver.tar.xz" "" "Linux kernel"; then
-        log "ERROR" "Failed to extract Linux kernel"
-        exit 1
+    # Check if extraction is needed using our library function
+    if needs_extraction "$linuxver" "kernel"; then
+        if ! extract_archive "$linuxver.tar.xz" "" "Linux kernel"; then
+            log "ERROR" "Failed to extract Linux kernel"
+            exit 1
+        fi
+        # Mark extraction as complete
+        mark_extraction_complete "$linuxver"
+    else
+        log "INFO" "Skipping Linux kernel extraction - already completed"
     fi
 
     # Create symbolic link to Linux kernel directory
@@ -421,15 +435,22 @@ main() {
             rm -rf "zfs-${zfsver}"
         fi
         
-        # If zfs directory exists, extract directly to it
+        # Check if extraction is needed for zfs
         if [ -d "zfs" ]; then
-            if ! extract_archive "zfs-${zfsver}.tar.gz" "zfs" "OpenZFS"; then
-                log "ERROR" "Failed to extract OpenZFS"
-                exit 1
+            # Directory exists, check if extraction needed using our library function
+            if needs_extraction "zfs" "zfs"; then
+                if ! extract_archive "zfs-${zfsver}.tar.gz" "zfs" "OpenZFS"; then
+                    log "ERROR" "Failed to extract OpenZFS"
+                    exit 1
+                fi
+                # Mark extraction as complete
+                mark_extraction_complete "zfs"
+                log "INFO" "Extracted OpenZFS to existing zfs directory"
+            else
+                log "INFO" "Skipping OpenZFS extraction - already completed"
             fi
-            log "INFO" "Extracted OpenZFS to existing zfs directory"
         else
-            # Extract to temporary directory and rename
+            # No directory exists yet, extract and rename
             if ! extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS"; then
                 log "ERROR" "Failed to extract OpenZFS"
                 exit 1
@@ -438,6 +459,8 @@ main() {
             # Rename ZFS directory
             if [ -d "zfs-${zfsver}" ]; then
                 mv "zfs-${zfsver}" zfs
+                # Mark extraction as complete in the new location
+                mark_extraction_complete "zfs"
                 log "INFO" "Renamed ZFS directory from zfs-${zfsver} to zfs"
             else
                 log "ERROR" "Expected zfs-${zfsver} directory not found after extraction"
