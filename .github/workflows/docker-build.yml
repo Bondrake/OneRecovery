@@ -151,18 +151,21 @@ jobs:
           mkdir -p build output
           chmod -R 777 build output
           
-          # Prepare a clean environment for the kernel build
-          # This high-level approach avoids the need for per-directory fixes
+          # Setup for out-of-tree kernel build using O= parameter
           if [ -d "build/linux" ]; then
-            # Create a world-writable .config file
-            touch build/linux/.config
-            chmod 666 build/linux/.config
+            # Create a separate output directory with full permissions
+            mkdir -p build/linux-output
+            chmod -R 777 build/linux-output
             
-            # Apply world-writable permissions recursively to the kernel source tree
-            # This ensures any new directory created during the build will be writable
-            sudo chmod -R 777 build/linux
+            # Create world-writable .config file in the output directory
+            cp -f build/linux/.config build/linux-output/.config 2>/dev/null || touch build/linux-output/.config
+            chmod 666 build/linux-output/.config
             
-            echo "Applied global permission fix to build/linux directory"
+            # Set environment variables for the build script to use O= parameter
+            echo "KERNEL_BUILD_OUTPUT_DIR=linux-output" >> $GITHUB_ENV
+            echo "USE_OUT_OF_TREE_BUILD=true" >> $GITHUB_ENV
+            
+            echo "Configured for out-of-tree kernel build using O=linux-output parameter"
           fi
           
           # Run the build using standard approach with unified script
