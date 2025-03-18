@@ -245,8 +245,25 @@ jobs:
             echo "BUILD_AS_ROOT=true" >> $GITHUB_ENV
           fi
           
-          # Run the build using sudo for the entire process
-          cd build && sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --standard-kernel --with-zfs --use-cache --use-swap --make-verbose
+          # Export required environment variables for 03_conf.sh
+          echo "Configuring environment variables for overlay application"
+          export INCLUDE_ZFS="true"
+          export AUTO_KERNEL_CONFIG="true"
+          
+          # Run 03_conf.sh first to properly apply kernel config overlays
+          echo "Running configuration script to apply kernel config overlays"
+          cd build
+          sudo -E bash -c 'export INCLUDE_ZFS=true; export AUTO_KERNEL_CONFIG=true; ./03_conf.sh'
+          
+          # Verify the ZFS kernel config settings were applied
+          echo "Verifying ZFS kernel config settings:"
+          grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=" build/linux/.config || {
+            echo "WARNING: Critical ZFS dependencies not found, may cause build failures"
+          }
+          
+          # Then run the build using sudo
+          echo "Running main build script"
+          sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --standard-kernel --with-zfs --use-cache --use-swap --make-verbose
       
       - name: Check for build artifacts
         id: check_files
