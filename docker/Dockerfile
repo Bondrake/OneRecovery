@@ -67,7 +67,6 @@ RUN apk add --no-cache \
     gmp-dev \
     # Additional dependencies needed for ZFS
     libunwind-dev \
-    libudev-zero-dev \
     # Performance optimizations for archive extraction
     pigz \
     pv
