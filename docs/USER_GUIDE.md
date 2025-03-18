@@ -190,16 +190,16 @@ OneRecovery offers several build configurations to balance features and size:
 
 You can customize your build with these package groups:
 
-| Package Group | Size Impact | Description | Flag |
-|---------------|-------------|-------------|------|
-| Advanced FS | ~10MB | Extra filesystem tools | `--with-advanced-fs` |
-| Disk Diagnostics | ~15MB | Hardware testing tools | `--with-disk-diag` |
-| Network Tools | ~12MB | Network diagnostics | `--with-network-diag` |
-| System Tools | ~8MB | Advanced system utilities | `--with-system-tools` |
-| Data Recovery | ~20MB | Data rescue utilities | `--with-data-recovery` |
-| Boot Repair | ~15MB | Bootloader repair tools | `--with-boot-repair` |
-| Advanced Editors | ~5MB | Text editors and tools | `--with-editors` |
-| Security Tools | ~10MB | Security analysis tools | `--with-security` |
+| Package Group | Size Impact | Description | Flag | Included Packages |
+|---------------|-------------|-------------|------|-------------------|
+| Advanced FS | ~10MB | Extra filesystem tools | `--with-advanced-fs` | ntfs-3g, xfsprogs, gptfdisk, exfatprogs, f2fs-tools |
+| Disk Diagnostics | ~15MB | Hardware testing tools | `--with-disk-diag` | smartmontools, hdparm, nvme-cli, dmidecode, lshw |
+| Network Diagnostics | ~12MB | Network diagnostics | `--with-network-diag` | ethtool, nmap, wireguard-tools, openvpn |
+| System Tools | ~8MB | Advanced system utilities | `--with-system-tools` | htop, strace, pciutils, usbutils |
+| Data Recovery | ~20MB | Data rescue utilities | `--with-data-recovery` | testdisk (includes photorec) |
+| Boot Repair | ~15MB | Bootloader repair tools | `--with-boot-repair` | grub |
+| Advanced Editors | ~5MB | Text editors and tools | `--with-editors` | vim, tmux, jq |
+| Security Tools | ~10MB | Security analysis tools | `--with-security` | openssl |
 
 #### Detailed Build Script Options
 
@@ -330,7 +330,7 @@ Most modern systems have EFI partitions of 100MB or larger, which is adequate fo
 
 ## Installation
 
-### macOS Installation
+### MacOS Installation
 
 1. **Download OneRecovery.efi**
    From the releases page or build it yourself.
@@ -365,7 +365,7 @@ Most modern systems have EFI partitions of 100MB or larger, which is adequate fo
    
    After using OneRecovery, type `reboot` in the Linux console to return to macOS. Repeat steps 2 and 4 from Recovery Mode for subsequent uses.
 
-### PC/Windows Installation
+### PC (Windows/Linux) Installation
 
 There are multiple methods to boot OneRecovery on PC systems. The following procedure works for most systems without built-in UEFI Shell access.
 
@@ -909,6 +909,20 @@ OneRecovery's feature flags control which components are included in the build, 
 | Full | `--full` | All features included | ~40-60MB |
 
 #### Core Feature Flags
+
+##### Core Package Groups
+
+These package groups are enabled by default in standard builds and can be individually controlled:
+
+| Package Group | Enabled By | Included Packages |
+|---------------|------------|-------------------|
+| Base System | (always included) | openrc, nano, mc, bash, parted, dropbear, dropbear-ssh, efibootmgr, e2fsprogs, e2fsprogs-extra, dosfstools, dmraid, fuse, gawk, grep, sed, util-linux, wget |
+| ZFS Support | `INCLUDE_ZFS` | zfs, util-linux-dev, util-linux-misc, util-linux, util-linux-bash-completion |
+| BTRFS Support | `INCLUDE_BTRFS` | btrfs-progs |
+| Recovery Tools | `INCLUDE_RECOVERY_TOOLS` | testdisk, ddrescue, rsync, unzip, tar |
+| Network Tools | `INCLUDE_NETWORK_TOOLS` | curl, rsync, iperf3, tcpdump, nftables |
+| Crypto Support | `INCLUDE_CRYPTO` | cryptsetup, lvm2, mdadm |
+| Text UI | `INCLUDE_TUI` | ncurses-terminfo-base, less |
 
 | Flag | Default | Description |
 |------|---------|-------------|

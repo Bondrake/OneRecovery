@@ -82,16 +82,16 @@ OneRecovery offers several build configurations to balance features and size:
 
 You can customize your build with these package groups:
 
-| Package Group | Size Impact | Description | Flag |
-|---------------|-------------|-------------|------|
-| Advanced FS | ~10MB | Extra filesystem tools | `--with-advanced-fs` |
-| Disk Diagnostics | ~15MB | Hardware testing tools | `--with-disk-diag` |
-| Network Tools | ~12MB | Network diagnostics | `--with-network-diag` |
-| System Tools | ~8MB | Advanced system utilities | `--with-system-tools` |
-| Data Recovery | ~20MB | Data rescue utilities | `--with-data-recovery` |
-| Boot Repair | ~15MB | Bootloader repair tools | `--with-boot-repair` |
-| Advanced Editors | ~5MB | Text editors and tools | `--with-editors` |
-| Security Tools | ~10MB | Security analysis tools | `--with-security` |
+| Package Group | Size Impact | Description | Flag | Included Packages |
+|---------------|-------------|-------------|------|-------------------|
+| Advanced FS | ~10MB | Extra filesystem tools | `--with-advanced-fs` | ntfs-3g, xfsprogs, gptfdisk, exfatprogs, f2fs-tools |
+| Disk Diagnostics | ~15MB | Hardware testing tools | `--with-disk-diag` | smartmontools, hdparm, nvme-cli, dmidecode, lshw |
+| Network Diagnostics | ~12MB | Network diagnostics | `--with-network-diag` | ethtool, nmap, wireguard-tools, openvpn |
+| System Tools | ~8MB | Advanced system utilities | `--with-system-tools` | htop, strace, pciutils, usbutils |
+| Data Recovery | ~20MB | Data rescue utilities | `--with-data-recovery` | testdisk (includes photorec) |
+| Boot Repair | ~15MB | Bootloader repair tools | `--with-boot-repair` | grub |
+| Advanced Editors | ~5MB | Text editors and tools | `--with-editors` | vim, tmux, jq |
+| Security Tools | ~10MB | Security analysis tools | `--with-security` | openssl |
 
 ## Installation
 
