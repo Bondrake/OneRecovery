@@ -100,10 +100,22 @@ main() {
     fi
     end_timing
     
-    # Fix kernel ABI headers before build
-    start_timing "Kernel ABI fix"
+    # Apply kernel patches and fix ABI headers before build
+    start_timing "Kernel patches and ABI fix"
+    
+    # Apply custom kernel patches first
+    if [ -x "$BUILD_DIR/tools/apply-kernel-patches.sh" ]; then
+        log "INFO" "Applying custom kernel patches"
+        chmod +x "$BUILD_DIR/tools/apply-kernel-patches.sh"
+        bash "$BUILD_DIR/tools/apply-kernel-patches.sh" "$KERNEL_DIR" || log "WARNING" "Patch application failed, but continuing anyway"
+    else
+        log "WARNING" "Kernel patch script not found, creating it"
+        mkdir -p "$BUILD_DIR/tools/custom-kernel-patches"
+    fi
+    
+    # Fall back to direct ABI header fix if patching fails
     if [ -x "$BUILD_DIR/tools/fix-kernel-abi.sh" ]; then
-        log "INFO" "Fixing kernel ABI header mismatches"
+        log "INFO" "Fixing kernel ABI header mismatches directly"
         # Run with bash explicitly to ensure proper execution
         bash "$BUILD_DIR/tools/fix-kernel-abi.sh" "$KERNEL_DIR" || log "WARNING" "ABI header fix failed, but continuing anyway"
     else
