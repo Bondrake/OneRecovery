@@ -29,6 +29,7 @@ download_alpine_config() {
     local alpine_version="${2:-$ALPINE_VERSION}"  # Use the version from common library
     
     local config_url="https://git.alpinelinux.org/aports/plain/main/linux-lts/lts.x86_64.config"
+    # Use kernel-configs as the idiomatic location for build-time configurations
     local output_file="$base_dir/kernel-configs/base/alpine-lts-$alpine_version.config"
     
     log "INFO" "Downloading Alpine Linux LTS kernel config from $config_url"
@@ -36,10 +37,9 @@ download_alpine_config() {
     # Create the directory if it doesn't exist
     mkdir -p "$(dirname "$output_file")"
     
-    # Define multiple URLs to try (fallbacks)
+    # Define multiple URLs to try (fallbacks) - only verified working URLs
     local urls=(
         "$config_url"
-        "https://raw.githubusercontent.com/alpinelinux/aports/master/main/linux-lts/config-lts.x86_64"
         "https://git.alpinelinux.org/aports/plain/main/linux-lts/lts.x86_64.config"
         "https://github.com/alpinelinux/aports/raw/refs/heads/master/main/linux-lts/lts.x86_64.config"
     )
@@ -51,16 +51,38 @@ download_alpine_config() {
         
         # Use wget if available, otherwise curl
         if command -v wget > /dev/null; then
-            if wget -q --timeout=30 --tries=3 -O "$output_file" "$url"; then
+            # Use verbose output for debugging during first attempt
+            if [ "$url" = "$config_url" ]; then
+                log "INFO" "First download attempt, using verbose output for wget"
+                wget -v --timeout=30 --tries=3 -O "$output_file" "$url" || log "ERROR" "wget failed with exit code $?"
+            else
+                wget -q --timeout=30 --tries=3 -O "$output_file" "$url" || log "ERROR" "wget failed with exit code $?"
+            fi
+            
+            # Check if the download produced a valid file
+            if [ -s "$output_file" ]; then
                 download_success=true
                 log "SUCCESS" "Downloaded using wget from $url"
                 break
+            else
+                log "ERROR" "wget download from $url produced empty file or failed"
             fi
         elif command -v curl > /dev/null; then
-            if curl -s --connect-timeout 30 --retry 3 -o "$output_file" "$url"; then
+            # Use verbose output for debugging during first attempt
+            if [ "$url" = "$config_url" ]; then
+                log "INFO" "First download attempt, using verbose output for curl"
+                curl -v --connect-timeout 30 --retry 3 -o "$output_file" "$url" || log "ERROR" "curl failed with exit code $?"
+            else
+                curl -s --connect-timeout 30 --retry 3 -o "$output_file" "$url" || log "ERROR" "curl failed with exit code $?"
+            fi
+            
+            # Check if the download produced a valid file
+            if [ -s "$output_file" ]; then
                 download_success=true
                 log "SUCCESS" "Downloaded using curl from $url"
                 break
+            else
+                log "ERROR" "curl download from $url produced empty file or failed"
             fi
         else
             log "ERROR" "Neither wget nor curl is available. Please install one of them."

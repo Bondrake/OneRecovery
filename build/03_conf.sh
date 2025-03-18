@@ -226,7 +226,7 @@ log "INFO" "Setting up kernel configuration"
 mkdir -p alpine-minirootfs/lib/
 
 # Kernel configuration paths
-KERNEL_CONFIG_DIR="zfiles/kernel-configs"
+KERNEL_CONFIG_DIR="kernel-configs"
 FEATURES_DIR="$KERNEL_CONFIG_DIR/features"
 ALPINE_CONFIG_MINIMAL="$KERNEL_CONFIG_DIR/minimal.config"
 ALPINE_CONFIG_STANDARD="$KERNEL_CONFIG_DIR/standard.config"
