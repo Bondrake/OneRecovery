@@ -84,9 +84,14 @@ jobs:
           # Verify docker-compose is now available
           docker-compose --version || echo "Warning: docker-compose not available, will use docker compose plugin directly"
 
-          # Create output directories with appropriate permissions
+          # Create output directories with appropriate permissions and ensure docker can write to them
           mkdir -p build/output output
+          sudo chown -R $(id -u):$(id -g) build output
           sudo chmod -R 777 build output
+          
+          # Create a .build_progress file with correct permissions if it doesn't exist
+          touch build/.build_progress
+          chmod 666 build/.build_progress
 
           # Make all scripts executable
           chmod -R +x build/*.sh docker/*.sh
@@ -110,11 +115,11 @@ jobs:
             ccache-${{ runner.os }}-
 
       # Create custom env file for GitHub Actions using the same docker-compose setup as local
-      - name: Configure build environmen
+      - name: Configure build environment
         run: |
           # Create .env file with GitHub-specific settings
           cat > docker/.env << EOF
-          # GitHub Actions build environmen
+          # GitHub Actions build environment
           # Generated at $(date)
 
           # Build arguments from matrix
@@ -124,7 +129,7 @@ jobs:
           DOCKER_MEMORY=7g
           DOCKER_CPUS=2
 
-          # User ID mapping
+          # User ID mapping - use the runner's UID/GID
           HOST_UID=$(id -u)
           HOST_GID=$(id -g)
 
@@ -133,7 +138,16 @@ jobs:
 
           # Debug settings
           DEBUG_FEATURE_FLAGS=true
+          
+          # Docker permissions - explicitly mark as permissive
+          DOCKER_PERMISSIVE_MODE=true
           EOF
+          
+          # Also prepare build directory for Docker entrypoint
+          mkdir -p build/.onerecovery
+          touch build/.onerecovery/host_uid_gid
+          echo "$(id -u):$(id -g)" > build/.onerecovery/host_uid_gid
+          chmod 666 build/.onerecovery/host_uid_gid
 
           # Create ccache directory with proper permissions
           mkdir -p ~/.ccache
@@ -154,6 +168,11 @@ jobs:
           echo "Building with arguments: $BUILD_ARGS"
           cat .env
 
+          # Set environment variables for Docker
+          export HOST_UID=$(id -u)
+          export HOST_GID=$(id -g)
+          echo "Setting HOST_UID=$HOST_UID and HOST_GID=$HOST_GID in environment"
+          
           # Use the local docker-compose setup for builds
           # Try both docker-compose and docker compose commands
           if command -v docker-compose &> /dev/null; then
