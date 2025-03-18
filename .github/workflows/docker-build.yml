@@ -245,25 +245,53 @@ jobs:
             echo "BUILD_AS_ROOT=true" >> $GITHUB_ENV
           fi
           
-          # Export required environment variables for 03_conf.sh
-          echo "Configuring environment variables for overlay application"
+          # Export required environment variables
+          echo "Configuring environment variables for build sequence"
           export INCLUDE_ZFS="true"
           export AUTO_KERNEL_CONFIG="true"
+          export USE_CACHE="true"
+          export CACHE_DIR="/tmp/onerecovery-cache"
           
-          # Run 03_conf.sh first to properly apply kernel config overlays
-          echo "Running configuration script to apply kernel config overlays"
           cd build
+          
+          # Create required directories (normally done by 00_prepare.sh)
+          echo "Creating required directories for build"
+          mkdir -p alpine-minirootfs/lib/modules
+          mkdir -p alpine-minirootfs/dev
+          mkdir -p "$CACHE_DIR/sources"
+          mkdir -p "$CACHE_DIR/ccache"
+          mkdir -p "$CACHE_DIR/packages"
+          chmod -R 777 alpine-minirootfs "$CACHE_DIR"
+          
+          # Run the build sequence in order
+          echo "Step 1: Running 01_get.sh to download sources"
+          sudo -E bash -c 'export INCLUDE_ZFS=true; export USE_CACHE=true; export CACHE_DIR=/tmp/onerecovery-cache; ./01_get.sh'
+          
+          echo "Step 2: Running 02_chrootandinstall.sh to prepare Alpine environment"
+          sudo -E bash -c 'export INCLUDE_ZFS=true; ./02_chrootandinstall.sh'
+          
+          echo "Step 3: Running 03_conf.sh to apply kernel config overlays"
           sudo -E bash -c 'export INCLUDE_ZFS=true; export AUTO_KERNEL_CONFIG=true; ./03_conf.sh'
           
-          # Verify the ZFS kernel config settings were applied
+          # Verify the ZFS kernel config settings were applied (fail early if not)
           echo "Verifying ZFS kernel config settings:"
-          grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=" build/linux/.config || {
-            echo "WARNING: Critical ZFS dependencies not found, may cause build failures"
-          }
+          if ! grep -q "^CONFIG_ZLIB_DEFLATE=y" linux/.config; then
+            echo "ERROR: CONFIG_ZLIB_DEFLATE=y not found in kernel config after applying overlay"
+            echo "This critical ZFS dependency is missing and must be fixed in the overlay system"
+            exit 1
+          fi
           
-          # Then run the build using sudo
-          echo "Running main build script"
-          sudo -E ./85_cross_env_build.sh ${{ matrix.build_args }} --standard-kernel --with-zfs --use-cache --use-swap --make-verbose
+          if ! grep -q "^CONFIG_MODULES=y" linux/.config; then
+            echo "ERROR: CONFIG_MODULES=y not found in kernel config after applying overlay"
+            echo "This critical kernel module dependency is missing and must be fixed"
+            exit 1
+          fi
+          
+          echo "SUCCESS: Critical ZFS kernel dependencies verified"
+          
+          # Run the main build
+          echo "Step 4: Running 04_build.sh for final build"
+          sudo -E ./04_build.sh ${{ matrix.build_args }}
       
       - name: Check for build artifacts
         id: check_files
