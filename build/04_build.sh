@@ -104,7 +104,8 @@ main() {
     start_timing "Kernel ABI fix"
     if [ -x "$BUILD_DIR/tools/fix-kernel-abi.sh" ]; then
         log "INFO" "Fixing kernel ABI header mismatches"
-        "$BUILD_DIR/tools/fix-kernel-abi.sh" "$KERNEL_DIR" || log "WARNING" "ABI header fix failed, but continuing anyway"
+        # Run with bash explicitly to ensure proper execution
+        bash "$BUILD_DIR/tools/fix-kernel-abi.sh" "$KERNEL_DIR" || log "WARNING" "ABI header fix failed, but continuing anyway"
     else
         log "WARNING" "Kernel ABI fixer script not found or not executable"
     fi
