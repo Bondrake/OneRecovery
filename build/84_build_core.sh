@@ -52,6 +52,12 @@ build_kernel() {
     local threads=$(get_optimal_threads)
     log "INFO" "Building kernel with $threads threads"
     
+    # Validate threads is an integer, replace with default if not
+    if ! [[ "$threads" =~ ^[0-9]+$ ]]; then
+        log "WARNING" "Thread count is not a valid number: '$threads'. Using default: 2"
+        threads=2
+    fi
+    
     # Check kernel size before building
     local kernel_size=$(du -sh "$KERNEL_DIR" 2>/dev/null | cut -f1 || echo "unknown")
     log "INFO" "Kernel source size: $kernel_size"
@@ -304,6 +310,12 @@ build_zfs() {
     # Get optimal number of threads for building
     local threads=$(get_optimal_threads)
     log "INFO" "Building ZFS with $threads threads"
+    
+    # Validate threads is an integer, replace with default if not
+    if ! [[ "$threads" =~ ^[0-9]+$ ]]; then
+        log "WARNING" "Thread count is not a valid number: '$threads'. Using default: 2"
+        threads=2
+    fi
     
     # Get optimized compiler flags based on memory conditions
     export CFLAGS=$(get_memory_optimized_cflags)

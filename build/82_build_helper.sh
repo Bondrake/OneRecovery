@@ -549,11 +549,13 @@ get_optimal_threads() {
     
     # Convert to GB for display and debugging
     local available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
-    log "INFO" "Available memory: ${available_memory_gb}GB"
+    # Log inside a subshell to prevent it from affecting the function output
+    (log "INFO" "Available memory: ${available_memory_gb}GB")
     
     # Detect total cores
     total_cores=$(nproc 2>/dev/null || echo 2)
-    log "INFO" "System has $total_cores CPU threads available"
+    # Log inside a subshell to prevent it from affecting the function output
+    (log "INFO" "System has $total_cores CPU threads available")
     
     # Calculate a safe number of threads based on available memory
     # Empirically, each compilation thread needs ~2GB for kernel compilation
@@ -566,26 +568,32 @@ get_optimal_threads() {
         
         # Special handling for extremely low memory (< 4GB) environments
         if [ "$available_memory_kb" -lt 4000000 ]; then
-            log "WARNING" "Very low memory environment detected (${available_memory_gb}GB)"
+            # Log inside a subshell to prevent it from affecting the function output
+            (log "WARNING" "Very low memory environment detected (${available_memory_gb}GB)")
             
             # In extremely low memory environments, limit to 2 threads max
             if [ "$safe_threads" -gt 2 ]; then
-                log "WARNING" "Reducing threads from $safe_threads to 2 due to very low memory"
+                # Log inside a subshell to prevent it from affecting the function output
+                (log "WARNING" "Reducing threads from $safe_threads to 2 due to very low memory")
                 safe_threads=2
             fi
             
             # In GitHub Actions, be even more conservative with 1 thread
             if is_github_actions && [ "$safe_threads" -gt 1 ]; then
-                log "WARNING" "GitHub Actions with very low memory: limiting to 1 thread for reliability"
+                # Log inside a subshell to prevent it from affecting the function output
+                (log "WARNING" "GitHub Actions with very low memory: limiting to 1 thread for reliability")
                 safe_threads=1
             fi
         fi
         
-        log "INFO" "Using $safe_threads build threads (based on available memory)"
+        # Log inside a subshell to prevent it from affecting the function output
+        (log "INFO" "Using $safe_threads build threads (based on available memory)")
+        # Return only the number, without any text
         echo "$safe_threads"
     else
         # Default to 2 threads if memory detection failed
-        log "WARNING" "Could not detect available memory. Using conservative thread count: 2"
+        # Log inside a subshell to prevent it from affecting the function output
+        (log "WARNING" "Could not detect available memory. Using conservative thread count: 2")
         echo "2"
     fi
 }
