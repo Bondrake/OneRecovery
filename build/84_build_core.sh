@@ -442,12 +442,27 @@ build_zfs() {
         touch "$KERNEL_DIR/Module.symvers"
     fi
     
-    # Configure ZFS for the kernel with verbose output
-    log "INFO" "Configuring ZFS for the kernel"
-    KCFLAGS="-DCONFIG_MODULES" \
+    # Create a minimal environment for ZFS module build
+    log "INFO" "Setting up minimal kernel environment for ZFS"
+    
+    # Ensure the basic directory structure exists
+    mkdir -p "$KERNEL_DIR/include/linux"
+    mkdir -p "$KERNEL_DIR/include/config"
+    mkdir -p "$KERNEL_DIR/include/generated/uapi/linux"
+    
+    # Create key files that ZFS looks for
+    echo "#define MODULES 1" > "$KERNEL_DIR/include/generated/uapi/linux/modules.h"
+    echo "#define CONFIG_MODULES 1" > "$KERNEL_DIR/include/linux/module.h"
+    
+    # Configure ZFS using ZFS_MODULE_COMPILER_FLAGS
+    log "INFO" "Configuring ZFS for the kernel with custom flags"
+    SKIP_TOOLS=1 \
+    KERNELMAKE_PARAMS="-k" \
+    ZFS_MODULE_COMPILER_FLAGS="-DCONFIG_MODULES=1" \
+    KCFLAGS="-DCONFIG_MODULES=1" \
     KBUILD_MODPOST_WARN=0 \
-    KERNELCPPFLAGS="-DCONFIG_MODULES" \
-    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
+    KERNELCPPFLAGS="-DCONFIG_MODULES=1" \
+    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug --with-linux-version=6.12.19 || {
         log "ERROR" "ZFS configuration failed"
         
         # Print full kernel config for debugging
