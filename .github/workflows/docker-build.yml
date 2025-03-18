@@ -2,10 +2,11 @@ name: Docker Build
 
 on:
   push:
-    branches: [master, main, dev]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    # Only build on tags, not branches
+    branches: []  # Empty list means no branch triggers
+    tags:
+      - 'build-*'  # Tags for builds only (no release)
+      - 'v*'       # Tags for builds with releases (e.g., v1.0.0)
   pull_request:
     branches: [master, main]
     paths-ignore:
@@ -29,7 +30,17 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      release: ${{ steps.check-release.outputs.should_release }}
     steps:
+      - id: check-release
+        run: |
+          # Check if this is a release tag (starts with 'v')
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+      
       - id: set-matrix
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -222,7 +233,7 @@ jobs:
             exit 1
           fi
 
-      - name: Upload build artifac
+      - name: Upload build artifact
         if: steps.check_files.outputs.efi_file == 'true'
         uses: actions/upload-artifact@v4
         with:
@@ -238,11 +249,12 @@ jobs:
           path: ./build/build_timing.log
           if-no-files-found: warn
 
-  # Release job to package all artifacts
+  # Release job - now conditional on the tag pattern only
   release:
     name: Package and Release
-    needs: build
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    needs: [setup, build]
+    # Only run release job for 'v*' tags
+    if: needs.setup.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -273,3 +285,13 @@ jobs:
         with:
           name: OneRecovery-release
           path: ./release/OneRecovery-release.zip
+
+      # Create GitHub Release for v* tags
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./release/OneRecovery-release.zip
+          name: "OneRecovery ${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          generate_release_notes: true
