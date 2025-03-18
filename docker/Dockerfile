@@ -17,6 +17,7 @@ RUN apk add --no-cache \
     automake \
     libtool \
     util-linux \
+    util-linux-dev \
     xz-dev \
     zlib-dev \
     zstd-dev \
@@ -40,6 +41,7 @@ RUN apk add --no-cache \
     python3 \
     ncurses-dev \
     e2fsprogs \
+    e2fsprogs-dev \
     coreutils \
     mtools \
     xorriso \
@@ -49,6 +51,10 @@ RUN apk add --no-cache \
     rsync \
     shadow \
     su-exec \
+    # Package config tool for build system
+    pkgconf \
+    # UUID libraries required for ZFS
+    libuuid \
     # Performance optimizations for archive extraction
     pigz \
     pv
