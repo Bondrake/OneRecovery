@@ -195,7 +195,7 @@ run_build() {
     # Fix kernel permissions to avoid build errors
     fix_kernel_permissions
     
-    # Check for the core library script (85_cross_env_build.sh is optional since we'll handle it separately)
+    # Check for the core library scripts
     if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ]; then
         # Use the library-based build system for consistent builds
         echo "Using library-based build system"
@@ -206,29 +206,29 @@ run_build() {
         chmod +x 82_build_helper.sh
         chmod +x 83_config_helper.sh
         
-        # Make sure the cross-environment build script exists and is executable
-        if [ -f "85_cross_env_build.sh" ]; then
-            chmod +x 85_cross_env_build.sh
-            echo "Found cross-environment build script: 85_cross_env_build.sh"
+        # Make sure the build script exists and is executable
+        if [ -f "04_build.sh" ]; then
+            chmod +x 04_build.sh
+            echo "Found build script: 04_build.sh"
         else
-            echo "WARNING: Cross-environment build script not found in container"
+            echo "WARNING: Build script not found in container"
             echo "Searching for the script in the build directory..."
             
             # Find the script in the mounted volumes
-            SCRIPT_PATH=$(find /onerecovery -name "85_cross_env_build.sh" -type f 2>/dev/null | head -n 1)
+            SCRIPT_PATH=$(find /onerecovery -name "04_build.sh" -type f 2>/dev/null | head -n 1)
             
             if [ -n "$SCRIPT_PATH" ]; then
                 echo "Found script at: $SCRIPT_PATH"
                 echo "Creating symlink to make script accessible"
-                ln -sf "$SCRIPT_PATH" ./85_cross_env_build.sh
-                chmod +x 85_cross_env_build.sh
+                ln -sf "$SCRIPT_PATH" ./04_build.sh
+                chmod +x 04_build.sh
             else
-                echo "ERROR: Critical file not found: 85_cross_env_build.sh"
+                echo "ERROR: Critical file not found: 04_build.sh"
                 echo "Please ensure the build directory is correctly mounted"
             fi
         fi
         
-        # Use unified build script with cross-environment support
+        # Use standard build script
         
         # Add common options for better performance
         if [ -n "$BUILD_ARGS" ]; then
@@ -240,29 +240,30 @@ run_build() {
                 BUILD_ARGS="$BUILD_ARGS --use-swap"
             fi
             
-            echo "Running: ./85_cross_env_build.sh $BUILD_ARGS"
+            echo "Running: ./04_build.sh $BUILD_ARGS"
             
             # Display ccache stats before build
             echo "CCache statistics before build:"
             ccache -s
             
             # Run the build
-            ./85_cross_env_build.sh $BUILD_ARGS
+            ./04_build.sh $BUILD_ARGS
             
             # Display ccache stats after build
             echo "CCache statistics after build:"
             ccache -s
         else
-            echo "Running: ./85_cross_env_build.sh with default options"
+            echo "Running: ./04_build.sh with default options"
             echo "CCache statistics before build:"
             ccache -s
-            ./85_cross_env_build.sh --use-cache --use-swap
+            ./04_build.sh --use-cache --use-swap
             echo "CCache statistics after build:"
             ccache -s
         fi
     else
-        # Fall back to legacy build scripts
-        echo "Cross-environment build scripts not found, using legacy build system"
+        # Required scripts are missing
+        echo "ERROR: Core library scripts not found"
+        echo "Please ensure the build directory contains all required scripts"
         
         # Handle special alpine extraction issues
         if [ -f "alpine-minirootfs-3.21.3-x86_64.tar.gz" ]; then
@@ -275,7 +276,7 @@ run_build() {
             # Create directory with proper permissions
             mkdir -p alpine-minirootfs
             
-            # Use bootstrap extraction first, then we can use library functions
+            # Use bootstrap extraction first
             bootstrap_extraction "alpine-minirootfs-3.21.3-x86_64.tar.gz" "alpine-minirootfs"
             
             # Mark extraction as complete
@@ -284,13 +285,20 @@ run_build() {
             echo "Set proper permissions on Alpine minirootfs"
         fi
         
-        # Run the legacy build command
-        if [ -n "$BUILD_ARGS" ]; then
-            echo "Running: ./build.sh $BUILD_ARGS"
-            ./build.sh $BUILD_ARGS
+        # Attempt to run the build script if it exists
+        if [ -f "04_build.sh" ]; then
+            chmod +x 04_build.sh
+            if [ -n "$BUILD_ARGS" ]; then
+                echo "Running: ./04_build.sh $BUILD_ARGS"
+                ./04_build.sh $BUILD_ARGS
+            else
+                echo "Running: ./04_build.sh"
+                ./04_build.sh
+            fi
         else
-            echo "Running: ./build.sh"
-            ./build.sh
+            echo "ERROR: Build script 04_build.sh not found"
+            echo "Please ensure the build directory is correctly mounted"
+            return 1
         fi
     fi
 }
