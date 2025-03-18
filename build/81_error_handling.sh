@@ -295,8 +295,15 @@ init_error_handling() {
         echo "" > "$BUILD_LOG" 2>/dev/null || true
     fi
     
+    # Export critical functions for use in other scripts
+    export -f check_resume_point
+    export -f print_script_end
+    export -f print_script_start
+    
     trap_errors
     check_prerequisites
+    
+    echo -e "${BLUE}[INFO]${NC} Setting up error handling"
     
     # We'll let the main script handle printing the banner
     # This avoids duplicate banners when scripts call initialize_script
