@@ -33,6 +33,9 @@ services:
       # Timing and performance logging
       - FINALIZE_TIMING_LOG=true
       - TIMING_LOG_FILE=/onerecovery/build/build_timing.log
+      # Password settings
+      - GENERATE_RANDOM_PASSWORD=${GENERATE_RANDOM_PASSWORD:-true}
+      - ROOT_PASSWORD=${ROOT_PASSWORD:-""}
     # Resource limits (dynamically set by auto-resources.sh script)
     deploy:
       resources:

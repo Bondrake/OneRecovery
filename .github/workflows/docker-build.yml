@@ -151,6 +151,10 @@ jobs:
           RUN_AS_ROOT=true
           RUN_AS_USER=root
           
+          # Use default password 'onerecovery' instead of generating a random one
+          GENERATE_RANDOM_PASSWORD=false
+          ROOT_PASSWORD=onerecovery
+          
           # Debug settings
           DEBUG_FEATURE_FLAGS=true
           EOF
@@ -173,6 +177,8 @@ jobs:
       - name: Build OneRecovery using Docker
         env:
           BUILD_ARGS: ${{ matrix.build_args }}
+          GENERATE_RANDOM_PASSWORD: "false"
+          ROOT_PASSWORD: "onerecovery"
         run: |
           cd docker
 
