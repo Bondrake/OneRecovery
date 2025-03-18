@@ -395,12 +395,12 @@ setup_kernel_config() {
     # Fix script permissions
     fix_script_permissions "$kernel_dir"
     
-    # Check for new kernel-configs directory structure
-    local config_base="$zfiles_dir/kernel-configs"
+    # Check for kernel-configs directory structure
+    local config_base="${BUILD_DIR:-$workdir}/kernel-configs"
     local use_overlay=false
     local base_config=""
     
-    # Determine if we should use the new overlay system
+    # Determine if we should use the overlay system
     if [ -d "$config_base" ]; then
         echo "Using kernel config overlay system"
         use_overlay=true
