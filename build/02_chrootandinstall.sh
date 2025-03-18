@@ -101,7 +101,8 @@ fi
 
 # Add advanced filesystem tools if enabled
 if [ "${INCLUDE_ADVANCED_FS:-false}" = "true" ]; then
-    ADVANCED_FS_PACKAGES="ntfs-3g xfsprogs gdisk exfatprogs f2fs-tools"
+    # Note: Using gptfdisk instead of gdisk (gdisk is provided by gptfdisk package)
+    ADVANCED_FS_PACKAGES="ntfs-3g xfsprogs gptfdisk exfatprogs f2fs-tools"
     PACKAGES="$PACKAGES $ADVANCED_FS_PACKAGES"
     log "INFO" "Including advanced filesystem tools: $ADVANCED_FS_PACKAGES"
 fi
@@ -179,15 +180,27 @@ echo 127.0.1.1 onerecovery onerecovery >> /etc/hosts
 echo "[INFO] Updating package lists"
 apk update
 
-# Enable community repository for dev packages
+# Enable community and testing repositories for additional packages
 echo "http://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories
+echo "http://dl-cdn.alpinelinux.org/alpine/v3.21/main" >> /etc/apk/repositories
+echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 apk update
 
 echo "[INFO] Upgrading installed packages"
 apk upgrade
 
 echo "[INFO] Installing required packages"
-apk add $PACKAGES
+if ! apk add $PACKAGES; then
+    echo "[ERROR] Failed to install some packages - checking which ones are problematic"
+    # Try to install packages one by one to identify problematic ones
+    for pkg in $PACKAGES; do
+        if ! apk add $pkg; then
+            echo "[ERROR] Problem package: $pkg is not available"
+        fi
+    done
+    echo "[ERROR] Please remove unavailable packages or fix repository configuration"
+    exit 1
+fi
 
 echo "[INFO] Cleaning package cache"
 rm /var/cache/apk/*
