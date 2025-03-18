@@ -172,7 +172,11 @@ source_libraries() {
             fi
         fi
     else
-        echo -e "${BLUE}[INFO]${NC} Libraries already loaded: $LIBRARIES_LOADED"
+        # Add debugging information about source location
+        local calling_script=$(caller | awk '{print $2}')
+        local calling_line=$(caller | awk '{print $1}')
+        local calling_function=$(caller 1 | awk '{print $2}' 2>/dev/null || echo "main")
+        echo -e "${BLUE}[INFO]${NC} Libraries already loaded: $LIBRARIES_LOADED (called from $calling_script:$calling_line:$calling_function)"
     fi
     
     return 0
@@ -258,7 +262,8 @@ finalize_timing_log() {
     
     log "INFO" "Detailed timing log saved to: ${TIMING_LOG_FILE}"
     
-    return "$build_duration"
+    # Don't return the build duration as an exit code - this is causing the build to exit with build time as code
+    return 0
 }
 
 # Export all functions for use in other scripts

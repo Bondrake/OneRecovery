@@ -39,6 +39,14 @@ OUTPUT_DIR="$BUILD_DIR/../output"
 # Export paths for use by the build_core library functions
 export BUILD_DIR ROOTFS_DIR KERNEL_DIR ZFS_DIR ZFILES_DIR OUTPUT_DIR
 
+# Ensure output directory exists
+mkdir -p "$OUTPUT_DIR"
+
+# Add debugging for Docker builds
+echo "DEBUG: 04_build.sh paths:"
+echo "  BUILD_DIR=$BUILD_DIR"
+echo "  OUTPUT_DIR=$OUTPUT_DIR"
+
 # Main function
 main() {
     # Set up the timing log file with absolute path

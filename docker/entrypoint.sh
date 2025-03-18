@@ -22,6 +22,9 @@ mkdir -p /onerecovery/build
 mkdir -p /onerecovery/output
 mkdir -p /onerecovery/.buildcache
 
+# Ensure proper permissions for output directory
+chmod 777 /onerecovery/output
+
 # Get build directory absolute path
 BUILD_DIR=$(cd /onerecovery/build && pwd)
 
@@ -207,6 +210,12 @@ run_build() {
         chmod +x 83_config_helper.sh
         chmod +x 84_build_core.sh
         
+        # Make build scripts executable
+        chmod +x 01_get.sh
+        chmod +x 02_chrootandinstall.sh
+        chmod +x 03_conf.sh
+        chmod +x 04_build.sh
+        
         # Ensure critical libraries and functions are properly initialized
         # in the Docker environment before running build scripts
         echo "Pre-initializing library functions for Docker environment"
@@ -264,24 +273,57 @@ run_build() {
                 BUILD_ARGS="$BUILD_ARGS --use-swap"
             fi
             
-            # Always use the passthrough mechanism for greater flexibility and clarity
-            echo "Running: ./build.sh all -- $BUILD_ARGS"
+            # Try a more explicit step-by-step approach in Docker environment
+            echo "Running build steps sequentially for Docker environment:"
             
             # Display ccache stats before build
             echo "CCache statistics before build:"
             ccache -s
             
-            # Run with passthrough args for better control of build parameters
-            ./build.sh all -- $BUILD_ARGS
+            # Run each step explicitly to ensure proper error handling
+            echo "Step 1: Running 01_get.sh to download components"
+            ./01_get.sh
+            
+            echo "Step 2: Running 02_chrootandinstall.sh to prepare the environment"
+            ./02_chrootandinstall.sh
+            
+            echo "Step 3: Running 03_conf.sh for configuration"
+            ./03_conf.sh
+            
+            echo "Step 4: Running 04_build.sh for final build with args: $BUILD_ARGS"
+            
+            # Set flag to finalize timing log in the last script
+            export FINALIZE_TIMING_LOG=true
+            
+            # Pass the build arguments directly to 04_build.sh
+            ./04_build.sh $BUILD_ARGS
             
             # Display ccache stats after build
             echo "CCache statistics after build:"
             ccache -s
         else
-            echo "Running: ./build.sh all -- --use-cache --use-swap"
+            echo "Running build steps sequentially for Docker environment (default options):"
             echo "CCache statistics before build:"
             ccache -s
-            ./build.sh all -- --use-cache --use-swap
+            
+            # Run each step explicitly to ensure proper error handling
+            echo "Step 1: Running 01_get.sh to download components"
+            ./01_get.sh
+            
+            echo "Step 2: Running 02_chrootandinstall.sh to prepare the environment"
+            ./02_chrootandinstall.sh
+            
+            echo "Step 3: Running 03_conf.sh for configuration"
+            ./03_conf.sh
+            
+            echo "Step 4: Running 04_build.sh for final build with default args"
+            
+            # Set flag to finalize timing log in the last script
+            export FINALIZE_TIMING_LOG=true
+            
+            # Pass default build arguments directly to 04_build.sh
+            ./04_build.sh --use-cache --use-swap
+            
             echo "CCache statistics after build:"
             ccache -s
         fi

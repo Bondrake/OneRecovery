@@ -247,3 +247,6 @@ print_script_end
 if [ "${FINALIZE_TIMING_LOG:-false}" = "true" ]; then
     finalize_timing_log
 fi
+
+# Add an exit trap to debug how the script is exiting
+trap 'echo "DEBUG: 02_chrootandinstall.sh exiting with code $? (normal exit)"; exit 0' EXIT

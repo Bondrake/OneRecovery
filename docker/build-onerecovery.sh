@@ -299,9 +299,14 @@ else
     # Print timestamp
     echo -e "${BLUE}[INFO]${NC} Build started at $(date)"
     
-    # Run the container
-    $COMPOSE_CMD up $BUILD_OPTS --remove-orphans
+    # Run the container with detailed debugging
+    $COMPOSE_CMD up $BUILD_OPTS --remove-orphans 
     COMPOSE_EXIT_CODE=$?
+    echo -e "${BLUE}[DEBUG]${NC} Docker Compose exit code: $COMPOSE_EXIT_CODE"
+    
+    # Check the actual container exit code which might be different
+    CONTAINER_EXIT=$(docker inspect --format='{{.State.ExitCode}}' onerecovery-builder 2>/dev/null || echo "unknown")
+    echo -e "${BLUE}[DEBUG]${NC} Container onerecovery-builder exit code: $CONTAINER_EXIT"
     
     # Check for the output file first as the primary indicator of success
     if [ -f "$PROJECT_DIR/output/OneRecovery.efi" ]; then

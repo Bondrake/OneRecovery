@@ -50,6 +50,9 @@ handle_error() {
     local line_num=$1
     local command="$2"
     
+    # Log exit code information for debugging
+    echo "DEBUG: Error handler activated - exit code: $err_code, command: '$command', line: $line_num, script: $SCRIPT_NAME"
+    
     if [ $err_code -ne 0 ]; then
         # List of non-critical errors that we can ignore in containerized environments
         local ignore_patterns=(
