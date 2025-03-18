@@ -11,6 +11,7 @@ RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM"
 RUN apk add --no-cache \
     bash \
     build-base \
+    musl-dev \
     linux-headers \
     git \
     autoconf \
@@ -69,6 +70,9 @@ RUN apk add --no-cache \
     mpc1-dev \
     # Additional dependencies needed for ZFS
     libunwind-dev \
+    libuuid \
+    musl-dev \
+    linux-headers-musl \
     # Performance optimizations for archive extraction
     pigz \
     pv
