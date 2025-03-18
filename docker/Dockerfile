@@ -39,6 +39,8 @@ RUN apk add --no-cache \
     make \
     patch \
     python3 \
+    python3-dev \
+    py3-setuptools \
     ncurses-dev \
     e2fsprogs \
     e2fsprogs-dev \
@@ -55,6 +57,10 @@ RUN apk add --no-cache \
     pkgconf \
     # UUID libraries required for ZFS
     libuuid \
+    # Extended attribute support required for ZFS
+    attr-dev \
+    # Device management support for ZFS
+    eudev-dev \
     # Performance optimizations for archive extraction
     pigz \
     pv
