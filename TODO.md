@@ -1,43 +1,40 @@
-# OneRecovery Build System Migration Tasks
+# OneRecovery Build System Tasks
 
-## Critical Tasks
+## Build Timing and Performance Enhancement Tasks
 
-1. **Move build logic from 85_cross_env_build.sh back to 04_build.sh**
-   - Copy all core build functionality from 85_cross_env_build.sh to 04_build.sh
-   - Ensure all improvements made to 85_cross_env_build.sh are preserved
-   - Test to ensure build works after the migration
+1. **Build Timing System**
+   - [DONE] Add timing functions to 80_common.sh
+   - [DONE] Add timing to 01_get.sh
+   - [DONE] Add timing to 02_chrootandinstall.sh
+   - [DONE] Add timing to 03_conf.sh
+   - [DONE] Add timing to 04_build.sh
+   - [DONE] Add GitHub Actions artifact support for timing logs
+   - [DONE] Update Docker build process for timing logs
+   - [ ] Add script to analyze build timing logs and suggest optimizations
 
-2. **Update Docker entrypoint.sh**
-   - [DONE] Replace all references to 85_cross_env_build.sh with 04_build.sh
-   - [DONE] Remove legacy build system concept
-   - Test Docker builds after migration
+2. **Build Performance Optimizations**
+   - [DONE] Add memory-optimized compiler flags function
+   - [DONE] Enhance thread counting for memory-constrained environments
+   - [DONE] Add direct passthrough mechanism for build arguments
+   - [ ] Test GitHub Actions builds with timing and performance enhancements
+   - [ ] Create a specialized script for extremely memory-constrained GitHub Actions builds
+   - [ ] Add automatic kernel config minimization for memory-constrained builds
 
-3. **Update GitHub Actions workflow**
-   - [DONE] Ensure the workflow uses the standard build sequence
-   - [DONE] Properly applies kernel configs via 03_conf.sh
-   - Test GitHub Actions builds after migration
+3. **Documentation Updates**
+   - [ ] Update usage_modules function in build.sh to clarify direct vs. passthrough usage
+   - [ ] Update documentation files to reflect new timing and performance features
+   - [ ] Create a comprehensive guide on GitHub Actions build optimization
 
-## Documentation Updates
+## Final Cleanup and Deprecation
 
-4. **Update READMEs and build documentation**
-   - `/docker/README.md`: Remove references to 85_cross_env_build.sh
-   - `/build/README.md`: Update build instructions to reflect new process
-   - `/docs/BUILD_DOCS.md`: Remove references to cross env and legacy build system
-   - Any other documentation files that reference the build process
+1. **Script Cleanup**
+   - [ ] After thorough testing, deprecate 85_cross_env_build.sh
+   - [ ] Update any remaining scripts that might reference the cross-env build
 
-5. **Update CLAUDE.md**
-   - Update build commands and process information
+2. **Future Enhancements**
+   - [ ] Add automatic memory and thread detection to Docker build
+   - [ ] Create dashboard for visualizing build performance metrics
+   - [ ] Implement build cache validation to avoid unnecessary rebuilds
+   - [ ] Add parallel downloading of dependencies for faster initial setup
 
-## Final Steps
-
-6. **Cleanup**
-   - After thorough testing, consider deprecating 85_cross_env_build.sh
-   - Update any remaining scripts that might reference the cross-env build
-
-## Notes
-
-- The GitHub Actions workflow now uses the proper build sequence (01_get.sh, 02_chrootandinstall.sh, 03_conf.sh, 04_build.sh)
-- Docker builds will use 04_build.sh directly with the migrated functionality
-- Maintaining backward compatibility is important during the transition
-
-_This migration consolidates the build system to simplify maintenance and ensure consistency across different build environments._
+_These timing and performance enhancements help optimize builds for various hardware configurations, especially resource-constrained environments like GitHub Actions._
