@@ -63,8 +63,10 @@ RUN apk add --no-cache \
     eudev-dev \
     # RPC support required for ZFS
     libtirpc-dev \
-    # GMP library for GCC plugins
+    # Math libraries for GCC plugins
     gmp-dev \
+    mpfr-dev \
+    mpc1-dev \
     # Additional dependencies needed for ZFS
     libunwind-dev \
     # Performance optimizations for archive extraction

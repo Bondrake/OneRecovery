@@ -399,7 +399,7 @@ build_zfs() {
     
     # Ensure proper kernel preparation for module building
     log "INFO" "Preparing kernel for module building"
-    (cd "$KERNEL_DIR" && make prepare && make modules_prepare) || {
+    (cd "$KERNEL_DIR" && make prepare && make modules_prepare SKIP_STACK_VALIDATION=1 HOSTCC=gcc NO_GCC_PLUGINS=1) || {
         log "WARNING" "Kernel preparation failed, attempting to continue anyway"
     }
     
