@@ -72,7 +72,6 @@ RUN apk add --no-cache \
     libunwind-dev \
     libuuid \
     musl-dev \
-    linux-headers-musl \
     # Performance optimizations for archive extraction
     pigz \
     pv
