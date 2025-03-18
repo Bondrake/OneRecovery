@@ -24,7 +24,7 @@ OneRecovery provides a powerful system recovery solution with unique advantages:
 - **Data Recovery**: Specialized tools for rescuing data from failed systems
 - **Boot Repair**: Tools to fix common boot problems across operating systems
 - **Text UI**: Full-featured text-based user interface for easy navigation
-- **Size Optimized**: Minimal builds under 50MB, full builds under 150MB
+- **Ultra Size Optimized**: Minimal builds around 4MB, standard builds around 20MB
 
 ## Getting Started
 
@@ -74,9 +74,9 @@ OneRecovery offers several build configurations to balance features and size:
 
 | Build Type | Description | Size | Command |
 |------------|-------------|------|---------|
-| Minimal | Core functionality only | ~30-50MB | `--minimal` |
-| Standard | Basic recovery features | ~60-90MB | (default) |
-| Full | All features and tools | ~100-150MB | `--full` |
+| Minimal | Core functionality only | ~4MB | `--minimal` |
+| Standard | Basic recovery features | ~20MB | (default) |
+| Full | All features and tools | ~40-60MB | `--full` |
 
 ### Advanced Package Groups
 
