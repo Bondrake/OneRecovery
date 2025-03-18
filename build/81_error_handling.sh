@@ -228,6 +228,8 @@ print_script_end() {
     log "SUCCESS" "$SCRIPT_NAME completed successfully"
     echo "----------------------------------------------------"
 }
+# Ensure this function is exported immediately upon definition
+export -f print_script_end
 
 # Function to check if the script can resume from a checkpoint
 check_resume_point() {
@@ -238,6 +240,8 @@ check_resume_point() {
         RESUME_MODE=false
     fi
 }
+# Ensure this function is exported immediately upon definition
+export -f check_resume_point
 
 # Generate a secure random password
 generate_random_password() {
@@ -296,9 +300,10 @@ init_error_handling() {
     fi
     
     # Export critical functions for use in other scripts
-    export -f check_resume_point
-    export -f print_script_end
-    export -f print_script_start
+    # Export these immediately upon definition for Docker environments
+    type check_resume_point >/dev/null 2>&1 && export -f check_resume_point || echo "WARNING: check_resume_point not found"
+    type print_script_end >/dev/null 2>&1 && export -f print_script_end || echo "WARNING: print_script_end not found"
+    type print_script_start >/dev/null 2>&1 && export -f print_script_start || echo "WARNING: print_script_start not found"
     
     trap_errors
     check_prerequisites

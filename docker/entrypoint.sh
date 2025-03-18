@@ -207,6 +207,11 @@ run_build() {
         chmod +x 83_config_helper.sh
         chmod +x 84_build_core.sh
         
+        # Ensure critical libraries and functions are properly initialized
+        # in the Docker environment before running build scripts
+        echo "Pre-initializing library functions for Docker environment"
+        bash -c 'source ./80_common.sh && source ./81_error_handling.sh && export -f check_resume_point print_script_end print_script_start'
+        
         # Make sure the build script exists and is executable
         if [ -f "04_build.sh" ]; then
             chmod +x 04_build.sh
