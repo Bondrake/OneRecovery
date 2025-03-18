@@ -70,9 +70,27 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
+# Source the build core library
+if [ ! -f "./84_build_core.sh" ]; then
+    echo "ERROR: Build core library file not found: ./84_build_core.sh"
+    exit 1
+fi
+source "./84_build_core.sh"
+
 # Set error handling
 trap 'echo -e "${RED}[ERROR]${NC} An error occurred at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
 set -e
+
+# Define paths for use by build core
+BUILD_DIR="$(pwd)"
+ROOTFS_DIR="$BUILD_DIR/alpine-minirootfs"
+KERNEL_DIR="$BUILD_DIR/linux"
+ZFS_DIR="$BUILD_DIR/zfs"
+ZFILES_DIR="$BUILD_DIR/zfiles"
+OUTPUT_DIR="$BUILD_DIR/../output"
+
+# Export paths for use by the build_core library functions
+export BUILD_DIR ROOTFS_DIR KERNEL_DIR ZFS_DIR ZFILES_DIR OUTPUT_DIR
 
 # Display usage information
 usage() {
@@ -98,6 +116,7 @@ usage() {
     echo "Passthrough Arguments:"
     echo "  You can pass arguments directly to 04_build.sh by using a double dash (--)"
     echo "  followed by the arguments. These arguments will be passed as-is to 04_build.sh."
+    echo "  Example: $0 build -- --minimal --without-zfs"
     echo ""
     echo "Examples:"
     echo "  $0                  Run all build steps"
@@ -242,14 +261,7 @@ print_config() {
     fi
 }
 
-# Convert boolean to Yes/No string
-bool_to_str() {
-    if [ "$1" = true ]; then
-        echo -e "${GREEN}Yes${NC}"
-    else
-        echo -e "${RED}No${NC}"
-    fi
-}
+# bool_to_str is now provided by 84_build_core.sh
 
 # Print extended usage information
 usage_modules() {

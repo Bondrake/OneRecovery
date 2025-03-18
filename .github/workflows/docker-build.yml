@@ -83,7 +83,8 @@ jobs:
           chmod +x build/81_error_handling.sh
           chmod +x build/82_build_helper.sh
           chmod +x build/83_config_helper.sh
-          chmod +x build/85_cross_env_build.sh
+          chmod +x build/84_build_core.sh
+          # 85_cross_env_build.sh is legacy, so we don't need to include it
           
           # Make all build scripts executable
           chmod +x build/00_prepare.sh
@@ -290,9 +291,10 @@ jobs:
           echo "SUCCESS: Critical ZFS kernel dependencies verified"
           
           # Run the main build
-          echo "Step 4: Running 04_build.sh for final build"
+          echo "Step 4: Running unified build script using passthrough mechanism"
           # Set flag to finalize timing log in the last script
-          sudo -E bash -c 'export FINALIZE_TIMING_LOG=true; ./04_build.sh ${{ matrix.build_args }}'
+          # Use the build.sh script with passthrough arguments for consistency
+          sudo -E bash -c 'export FINALIZE_TIMING_LOG=true; ./build.sh build -- ${{ matrix.build_args }}'
       
       - name: Check for build artifacts
         id: check_files

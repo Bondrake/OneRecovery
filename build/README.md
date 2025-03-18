@@ -31,7 +31,6 @@ sudo ./build.sh --full
 - `81_error_handling.sh` - Error handling, recovery options, and prerequisite checks
 - `82_build_helper.sh` - File operations, environment-specific functions, and build utilities
 - `83_config_helper.sh` - Configuration utilities, option parsing, and config file management
-- `85_cross_env_build.sh` - Unified build system for all environments
 - `build.conf` - Saved build configuration (generated on first run)
 - `zfiles/` - Configuration files for the build
   - `kernel-minimal.config` - Minimal kernel configuration

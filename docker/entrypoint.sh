@@ -196,7 +196,7 @@ run_build() {
     fix_kernel_permissions
     
     # Check for the core library scripts
-    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ]; then
+    if [ -f "80_common.sh" ] && [ -f "81_error_handling.sh" ] && [ -f "82_build_helper.sh" ] && [ -f "83_config_helper.sh" ] && [ -f "84_build_core.sh" ]; then
         # Use the library-based build system for consistent builds
         echo "Using library-based build system"
         
@@ -205,6 +205,7 @@ run_build() {
         chmod +x 81_error_handling.sh
         chmod +x 82_build_helper.sh
         chmod +x 83_config_helper.sh
+        chmod +x 84_build_core.sh
         
         # Make sure the build script exists and is executable
         if [ -f "04_build.sh" ]; then
@@ -258,23 +259,24 @@ run_build() {
                 BUILD_ARGS="$BUILD_ARGS --use-swap"
             fi
             
-            echo "Running: ./build.sh all $BUILD_ARGS"
+            # Always use the passthrough mechanism for greater flexibility and clarity
+            echo "Running: ./build.sh all -- $BUILD_ARGS"
             
             # Display ccache stats before build
             echo "CCache statistics before build:"
             ccache -s
             
-            # Run the complete build sequence with timing
-            ./build.sh all $BUILD_ARGS
+            # Run with passthrough args for better control of build parameters
+            ./build.sh all -- $BUILD_ARGS
             
             # Display ccache stats after build
             echo "CCache statistics after build:"
             ccache -s
         else
-            echo "Running: ./build.sh all with default options"
+            echo "Running: ./build.sh all -- --use-cache --use-swap"
             echo "CCache statistics before build:"
             ccache -s
-            ./build.sh all --use-cache --use-swap
+            ./build.sh all -- --use-cache --use-swap
             echo "CCache statistics after build:"
             ccache -s
         fi
@@ -308,9 +310,11 @@ run_build() {
             chmod +x 04_build.sh
             if [ -n "$BUILD_ARGS" ]; then
                 echo "Running: ./04_build.sh $BUILD_ARGS"
+                echo "WARNING: Using direct build.sh approach is deprecated. Prefer library-based build system."
                 ./04_build.sh $BUILD_ARGS
             else
                 echo "Running: ./04_build.sh"
+                echo "WARNING: Using direct build.sh approach is deprecated. Prefer library-based build system."
                 ./04_build.sh
             fi
         else

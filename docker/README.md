@@ -152,7 +152,6 @@ The Docker build system has been integrated with the standardized library-based 
    - `81_error_handling.sh`: Error handling and prerequisite checks
    - `82_build_helper.sh`: Docker-specific functions for extraction and file handling
    - `83_config_helper.sh`: Configuration management
-   - `85_cross_env_build.sh`: Environment-aware unified build system
 
 2. **Fallback Mode**: If the library files are not detected, the system falls back to the legacy build process using build.sh directly
 

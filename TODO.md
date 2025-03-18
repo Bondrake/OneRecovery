@@ -17,24 +17,26 @@
    - [DONE] Enhance thread counting for memory-constrained environments
    - [DONE] Add direct passthrough mechanism for build arguments
    - [ ] Test GitHub Actions builds with timing and performance enhancements
-   - [ ] Create a specialized script for extremely memory-constrained GitHub Actions builds
-   - [ ] Add automatic kernel config minimization for memory-constrained builds
+   - [ ] Implement incremental build support to speed up rebuilds
+   - [ ] Add parallelized download mechanism for source files
 
 3. **Documentation Updates**
-   - [ ] Update usage_modules function in build.sh to clarify direct vs. passthrough usage
-   - [ ] Update documentation files to reflect new timing and performance features
+   - [DONE] Update usage_modules function in build.sh to clarify direct vs. passthrough usage
+   - [DONE] Update CLAUDE.md with updated library architecture documentation
+   - [DONE] Add comprehensive help text to 84_build_core.sh for consistent help across scripts
+   - [DONE] Update Docker build scripts to use the -- passthrough mechanism consistently
+   - [DONE] Update GitHub Actions workflow to use the -- passthrough mechanism
    - [ ] Create a comprehensive guide on GitHub Actions build optimization
 
 ## Final Cleanup and Deprecation
 
 1. **Script Cleanup**
-   - [ ] After thorough testing, deprecate 85_cross_env_build.sh
-   - [ ] Update any remaining scripts that might reference the cross-env build
+   - [DONE] Extract common build functions to 84_build_core.sh
+   - [DONE] Deprecate and remove 85_cross_env_build.sh
+   - [DONE] Update build.sh and 04_build.sh to use the shared 84_build_core.sh
 
 2. **Future Enhancements**
-   - [ ] Add automatic memory and thread detection to Docker build
    - [ ] Create dashboard for visualizing build performance metrics
    - [ ] Implement build cache validation to avoid unnecessary rebuilds
-   - [ ] Add parallel downloading of dependencies for faster initial setup
 
-_These timing and performance enhancements help optimize builds for various hardware configurations, especially resource-constrained environments like GitHub Actions._
+_The modular library architecture and standardized build process enables efficient development across diverse environments, from resource-constrained CI systems to powerful development workstations. By implementing consistent timing and passthrough mechanisms, we've created a foundation for ongoing performance optimization and feature development._

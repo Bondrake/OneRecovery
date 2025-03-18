@@ -6,27 +6,11 @@
 if [ -f "./80_common.sh" ]; then
     source ./80_common.sh
 else
-    # Simple fallback logging if common library not found
-    RED="\033[0;31m"
-    GREEN="\033[0;32m"
-    YELLOW="\033[0;33m"
-    BLUE="\033[0;34m"
-    RESET="\033[0m"
-    
-    log() {
-        local level="$1"
-        shift
-        local message="$*"
-        
-        case "$level" in
-            "INFO") echo -e "${BLUE}[INFO]${RESET} $message" ;;
-            "SUCCESS") echo -e "${GREEN}[SUCCESS]${RESET} $message" ;;
-            "WARNING") echo -e "${YELLOW}[WARNING]${RESET} $message" ;;
-            "ERROR") echo -e "${RED}[ERROR]${RESET} $message" ;;
-            *) echo -e "$message" ;;
-        esac
-    }
+    echo "ERROR: Common library not found at $COMMON_LIB"
+    echo "This script must be run from the tools directory of the OneRecovery build system."
+    exit 1
 fi
+
 
 # Apply a kernel config overlay (fragment) to a base config
 apply_config_overlay() {

@@ -33,11 +33,6 @@ The build system has been reorganized to use a numbered library script system in
   - Implements extraction with fallback methods for different environments
   - Contains system configuration and build helper functions
 
-- **85_cross_env_build.sh**: Unified build workflow
-  - Orchestrates the complete build process
-  - Works consistently across environments (local, Docker, CI)
-  - Handles resource optimization and environment-specific adaptations
-
 #### Build Scripts (00-10, 99 range)
 
 The main build process is divided into numbered steps:
