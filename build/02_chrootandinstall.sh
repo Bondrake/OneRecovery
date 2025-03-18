@@ -62,14 +62,10 @@ PACKAGES="openrc nano mc bash parted dropbear dropbear-ssh efibootmgr \
 
 # Add ZFS support if enabled
 if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
-    # Add ZFS and required dependencies for Alpine Linux
-    PACKAGES="$PACKAGES zfs util-linux-dev util-linux-misc util-linux util-linux-bash-completion"
+    # Add ZFS and required runtime dependencies for Alpine Linux
+    PACKAGES="$PACKAGES zfs util-linux util-linux-misc util-linux-bash-completion"
     
-    # Add packages required for building ZFS from source
-    ZFS_BUILD_DEPS="build-base autoconf automake libtool linux-headers util-linux-dev zlib-dev openssl-dev attr-dev eudev-dev bash git"
-    PACKAGES="$PACKAGES $ZFS_BUILD_DEPS"
-    
-    log "INFO" "Including ZFS support with all required development libraries"
+    log "INFO" "Including ZFS runtime support"
 fi
 
 # Add BTRFS support if enabled
