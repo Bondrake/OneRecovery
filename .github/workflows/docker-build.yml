@@ -57,11 +57,15 @@ jobs:
       - name: Set up build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev libtirpc-dev docker.io docker-compose
+          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev libtirpc-dev
+          
+          # Verify Docker is installed and running (GitHub Actions has Docker pre-installed)
+          docker --version
+          docker-compose --version
 
           # Create output directories with appropriate permissions
-          mkdir -p build/output outpu
-          sudo chmod -R 777 build outpu
+          mkdir -p build/output output
+          sudo chmod -R 777 build output
 
           # Make all scripts executable
           chmod -R +x build/*.sh docker/*.sh
