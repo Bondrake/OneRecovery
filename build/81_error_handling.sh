@@ -148,7 +148,7 @@ handle_error() {
 # Set up error trapping
 trap_errors() {
     # In all environments, we use the same error handler with built-in container detection
-    log "INFO" "Setting up error handling"
+    # Note: We've removed the log message here since it's handled by init_error_handling
     
     # Still use set -e, but our error handler will decide whether to continue
     # based on the error type and environment
@@ -323,20 +323,10 @@ init_error_handling() {
     trap_errors
     check_prerequisites
     
-    # Add caller information for debugging
-    local caller_info=$(caller 0)
-    local caller_line=$(echo "$caller_info" | awk '{print $1}')
-    local caller_script=$(echo "$caller_info" | awk '{print $2}')
+    # No caller information needed in normal operation
     
-    # Try to get deeper call stack information
-    local caller_1=$(caller 1 2>/dev/null || echo "unknown")
-    local caller_2=$(caller 2 2>/dev/null || echo "unknown")
-    
-    echo -e "${BLUE}[INFO]${NC} Setting up error handling (called from $caller_script:$caller_line)"
-    
-    if [ "${DEBUG_LIBRARY_LOADING:-false}" = "true" ]; then  
-        echo -e "${BLUE}[DEBUG]${NC} Call stack: $caller_script:$caller_line <- $caller_1 <- $caller_2"
-    fi
+    # Simple message about error handling setup
+    echo -e "${BLUE}[INFO]${NC} Setting up error handling"
     
     # Mark as initialized - this is the official flag we'll check from now on
     ONERECOVERY_ERROR_HANDLING_INITIALIZED=true
