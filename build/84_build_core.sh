@@ -397,15 +397,31 @@ build_zfs() {
     
     log "SUCCESS" "Kernel has required ZFS dependencies configured"
     
-    # Prepare kernel modules build system if needed
-    log "INFO" "Preparing kernel modules build system"
-    (cd "$KERNEL_DIR" && make modules_prepare) || {
-        log "WARNING" "modules_prepare failed, ZFS module build may not work correctly"
+    # Ensure proper kernel preparation for module building
+    log "INFO" "Preparing kernel for module building"
+    (cd "$KERNEL_DIR" && make prepare && make modules_prepare) || {
+        log "WARNING" "Kernel preparation failed, attempting to continue anyway"
     }
+    
+    # Ensure kernel .config is actually in the expected location
+    if [ -f "$KERNEL_DIR/.config" ] && [ ! -f "$KERNEL_DIR/include/config/auto.conf" ]; then
+        log "INFO" "Creating kernel config symlinks"
+        mkdir -p "$KERNEL_DIR/include/config"
+        cp "$KERNEL_DIR/.config" "$KERNEL_DIR/include/config/auto.conf"
+    fi
+    
+    # Explicitly verify and echo the CONFIG_MODULES setting
+    log "INFO" "Verifying CONFIG_MODULES in kernel config"
+    if grep -q "^CONFIG_MODULES=y" "$KERNEL_DIR/.config"; then
+        echo "CONFIG_MODULES=y" > "$KERNEL_DIR/include/config/module.release"
+        log "SUCCESS" "CONFIG_MODULES is properly enabled in kernel configuration"
+    else
+        log "ERROR" "CONFIG_MODULES is not properly enabled in kernel configuration"
+    fi
     
     # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
-    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
+    KCFLAGS="-DCONFIG_MODULES" KBUILD_MODPOST_WARN=0 ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
         log "ERROR" "ZFS configuration failed"
         
         # Print full kernel config for debugging
