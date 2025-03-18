@@ -290,10 +290,17 @@ create_password_hash() {
     fi
 }
 
+# Use a global variable to ensure we only initialize once per session
+ONERECOVERY_ERROR_HANDLING_INITIALIZED=${ONERECOVERY_ERROR_HANDLING_INITIALIZED:-false}
+
 # Initialize error handling framework
 init_error_handling() {
-    # Skip initialization if already done
-    if [ "${ERROR_HANDLING_INITIALIZED:-false}" = "true" ]; then
+    # Skip initialization if already done - use a simple global flag
+    if [ "$ONERECOVERY_ERROR_HANDLING_INITIALIZED" = "true" ]; then
+        # Add debug message if we're in DEBUG mode
+        if [ "${DEBUG_LIBRARY_LOADING:-false}" = "true" ]; then
+            echo -e "${BLUE}[DEBUG]${NC} Error handling already initialized, skipping"
+        fi
         return 0
     fi
     
@@ -309,15 +316,12 @@ init_error_handling() {
     
     # Export critical functions for use in other scripts
     # Export these immediately upon definition for Docker environments
-    type check_resume_point >/dev/null 2>&1 && export -f check_resume_point || echo "WARNING: check_resume_point not found"
-    type print_script_end >/dev/null 2>&1 && export -f print_script_end || echo "WARNING: print_script_end not found"
-    type print_script_start >/dev/null 2>&1 && export -f print_script_start || echo "WARNING: print_script_start not found"
+    type check_resume_point >/dev/null 2>&1 && export -f check_resume_point || true
+    type print_script_end >/dev/null 2>&1 && export -f print_script_end || true
+    type print_script_start >/dev/null 2>&1 && export -f print_script_start || true
     
     trap_errors
     check_prerequisites
-    
-    # Mark as initialized
-    export ERROR_HANDLING_INITIALIZED=true
     
     # Add caller information for debugging
     local caller_info=$(caller 0)
@@ -329,7 +333,14 @@ init_error_handling() {
     local caller_2=$(caller 2 2>/dev/null || echo "unknown")
     
     echo -e "${BLUE}[INFO]${NC} Setting up error handling (called from $caller_script:$caller_line)"
-    echo -e "${BLUE}[DEBUG]${NC} Call stack: $caller_script:$caller_line <- $caller_1 <- $caller_2"
+    
+    if [ "${DEBUG_LIBRARY_LOADING:-false}" = "true" ]; then  
+        echo -e "${BLUE}[DEBUG]${NC} Call stack: $caller_script:$caller_line <- $caller_1 <- $caller_2"
+    fi
+    
+    # Mark as initialized - this is the official flag we'll check from now on
+    ONERECOVERY_ERROR_HANDLING_INITIALIZED=true
+    export ONERECOVERY_ERROR_HANDLING_INITIALIZED
     
     # We'll let the main script handle printing the banner
     # This avoids duplicate banners when scripts call initialize_script

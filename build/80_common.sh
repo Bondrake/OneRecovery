@@ -183,9 +183,6 @@ source_library() {
     fi
 }
 
-# Track if we've initialized the error handling
-ERROR_HANDLING_INITIALIZED=false
-
 # Function to initialize all standard libraries
 source_libraries() {
     local script_path=${1:-"."}
@@ -199,12 +196,8 @@ source_libraries() {
     
     # Error handling (required)
     if source_library "$script_path/81_error_handling.sh"; then
-        # Only initialize error handling once
-        if [ "$ERROR_HANDLING_INITIALIZED" != "true" ]; then
-            # Initialize error handling if available
-            init_error_handling
-            ERROR_HANDLING_INITIALIZED=true
-        fi
+        # Initialize error handling if available - the function itself handles deduplication
+        init_error_handling
     else
         echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
     fi
