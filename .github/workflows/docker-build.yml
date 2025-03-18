@@ -61,7 +61,28 @@ jobs:
           
           # Verify Docker is installed and running (GitHub Actions has Docker pre-installed)
           docker --version
-          docker-compose --version
+          
+          # Set up Docker Compose (either install it or create wrapper for docker compose plugin)
+          if ! command -v docker-compose &> /dev/null; then
+            echo "docker-compose command not found, setting up alternatives..."
+            
+            # First try to use docker compose plugin if available
+            if docker compose version &> /dev/null; then
+              echo "Docker Compose plugin is available, creating wrapper script"
+              echo '#!/bin/bash
+              docker compose "$@"' > /tmp/docker-compose
+              chmod +x /tmp/docker-compose
+              sudo mv /tmp/docker-compose /usr/local/bin/docker-compose
+            else
+              # If plugin not available, install docker-compose binary
+              echo "Installing docker-compose from GitHub releases"
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+          fi
+          
+          # Verify docker-compose is now available
+          docker-compose --version || echo "Warning: docker-compose not available, will use docker compose plugin directly"
 
           # Create output directories with appropriate permissions
           mkdir -p build/output output
@@ -134,12 +155,25 @@ jobs:
           cat .env
 
           # Use the local docker-compose setup for builds
-          docker-compose up --build
+          # Try both docker-compose and docker compose commands
+          if command -v docker-compose &> /dev/null; then
+            echo "Using docker-compose command"
+            docker-compose up --build
+            COMPOSE_EXIT_CODE=$?
+          else
+            echo "Using docker compose plugin directly"
+            docker compose up --build
+            COMPOSE_EXIT_CODE=$?
+          fi
 
           # Check the exit code
-          if [ $? -ne 0 ]; then
-            echo "Docker build failed"
-            docker-compose logs
+          if [ $COMPOSE_EXIT_CODE -ne 0 ]; then
+            echo "Docker build failed with exit code: $COMPOSE_EXIT_CODE"
+            if command -v docker-compose &> /dev/null; then
+              docker-compose logs
+            else
+              docker compose logs
+            fi
             exit 1
           fi
 
