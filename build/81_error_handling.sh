@@ -292,6 +292,11 @@ create_password_hash() {
 
 # Initialize error handling framework
 init_error_handling() {
+    # Skip initialization if already done
+    if [ "${ERROR_HANDLING_INITIALIZED:-false}" = "true" ]; then
+        return 0
+    fi
+    
     # Try to create the log file with proper permissions
     if ! touch "$BUILD_LOG" 2>/dev/null; then
         echo -e "${YELLOW}[WARNING]${NC} Cannot create log file. Will continue without logging."
@@ -311,7 +316,20 @@ init_error_handling() {
     trap_errors
     check_prerequisites
     
-    echo -e "${BLUE}[INFO]${NC} Setting up error handling"
+    # Mark as initialized
+    export ERROR_HANDLING_INITIALIZED=true
+    
+    # Add caller information for debugging
+    local caller_info=$(caller 0)
+    local caller_line=$(echo "$caller_info" | awk '{print $1}')
+    local caller_script=$(echo "$caller_info" | awk '{print $2}')
+    
+    # Try to get deeper call stack information
+    local caller_1=$(caller 1 2>/dev/null || echo "unknown")
+    local caller_2=$(caller 2 2>/dev/null || echo "unknown")
+    
+    echo -e "${BLUE}[INFO]${NC} Setting up error handling (called from $caller_script:$caller_line)"
+    echo -e "${BLUE}[DEBUG]${NC} Call stack: $caller_script:$caller_line <- $caller_1 <- $caller_2"
     
     # We'll let the main script handle printing the banner
     # This avoids duplicate banners when scripts call initialize_script
