@@ -637,37 +637,132 @@ build_kernel() {
         local make_v="V=0"
     fi
     
+    # Check directory permissions before building
+    log "INFO" "Checking kernel source directory permissions"
+    local perm_ok=true
+    
+    # Test if we can write to critical directories
+    for test_dir in "." "include" "drivers" "arch/x86" "scripts"; do
+        if [ -d "$test_dir" ] && ! touch "$test_dir/.write_test" 2>/dev/null; then
+            log "WARNING" "Cannot write to $test_dir directory, fixing permissions"
+            if is_restricted_environment; then
+                sudo chmod -R u+w "$test_dir" 2>/dev/null || true
+            else
+                chmod -R u+w "$test_dir" 2>/dev/null || true
+            fi
+            perm_ok=false
+        elif [ -f "$test_dir/.write_test" ]; then
+            rm -f "$test_dir/.write_test"
+        fi
+    done
+    
+    # If permissions were fixed, check again
+    if [ "$perm_ok" = "false" ]; then
+        log "INFO" "Fixed permissions, re-checking..."
+        if ! touch "./.write_test" 2>/dev/null; then
+            log "ERROR" "Still cannot write to kernel source directory after fixing permissions"
+            if is_github_actions; then
+                log "INFO" "In GitHub Actions environment, using elevated permissions for build"
+            fi
+        else
+            rm -f "./.write_test"
+            log "SUCCESS" "Successfully fixed permissions"
+        fi
+    fi
+    
+    # Reduce optimization level in case of memory pressure
+    if [ "$available_memory_kb" -lt 4000000 ]; then  # < 4GB
+        log "WARNING" "Very low memory (${available_memory_gb}GB), using minimal optimization"
+        export KCFLAGS="-g0 -Os -fno-inline"  # Optimize for minimal memory usage
+        
+        # Also reduce parallelism further
+        if [ "$threads" -gt 2 ]; then
+            log "WARNING" "Reducing threads from $threads to 2 due to very low memory"
+            threads=2
+        fi
+    fi
+    
     # Build with compiler cache if available
     if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
         log "INFO" "Using compiler cache for faster builds"
         log "INFO" "Make command: make $make_v -j$threads CC=\"ccache gcc\" HOSTCC=\"ccache gcc\""
-        nice -n 19 make $make_v -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
+        
+        # Use a wrapper for improved error handling
+        nice -n 19 make $make_v -j$threads CC="ccache gcc" HOSTCC="ccache gcc" 2>&1 | tee kernel_build.log || {
             log "ERROR" "Kernel build failed"
+            
+            # Check build log for common errors
+            if grep -q "No space left on device" kernel_build.log; then
+                log "ERROR" "Build failed due to insufficient disk space!"
+            elif grep -q "Permission denied" kernel_build.log; then
+                log "ERROR" "Build failed due to permission issues! Try running in a privileged container."
+            elif grep -q "virtual memory exhausted" kernel_build.log || grep -q "Killed" kernel_build.log; then
+                log "ERROR" "Build failed due to insufficient memory! Try reducing the number of threads or add more RAM."
+            fi
+            
             return 1
         }
     else
         log "INFO" "Make command: make $make_v -j$threads"
-        nice -n 19 make $make_v -j$threads || {
+        nice -n 19 make $make_v -j$threads 2>&1 | tee kernel_build.log || {
             log "ERROR" "Kernel build failed"
+            
+            # Check build log for common errors
+            if grep -q "No space left on device" kernel_build.log; then
+                log "ERROR" "Build failed due to insufficient disk space!"
+            elif grep -q "Permission denied" kernel_build.log; then
+                log "ERROR" "Build failed due to permission issues! Try running in a privileged container."
+            elif grep -q "virtual memory exhausted" kernel_build.log || grep -q "Killed" kernel_build.log; then
+                log "ERROR" "Build failed due to insufficient memory! Try reducing the number of threads or add more RAM."
+            fi
+            
             return 1
         }
     fi
+    
+    # Clean up log file
+    rm -f kernel_build.log
     
     # Build modules
     log "INFO" "Building kernel modules"
     if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
         log "INFO" "Make modules command: make $make_v modules -j$threads"
-        nice -n 19 make $make_v modules -j$threads CC="ccache gcc" HOSTCC="ccache gcc" || {
+        
+        # Use a wrapper for improved error handling
+        nice -n 19 make $make_v modules -j$threads CC="ccache gcc" HOSTCC="ccache gcc" 2>&1 | tee module_build.log || {
             log "ERROR" "Module build failed"
+            
+            # Check build log for common errors
+            if grep -q "No space left on device" module_build.log; then
+                log "ERROR" "Module build failed due to insufficient disk space!"
+            elif grep -q "Permission denied" module_build.log; then
+                log "ERROR" "Module build failed due to permission issues!"
+            elif grep -q "virtual memory exhausted" module_build.log || grep -q "Killed" module_build.log; then
+                log "ERROR" "Module build failed due to insufficient memory!"
+            fi
+            
             return 1
         }
     else
         log "INFO" "Make modules command: make $make_v modules -j$threads"
-        nice -n 19 make $make_v modules -j$threads || {
+        nice -n 19 make $make_v modules -j$threads 2>&1 | tee module_build.log || {
             log "ERROR" "Module build failed"
+            
+            # Check build log for common errors
+            if grep -q "No space left on device" module_build.log; then
+                log "ERROR" "Module build failed due to insufficient disk space!"
+            elif grep -q "Permission denied" module_build.log; then
+                log "ERROR" "Module build failed due to permission issues!"
+            elif grep -q "virtual memory exhausted" module_build.log || grep -q "Killed" module_build.log; then
+                log "ERROR" "Module build failed due to insufficient memory!"
+            fi
+            
             return 1
         }
     fi
+    
+    # Clean up log file
+    rm -f module_build.log
     
     # Install modules
     log "INFO" "Installing kernel modules"
