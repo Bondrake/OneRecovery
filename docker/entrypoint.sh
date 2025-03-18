@@ -383,11 +383,23 @@ run_build() {
     fi
 }
 
-# Run the command as the builder user
-if [ $# -eq 0 ]; then
-    # Default command if none provided
-    exec su-exec builder bash -c "cd /onerecovery/build && run_build"
+# Check if we should run as root or as the builder user
+if [ "${RUN_AS_ROOT:-false}" = "true" ]; then
+    echo "Running as root user (RUN_AS_ROOT=true)"
+    if [ $# -eq 0 ]; then
+        # Default command if none provided
+        cd /onerecovery/build && run_build
+    else
+        # Run whatever command was passed
+        "$@"
+    fi
 else
-    # Run whatever command was passed
-    exec su-exec builder "$@"
+    echo "Running as builder user"
+    if [ $# -eq 0 ]; then
+        # Default command if none provided
+        exec su-exec builder bash -c "cd /onerecovery/build && run_build"
+    else
+        # Run whatever command was passed
+        exec su-exec builder "$@"
+    fi
 fi

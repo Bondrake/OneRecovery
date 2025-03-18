@@ -136,11 +136,12 @@ jobs:
           # GitHub-specific settings
           GITHUB_ACTIONS=true
 
+          # Run as root to avoid permission issues
+          RUN_AS_ROOT=true
+          RUN_AS_USER=root
+          
           # Debug settings
           DEBUG_FEATURE_FLAGS=true
-          
-          # Docker permissions - explicitly mark as permissive
-          DOCKER_PERMISSIVE_MODE=true
           EOF
           
           # Also prepare build directory for Docker entrypoint

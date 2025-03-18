@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     image: onerecovery-builder-local:latest
     container_name: onerecovery-builder
+    # Run as root by default in GitHub Actions
+    user: ${RUN_AS_USER:-root}
     volumes:
       # Mount source code including all library scripts
       - ../build:/onerecovery/build:rw
@@ -20,9 +22,11 @@ services:
       - INCLUDE_MINIMAL_KERNEL=${INCLUDE_MINIMAL_KERNEL:-false}
       - INCLUDE_NETWORK_TOOLS=${INCLUDE_NETWORK_TOOLS:-true}
       - INCLUDE_CRYPTO=${INCLUDE_CRYPTO:-true}
-      # Configure user ID mapping
+      # Configure user ID mapping (only used if not running as root)
       - HOST_UID=${HOST_UID:-1000}
       - HOST_GID=${HOST_GID:-1000}
+      # Explicitly run as root in container
+      - RUN_AS_ROOT=true
       # Build optimization
       - USE_CACHE=true
       - CCACHE_COMPRESS=true
