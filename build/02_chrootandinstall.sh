@@ -13,6 +13,27 @@ if [ ! -f "./80_common.sh" ]; then
 fi
 source ./80_common.sh
 
+# Direct implementation of critical functions for Docker compatibility
+# These will only be used if the library versions aren't available
+if ! type check_resume_point >/dev/null 2>&1; then
+    check_resume_point() {
+        if [ -n "$1" ] && [ "$1" = "--resume" ]; then
+            echo -e "${BLUE}[INFO]${NC} Resuming from last successful checkpoint"
+            RESUME_MODE=true
+        else
+            RESUME_MODE=false
+        fi
+    }
+fi
+
+if ! type print_script_end >/dev/null 2>&1; then
+    print_script_end() {
+        echo "----------------------------------------------------"
+        echo -e "${GREEN}[SUCCESS]${NC} $SCRIPT_NAME completed successfully"
+        echo "----------------------------------------------------"
+    }
+fi
+
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
