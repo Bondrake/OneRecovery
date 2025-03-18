@@ -118,6 +118,36 @@ main() {
         end_timing
     fi
     
+    # Clean up build dependencies if ZFS was built
+    if [ "$INCLUDE_ZFS" = "true" ]; then
+        start_timing "Cleaning up ZFS build dependencies"
+        
+        # Create a list of ZFS build dependencies to remove (keeping runtime libraries)
+        log "INFO" "Removing ZFS build dependencies to reduce final image size"
+        ZFS_BUILD_DEPS_REMOVE="build-base autoconf automake libtool linux-headers util-linux-dev zlib-dev openssl-dev attr-dev eudev-dev git"
+        
+        # Enter chroot to remove build dependencies
+        log "INFO" "Entering chroot environment to remove packages"
+        if type prepare_chroot >/dev/null 2>&1 && type cleanup_chroot >/dev/null 2>&1; then
+            # Prepare the chroot environment
+            prepare_chroot "$ROOTFS_DIR"
+            
+            # Execute the chroot command
+            log "INFO" "Removing build dependencies..."
+            chroot "$ROOTFS_DIR" /bin/ash -c "apk del $ZFS_BUILD_DEPS_REMOVE && rm -rf /var/cache/apk/*"
+            
+            # Clean up the chroot environment
+            cleanup_chroot "$ROOTFS_DIR"
+        else
+            # Fall back to simple chroot
+            log "WARNING" "Chroot helpers not available, using basic chroot"
+            chroot "$ROOTFS_DIR" /bin/ash -c "apk del $ZFS_BUILD_DEPS_REMOVE && rm -rf /var/cache/apk/*"
+        fi
+        
+        log "SUCCESS" "ZFS build dependencies removed"
+        end_timing
+    fi
+    
     # Create EFI file
     start_timing "EFI file creation"
     create_efi || {

@@ -52,7 +52,7 @@ OneRecovery is a lightweight Linux distribution contained in a single EFI execut
 
 OneRecovery is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This modernized version features:
 
-- Updated Linux kernel (6.10.x) and Alpine Linux (3.21.0)
+- Updated Linux kernel (6.12) and Alpine Linux (3.21)
 - ZFS filesystem support
 - Enhanced system utilities for recovery and disk management
 - Streamlined user experience with automatic root login
@@ -185,6 +185,14 @@ OneRecovery offers several build configurations to balance features and size:
 | Minimal | Core functionality only | ~30-50MB | `--minimal` |
 | Standard | Basic recovery features | ~60-90MB | (default) |
 | Full | All features and tools | ~100-150MB | `--full` |
+
+**Standard Build Capabilities:**
+- **Performance**: Balanced multi-core support with hardware crypto acceleration
+- **Hardware Support**: Extensive coverage for storage controllers (SATA, AHCI, NVMe, USB), input devices, and basic framebuffer graphics
+- **Filesystems**: Complete support for ZFS, Ext4, and other common filesystems (BTRFS optional)
+- **Networking**: Full TCP/IP stack with routing, firewall capabilities, and diagnostics
+- **Security**: Comprehensive cryptography with LUKS disk encryption and LVM support
+- **System Footprint**: Moderately sized with broad hardware compatibility for effective recovery operations
 
 #### Advanced Package Groups
 
@@ -907,6 +915,72 @@ OneRecovery's feature flags control which components are included in the build, 
 | Minimal | `--minimal` | Essential functionality only | ~4MB |
 | Standard | (default) | Balanced configuration | ~20MB |
 | Full | `--full` | All features included | ~40-60MB |
+
+##### Understanding Build Configurations
+
+###### Minimal Build
+
+The minimal build creates an ultra-small EFI file with only essential functionality, optimized for emergency scenarios where space is extremely limited.
+
+What's Included:
+- Base system (openrc, bash, parted)
+- Basic EFI boot functionality
+- Essential filesystem support (ext4, FAT/vFAT)
+- Command-line interface
+
+What's Excluded:
+- ZFS and other advanced filesystem support
+- Recovery tools (testdisk, ddrescue)
+- Network tools and diagnostics
+- Encryption support
+- Text User Interface (TUI)
+- Hardware diagnostics
+- All advanced package groups
+
+Impact on Usage:
+- Command-line only interface (no TUI)
+- Limited recovery capabilities
+- Basic filesystem operations only
+- Reduced hardware support
+- Minimal network functionality
+
+Best Uses:
+- Emergency boot scenarios
+- Systems with very small EFI partitions
+- Creating a minimal recovery option
+- Base for custom minimal builds
+- Ultra-fast boot requirements
+
+###### Standard Build
+
+The standard build provides a balanced configuration suitable for most recovery operations while maintaining reasonable size.
+
+What's Included:
+- Complete multi-core processor support
+- Hardware acceleration (Intel AES-NI, Padlock)
+- Comprehensive storage drivers (SATA, AHCI, NVMe, USB)
+- Full ZFS support with all compression options
+- Common filesystems (Ext4, vFAT, XFS)
+- Complete TCP/IP networking stack
+- Firewall capabilities (Netfilter/NFTables)
+- Disk encryption (LUKS/dm-crypt)
+- Logical Volume Management (LVM)
+- Text-based user interface
+
+Impact on System:
+- Moderate memory usage
+- Balanced boot time
+- Good hardware compatibility
+- Comprehensive recovery capabilities
+- Full filesystem support for data recovery
+- Network diagnostics for remote recovery
+
+Best Uses:
+- Standard recovery operations
+- Data rescue from most filesystem types
+- System repair on typical hardware
+- Network-based recovery scenarios
+- Boot repair operations
 
 #### Core Feature Flags
 
