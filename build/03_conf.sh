@@ -309,39 +309,60 @@ elif [ "${USE_ALPINE_KERNEL_CONFIG:-true}" = "true" ]; then
     if [ "${AUTO_KERNEL_CONFIG:-true}" = "true" ]; then
         APPLY_OVERLAY="./tools/apply-config-overlay.sh"
         
-        if [ -f "$APPLY_OVERLAY" ]; then
-            # Apply ZFS overlay if enabled
-            if [ "${INCLUDE_ZFS:-true}" = "true" ] && [ -f "$FEATURES_DIR/zfs-support.conf" ]; then
-                log "INFO" "Applying ZFS kernel config overlay"
-                "$APPLY_OVERLAY" "$FEATURES_DIR/zfs-support.conf" "linux/.config"
-            fi
+        # Check if using minimal kernel
+        if [ "${INCLUDE_MINIMAL_KERNEL:-false}" = "true" ]; then
+            log "INFO" "Building with minimal kernel configuration (INCLUDE_MINIMAL_KERNEL=true)"
+            log "INFO" "Skipping most feature overlays for minimal build"
             
-            # Apply BTRFS overlay if enabled
-            if [ "${INCLUDE_BTRFS:-false}" = "true" ] && [ -f "$FEATURES_DIR/btrfs-support.conf" ]; then
-                log "INFO" "Applying BTRFS kernel config overlay"
-                "$APPLY_OVERLAY" "$FEATURES_DIR/btrfs-support.conf" "linux/.config"
-            fi
-            
-            # Apply network tools overlay if enabled
-            if [ "${INCLUDE_NETWORK_TOOLS:-true}" = "true" ] && [ -f "$FEATURES_DIR/network-tools.conf" ]; then
-                log "INFO" "Applying network tools kernel config overlay"
-                "$APPLY_OVERLAY" "$FEATURES_DIR/network-tools.conf" "linux/.config"
-            fi
-            
-            # Apply crypto overlay if enabled
-            if [ "${INCLUDE_CRYPTO:-true}" = "true" ] && [ -f "$FEATURES_DIR/crypto-support.conf" ]; then
-                log "INFO" "Applying crypto support kernel config overlay"
-                "$APPLY_OVERLAY" "$FEATURES_DIR/crypto-support.conf" "linux/.config"
-            fi
-            
-            # Apply advanced filesystem overlay if enabled
-            if [ "${INCLUDE_ADVANCED_FS:-false}" = "true" ] && [ -f "$FEATURES_DIR/advanced-fs.conf" ]; then
-                log "INFO" "Applying advanced filesystems kernel config overlay"
-                "$APPLY_OVERLAY" "$FEATURES_DIR/advanced-fs.conf" "linux/.config"
-            fi
+            # Apply only essential overlays for minimal build
+            # (none by default, but you could add critical ones here if needed)
         else
-            log "WARNING" "Config overlay utility not found: $APPLY_OVERLAY"
-            log "INFO" "Continuing without applying feature-specific kernel options"
+            log "INFO" "Building with standard kernel configuration"
+            
+            if [ -f "$APPLY_OVERLAY" ]; then
+                # Apply ZFS overlay if enabled
+                if [ "${INCLUDE_ZFS:-true}" = "true" ] && [ -f "$FEATURES_DIR/zfs-support.conf" ]; then
+                    log "INFO" "Applying ZFS kernel config overlay"
+                    "$APPLY_OVERLAY" "$FEATURES_DIR/zfs-support.conf" "linux/.config"
+                else
+                    log "INFO" "Skipping ZFS kernel config overlay (INCLUDE_ZFS=${INCLUDE_ZFS:-true})"
+                fi
+                
+                # Apply BTRFS overlay if enabled
+                if [ "${INCLUDE_BTRFS:-false}" = "true" ] && [ -f "$FEATURES_DIR/btrfs-support.conf" ]; then
+                    log "INFO" "Applying BTRFS kernel config overlay"
+                    "$APPLY_OVERLAY" "$FEATURES_DIR/btrfs-support.conf" "linux/.config"
+                else
+                    log "INFO" "Skipping BTRFS kernel config overlay (INCLUDE_BTRFS=${INCLUDE_BTRFS:-false})"
+                fi
+                
+                # Apply network tools overlay if enabled
+                if [ "${INCLUDE_NETWORK_TOOLS:-true}" = "true" ] && [ -f "$FEATURES_DIR/network-tools.conf" ]; then
+                    log "INFO" "Applying network tools kernel config overlay"
+                    "$APPLY_OVERLAY" "$FEATURES_DIR/network-tools.conf" "linux/.config"
+                else
+                    log "INFO" "Skipping network tools kernel config overlay (INCLUDE_NETWORK_TOOLS=${INCLUDE_NETWORK_TOOLS:-true})"
+                fi
+                
+                # Apply crypto overlay if enabled
+                if [ "${INCLUDE_CRYPTO:-true}" = "true" ] && [ -f "$FEATURES_DIR/crypto-support.conf" ]; then
+                    log "INFO" "Applying crypto support kernel config overlay"
+                    "$APPLY_OVERLAY" "$FEATURES_DIR/crypto-support.conf" "linux/.config"
+                else
+                    log "INFO" "Skipping crypto support kernel config overlay (INCLUDE_CRYPTO=${INCLUDE_CRYPTO:-true})"
+                fi
+                
+                # Apply advanced filesystem overlay if enabled
+                if [ "${INCLUDE_ADVANCED_FS:-false}" = "true" ] && [ -f "$FEATURES_DIR/advanced-fs.conf" ]; then
+                    log "INFO" "Applying advanced filesystems kernel config overlay"
+                    "$APPLY_OVERLAY" "$FEATURES_DIR/advanced-fs.conf" "linux/.config"
+                else
+                    log "INFO" "Skipping advanced filesystems kernel config overlay (INCLUDE_ADVANCED_FS=${INCLUDE_ADVANCED_FS:-false})"
+                fi
+            else
+                log "WARNING" "Config overlay utility not found: $APPLY_OVERLAY"
+                log "INFO" "Continuing without applying feature-specific kernel options"
+            fi
         fi
     fi
 

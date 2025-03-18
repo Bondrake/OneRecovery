@@ -278,6 +278,19 @@ run_build() {
             echo "CCache statistics before build:"
             ccache -s
             
+            # Parse build arguments early to set feature flags for all scripts
+            echo "Loading build helper library to parse build arguments"
+            source "./82_build_helper.sh"
+            echo "Parsing build flags from arguments: $BUILD_ARGS"
+            parse_build_flags "$BUILD_ARGS" true
+
+            # Log the configuration that will be used
+            echo "Using build configuration:"
+            echo "- ZFS support: ${INCLUDE_ZFS:-true}"
+            echo "- Network tools: ${INCLUDE_NETWORK_TOOLS:-true}"
+            echo "- Crypto support: ${INCLUDE_CRYPTO:-true}"
+            echo "- Minimal kernel: ${INCLUDE_MINIMAL_KERNEL:-false}"
+            
             # Run each step explicitly to ensure proper error handling
             echo "Step 1: Running 01_get.sh to download components"
             ./01_get.sh

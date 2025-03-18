@@ -1052,6 +1052,238 @@ fix_kernel_permissions() {
     return 0
 }
 
+# Parse build flags to set feature variables consistently across all scripts
+parse_build_flags() {
+    local build_args="$1"
+    local apply_changes=${2:-true}  # Whether to apply changes to env vars
+
+    # Use a temporary log function to avoid affecting stdout
+    function _temp_log {
+        >&2 echo -e "${BLUE}[INFO]${NC} $1"
+    }
+
+    _temp_log "Parsing build flags: $build_args"
+    
+    # Default flag values
+    local _include_minimal_kernel=false
+    local _include_zfs=true
+    local _include_btrfs=false 
+    local _include_recovery_tools=true
+    local _include_network_tools=true
+    local _include_crypto=true
+    local _include_tui=true
+    local _include_advanced_fs=false
+    local _include_disk_diag=false
+    local _include_network_diag=false
+    local _include_system_tools=false
+    local _include_data_recovery=false
+    local _include_boot_repair=false
+    local _include_editors=false
+    local _include_security=false
+    
+    # Read current env vars if they're set
+    if [ -n "${INCLUDE_MINIMAL_KERNEL:-}" ]; then _include_minimal_kernel="$INCLUDE_MINIMAL_KERNEL"; fi
+    if [ -n "${INCLUDE_ZFS:-}" ]; then _include_zfs="$INCLUDE_ZFS"; fi
+    if [ -n "${INCLUDE_BTRFS:-}" ]; then _include_btrfs="$INCLUDE_BTRFS"; fi
+    if [ -n "${INCLUDE_RECOVERY_TOOLS:-}" ]; then _include_recovery_tools="$INCLUDE_RECOVERY_TOOLS"; fi
+    if [ -n "${INCLUDE_NETWORK_TOOLS:-}" ]; then _include_network_tools="$INCLUDE_NETWORK_TOOLS"; fi
+    if [ -n "${INCLUDE_CRYPTO:-}" ]; then _include_crypto="$INCLUDE_CRYPTO"; fi
+    if [ -n "${INCLUDE_TUI:-}" ]; then _include_tui="$INCLUDE_TUI"; fi
+    if [ -n "${INCLUDE_ADVANCED_FS:-}" ]; then _include_advanced_fs="$INCLUDE_ADVANCED_FS"; fi
+    if [ -n "${INCLUDE_DISK_DIAG:-}" ]; then _include_disk_diag="$INCLUDE_DISK_DIAG"; fi
+    if [ -n "${INCLUDE_NETWORK_DIAG:-}" ]; then _include_network_diag="$INCLUDE_NETWORK_DIAG"; fi
+    if [ -n "${INCLUDE_SYSTEM_TOOLS:-}" ]; then _include_system_tools="$INCLUDE_SYSTEM_TOOLS"; fi
+    if [ -n "${INCLUDE_DATA_RECOVERY:-}" ]; then _include_data_recovery="$INCLUDE_DATA_RECOVERY"; fi
+    if [ -n "${INCLUDE_BOOT_REPAIR:-}" ]; then _include_boot_repair="$INCLUDE_BOOT_REPAIR"; fi
+    if [ -n "${INCLUDE_EDITORS:-}" ]; then _include_editors="$INCLUDE_EDITORS"; fi
+    if [ -n "${INCLUDE_SECURITY:-}" ]; then _include_security="$INCLUDE_SECURITY"; fi
+    
+    # Split the build_args string into an array
+    IFS=' ' read -ra FLAGS <<< "$build_args"
+    
+    # Iterate through all flags
+    for flag in "${FLAGS[@]}"; do
+        case "$flag" in
+            --minimal)
+                _temp_log "Detected --minimal flag, applying minimal configuration"
+                _include_minimal_kernel=true
+                _include_zfs=false
+                _include_btrfs=false
+                _include_recovery_tools=false
+                _include_network_tools=false
+                _include_crypto=false
+                _include_tui=false
+                _include_advanced_fs=false
+                _include_disk_diag=false
+                _include_network_diag=false
+                _include_system_tools=false
+                _include_data_recovery=false
+                _include_boot_repair=false
+                _include_editors=false
+                _include_security=false
+                ;;
+            --full)
+                _temp_log "Detected --full flag, applying full configuration"
+                _include_minimal_kernel=false
+                _include_zfs=true
+                _include_btrfs=true
+                _include_recovery_tools=true
+                _include_network_tools=true
+                _include_crypto=true
+                _include_tui=true
+                _include_advanced_fs=true
+                _include_disk_diag=true
+                _include_network_diag=true
+                _include_system_tools=true
+                _include_data_recovery=true
+                _include_boot_repair=true
+                _include_editors=true
+                _include_security=true
+                ;;
+            --minimal-kernel)
+                _include_minimal_kernel=true
+                ;;
+            --standard-kernel)
+                _include_minimal_kernel=false
+                ;;
+            --with-zfs)
+                _include_zfs=true
+                ;;
+            --without-zfs)
+                _include_zfs=false
+                ;;
+            --with-btrfs)
+                _include_btrfs=true
+                ;;
+            --without-btrfs)
+                _include_btrfs=false
+                ;;
+            --with-recovery-tools)
+                _include_recovery_tools=true
+                ;;
+            --without-recovery-tools)
+                _include_recovery_tools=false
+                ;;
+            --with-network-tools)
+                _include_network_tools=true
+                ;;
+            --without-network-tools)
+                _include_network_tools=false
+                ;;
+            --with-crypto)
+                _include_crypto=true
+                ;;
+            --without-crypto)
+                _include_crypto=false
+                ;;
+            --with-tui)
+                _include_tui=true
+                ;;
+            --without-tui)
+                _include_tui=false
+                ;;
+            # Advanced package groups
+            --with-advanced-fs)
+                _include_advanced_fs=true
+                ;;
+            --without-advanced-fs)
+                _include_advanced_fs=false
+                ;;
+            --with-disk-diag)
+                _include_disk_diag=true
+                ;;
+            --without-disk-diag)
+                _include_disk_diag=false
+                ;;
+            --with-network-diag)
+                _include_network_diag=true
+                ;;
+            --without-network-diag)
+                _include_network_diag=false
+                ;;
+            --with-system-tools)
+                _include_system_tools=true
+                ;;
+            --without-system-tools)
+                _include_system_tools=false
+                ;;
+            --with-data-recovery)
+                _include_data_recovery=true
+                ;;
+            --without-data-recovery)
+                _include_data_recovery=false
+                ;;
+            --with-boot-repair)
+                _include_boot_repair=true
+                ;;
+            --without-boot-repair)
+                _include_boot_repair=false
+                ;;
+            --with-editors)
+                _include_editors=true
+                ;;
+            --without-editors)
+                _include_editors=false
+                ;;
+            --with-security)
+                _include_security=true
+                ;;
+            --without-security)
+                _include_security=false
+                ;;
+            --with-all-advanced)
+                _include_advanced_fs=true
+                _include_disk_diag=true
+                _include_network_diag=true
+                _include_system_tools=true
+                _include_data_recovery=true
+                _include_boot_repair=true
+                _include_editors=true
+                _include_security=true
+                ;;
+            --without-all-advanced)
+                _include_advanced_fs=false
+                _include_disk_diag=false
+                _include_network_diag=false
+                _include_system_tools=false
+                _include_data_recovery=false
+                _include_boot_repair=false
+                _include_editors=false
+                _include_security=false
+                ;;
+        esac
+    done
+    
+    # Apply the changes to environment variables if requested
+    if [ "$apply_changes" = "true" ]; then
+        export INCLUDE_MINIMAL_KERNEL="$_include_minimal_kernel"
+        export INCLUDE_ZFS="$_include_zfs"
+        export INCLUDE_BTRFS="$_include_btrfs"
+        export INCLUDE_RECOVERY_TOOLS="$_include_recovery_tools"
+        export INCLUDE_NETWORK_TOOLS="$_include_network_tools"
+        export INCLUDE_CRYPTO="$_include_crypto"
+        export INCLUDE_TUI="$_include_tui"
+        export INCLUDE_ADVANCED_FS="$_include_advanced_fs"
+        export INCLUDE_DISK_DIAG="$_include_disk_diag"
+        export INCLUDE_NETWORK_DIAG="$_include_network_diag"
+        export INCLUDE_SYSTEM_TOOLS="$_include_system_tools"
+        export INCLUDE_DATA_RECOVERY="$_include_data_recovery"
+        export INCLUDE_BOOT_REPAIR="$_include_boot_repair"
+        export INCLUDE_EDITORS="$_include_editors"
+        export INCLUDE_SECURITY="$_include_security"
+        
+        _temp_log "Applied feature flags from build arguments"
+    fi
+    
+    # Return a summary string for logging
+    local summary="INCLUDE_MINIMAL_KERNEL=$_include_minimal_kernel "
+    summary+="INCLUDE_ZFS=$_include_zfs "
+    summary+="INCLUDE_NETWORK_TOOLS=$_include_network_tools "
+    summary+="INCLUDE_CRYPTO=$_include_crypto"
+    
+    echo "$summary"
+}
+
 # Export all functions
 export -f is_github_actions
 export -f is_docker_container
@@ -1062,6 +1294,7 @@ export -f fix_kernel_permissions
 export -f print_environment_info
 export -f fix_script_permissions
 export -f ensure_directory
+export -f parse_build_flags
 # Handle kernel permissions in a CI-friendly way
 # Some CI environments don't allow chmod on certain files
 handle_kernel_permissions() {

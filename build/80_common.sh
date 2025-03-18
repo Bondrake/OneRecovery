@@ -205,6 +205,15 @@ source_libraries() {
     # Build helpers
     source_library "$script_path/82_build_helper.sh"
     
+    # After loading build helper, process any existing build flags from environment
+    if declare -f parse_build_flags >/dev/null; then
+        # Get existing build args from environment
+        if [ -n "${BUILD_ARGS:-}" ]; then
+            echo -e "${BLUE}[INFO]${NC} Processing BUILD_ARGS from environment: $BUILD_ARGS"
+            parse_build_flags "$BUILD_ARGS" true
+        fi
+    fi
+    
     # Optional configuration helpers
     source_library "$script_path/83_config_helper.sh" false
     
@@ -228,6 +237,11 @@ source_libraries() {
             loaded_libs="$loaded_libs $lib"
         done
         echo -e "${BLUE}[DEBUG]${NC} Current loaded libraries:$loaded_libs (from $calling_script:$calling_line)"
+    fi
+    
+    # Debug information about feature flags
+    if [ "${DEBUG_LIBRARY_LOADING:-}" = "true" ] || [ "${DEBUG_FEATURE_FLAGS:-}" = "true" ]; then
+        echo -e "${BLUE}[DEBUG]${NC} Feature flags: INCLUDE_MINIMAL_KERNEL=${INCLUDE_MINIMAL_KERNEL:-false}, INCLUDE_ZFS=${INCLUDE_ZFS:-true}, INCLUDE_NETWORK_TOOLS=${INCLUDE_NETWORK_TOOLS:-true}, INCLUDE_CRYPTO=${INCLUDE_CRYPTO:-true}"
     fi
     
     return 0
