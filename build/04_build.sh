@@ -100,24 +100,8 @@ main() {
     fi
     end_timing
     
-    # Apply kernel patches and fix ABI headers before build
-    start_timing "Kernel ABI fix"
-    
-    # Create symlinks for ABI headers (direct approach)
-    if [ -x "$BUILD_DIR/tools/symlink-abi-headers.sh" ]; then
-        log "INFO" "Creating symlinks for kernel ABI headers"
-        bash "$BUILD_DIR/tools/symlink-abi-headers.sh" "$KERNEL_DIR" || log "WARNING" "ABI header symlink creation failed, but continuing anyway"
-    else
-        log "WARNING" "ABI header symlink script not found"
-    fi
-    
-    # Legacy patch application (as fallback)
-    if [ -x "$BUILD_DIR/tools/apply-kernel-patches.sh" ]; then
-        log "INFO" "Applying custom kernel patches (fallback)"
-        bash "$BUILD_DIR/tools/apply-kernel-patches.sh" "$KERNEL_DIR" || log "WARNING" "Patch application failed, but continuing anyway"
-    fi
-    
-    end_timing
+    # ABI header warnings suppressed
+    log "INFO" "ABI header mismatch warnings are allowed for now"
 
     # Build kernel
     start_timing "Kernel build"

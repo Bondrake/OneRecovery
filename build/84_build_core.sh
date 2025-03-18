@@ -136,43 +136,8 @@ build_kernel() {
     # Enter kernel directory
     cd "$KERNEL_DIR"
     
-    # Fix ABI header mismatches - comprehensive approach for all potential mismatches
-    log "INFO" "Checking for ABI header mismatches"
-    
-    # Function to sync a specific header file
-    sync_header_file() {
-        local arch_path="$1"
-        local tools_path="$2"
-        
-        if [ -f "$arch_path" ] && [ -f "$tools_path" ]; then
-            log "INFO" "Synchronizing ABI header: $tools_path"
-            cp -f "$arch_path" "$tools_path"
-            return 0
-        fi
-        return 1
-    }
-    
-    # Synchronize known problematic header files
-    sync_header_file "arch/x86/lib/insn.c" "tools/arch/x86/lib/insn.c"
-    sync_header_file "arch/x86/include/asm/inat.h" "tools/arch/x86/include/asm/inat.h"
-    sync_header_file "arch/x86/include/asm/insn.h" "tools/arch/x86/include/asm/insn.h"
-    sync_header_file "arch/x86/lib/inat.c" "tools/arch/x86/lib/inat.c"
-    
-    # Additional general approach - find all files in tools/arch that have equivalents in arch/
-    log "INFO" "Performing comprehensive ABI header synchronization"
-    find tools/arch -type f -name "*.h" -o -name "*.c" 2>/dev/null | while read tools_file; do
-        # Get the relative path and construct the corresponding arch path
-        rel_path="${tools_file#tools/}"
-        arch_file="$rel_path"
-        
-        if [ -f "$arch_file" ]; then
-            # Compare the files and update if different
-            if ! cmp -s "$arch_file" "$tools_file"; then
-                log "INFO" "Synchronizing mismatched file: $tools_file"
-                cp -f "$arch_file" "$tools_file"
-            fi
-        fi
-    done
+    # ABI header mismatch warnings are allowed
+    log "INFO" "ABI header mismatch warnings are allowed for now"
     
     # Ensure kernel can find OpenSSL for module signing
     if [ -f "certs/Makefile" ] && grep -q "CONFIG_MODULE_SIG=y" .config; then
