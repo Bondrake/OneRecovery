@@ -228,7 +228,25 @@ run_build() {
             fi
         fi
         
-        # Use standard build script
+        # Use the unified build script for complete timing information
+        # Make sure the unified build script exists and is executable
+        if [ -f "build.sh" ]; then
+            chmod +x build.sh
+        else
+            echo "Creating build.sh symlink"
+            # Find the script in the mounted volumes
+            SCRIPT_PATH=$(find /onerecovery -name "build.sh" -type f 2>/dev/null | head -n 1)
+            
+            if [ -n "$SCRIPT_PATH" ]; then
+                echo "Found script at: $SCRIPT_PATH"
+                ln -sf "$SCRIPT_PATH" ./build.sh
+                chmod +x build.sh
+            else
+                echo "ERROR: Unified build script not found: build.sh"
+                echo "Please ensure the build directory contains build.sh"
+                return 1
+            fi
+        fi
         
         # Add common options for better performance
         if [ -n "$BUILD_ARGS" ]; then
@@ -240,23 +258,23 @@ run_build() {
                 BUILD_ARGS="$BUILD_ARGS --use-swap"
             fi
             
-            echo "Running: ./04_build.sh $BUILD_ARGS"
+            echo "Running: ./build.sh all $BUILD_ARGS"
             
             # Display ccache stats before build
             echo "CCache statistics before build:"
             ccache -s
             
-            # Run the build
-            ./04_build.sh $BUILD_ARGS
+            # Run the complete build sequence with timing
+            ./build.sh all $BUILD_ARGS
             
             # Display ccache stats after build
             echo "CCache statistics after build:"
             ccache -s
         else
-            echo "Running: ./04_build.sh with default options"
+            echo "Running: ./build.sh all with default options"
             echo "CCache statistics before build:"
             ccache -s
-            ./04_build.sh --use-cache --use-swap
+            ./build.sh all --use-cache --use-swap
             echo "CCache statistics after build:"
             ccache -s
         fi

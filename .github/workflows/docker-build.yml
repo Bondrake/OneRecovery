@@ -291,13 +291,15 @@ jobs:
           
           # Run the main build
           echo "Step 4: Running 04_build.sh for final build"
-          sudo -E ./04_build.sh ${{ matrix.build_args }}
+          # Set flag to finalize timing log in the last script
+          sudo -E bash -c 'export FINALIZE_TIMING_LOG=true; ./04_build.sh ${{ matrix.build_args }}'
       
       - name: Check for build artifacts
         id: check_files
         run: |
           # Fix permissions on output directory if needed
           sudo chmod -R 777 ./output
+          sudo chmod -R 777 ./build
           
           # Check if build produced the EFI file
           if [ -f "./output/OneRecovery.efi" ]; then
@@ -307,6 +309,12 @@ jobs:
             # Display ccache statistics
             echo "CCache Statistics:"
             ccache -s
+            
+            # Display timing data if available
+            if [ -f "./build/build_timing.log" ]; then
+              echo "Build Timing Data:"
+              cat ./build/build_timing.log
+            fi
           else
             echo "efi_file=false" >> $GITHUB_OUTPUT
             echo "Build failed to produce OneRecovery.efi"
@@ -320,6 +328,14 @@ jobs:
           name: OneRecovery-${{ matrix.name }}
           path: ./output/OneRecovery.efi
           if-no-files-found: error
+          
+      - name: Upload build timing log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-timing-log-${{ matrix.name }}
+          path: ./build/build_timing.log
+          if-no-files-found: warn
 
   # Package all artifacts into a release
   release:

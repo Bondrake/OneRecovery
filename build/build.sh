@@ -76,7 +76,7 @@ set -e
 
 # Display usage information
 usage() {
-    echo "Usage: $0 [options] [STEP]"
+    echo "Usage: $0 [options] [STEP] [-- <arguments for 04_build.sh>]"
     echo ""
     echo "Options:"
     echo "  -h, --help          Display this help message"
@@ -95,11 +95,17 @@ usage() {
     echo "  build               Run only the build step (04_build.sh)"
     echo "  clean               Run only cleanup (99_cleanup.sh)"
     echo ""
+    echo "Passthrough Arguments:"
+    echo "  You can pass arguments directly to 04_build.sh by using a double dash (--)"
+    echo "  followed by the arguments. These arguments will be passed as-is to 04_build.sh."
+    echo ""
     echo "Examples:"
     echo "  $0                  Run all build steps"
     echo "  $0 -c all           Clean, then run all build steps"
     echo "  $0 -r               Resume build from last successful step"
     echo "  $0 get              Run only the download step"
+    echo "  $0 all -- --minimal --without-zfs     Run all steps and pass arguments to 04_build.sh"
+    echo "  $0 build -- --minimal --without-zfs   Run only build step with custom arguments"
     echo "  $0 -s build         Skip environment preparation and run only the build step"
     echo ""
 }
@@ -318,6 +324,31 @@ usage_modules() {
 process_args() {
     # First load config file if it exists
     load_config
+    
+    # Check for -- separator which indicates passthrough arguments for 04_build.sh
+    local found_separator=false
+    local separator_index=-1
+    local all_args=("$@")
+    
+    for ((i=0; i<$#; i++)); do
+        if [ "${all_args[$i]}" = "--" ]; then
+            found_separator=true
+            separator_index=$i
+            break
+        fi
+    done
+    
+    # If we found a separator, extract passthrough arguments
+    if [ "$found_separator" = true ]; then
+        # Save the passthrough arguments for later use
+        local passthrough_args=("${all_args[@]:$((separator_index+1))}")
+        BUILD_PASSTHROUGH_ARGS="${passthrough_args[*]}"
+        
+        # Remove the separator and passthrough arguments from the argument list
+        set -- "${all_args[@]:0:$separator_index}"
+        
+        log "INFO" "Passthrough arguments for 04_build.sh: $BUILD_PASSTHROUGH_ARGS"
+    fi
     
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -802,6 +833,10 @@ execute_step() {
     local script=""
     local sudo_req=false
     
+    # Shift to get any additional arguments after the step name
+    shift
+    local step_args=("$@")
+    
     case $step in
         "prepare")
             script="./00_prepare.sh"
@@ -839,9 +874,9 @@ execute_step() {
         exit 1
     fi
     
-    # Add resume flag if required
+    # Add resume flag if required (but not for build step when we have passthrough args)
     local args=""
-    if [ "$RESUME" = true ]; then
+    if [ "$RESUME" = true ] && [ "${#step_args[@]}" -eq 0 ]; then
         args="--resume"
     fi
     
@@ -858,16 +893,34 @@ execute_step() {
         print_config
     fi
     
+    # Set FINALIZE_TIMING_LOG for the final build step when doing all steps
+    if [ "$step" = "build" ] && [ "$BUILD_STEP" = "all" ]; then
+        export FINALIZE_TIMING_LOG=true
+        log "INFO" "Setting FINALIZE_TIMING_LOG=true for complete build timing summary"
+    fi
+    
     # Execute the script
     log "INFO" "Executing build step: $step"
-    log "INFO" "Running: $script $args"
     
-    if [ "$sudo_req" = true ] && [ "$EUID" -ne 0 ]; then
-        log "INFO" "This step requires elevated privileges"
-        # Pass all environment variables to sudo
-        sudo -E "$script" $args
+    # For build step with direct arguments, pass them through without modification
+    if [ "$step" = "build" ] && [ "${#step_args[@]}" -gt 0 ]; then
+        log "INFO" "Running: $script ${step_args[*]}"
+        
+        if [ "$sudo_req" = true ] && [ "$EUID" -ne 0 ]; then
+            log "INFO" "This step requires elevated privileges"
+            sudo -E "$script" "${step_args[@]}"
+        else
+            "$script" "${step_args[@]}"
+        fi
     else
-        "$script" $args
+        log "INFO" "Running: $script $args"
+        
+        if [ "$sudo_req" = true ] && [ "$EUID" -ne 0 ]; then
+            log "INFO" "This step requires elevated privileges"
+            sudo -E "$script" $args
+        else
+            "$script" $args
+        fi
     fi
     
     local exit_code=$?
@@ -888,6 +941,13 @@ run_build() {
     # If resume is requested, load saved progress
     if [ "$RESUME" = true ]; then
         start_step=$(load_progress)
+    fi
+    
+    # Check if we have any passthrough arguments
+    local passthrough_args=()
+    if [ -n "$BUILD_PASSTHROUGH_ARGS" ]; then
+        # Split the passthrough arguments by space
+        read -ra passthrough_args <<< "$BUILD_PASSTHROUGH_ARGS"
     fi
     
     # If building "all", execute all steps in sequence
@@ -912,11 +972,20 @@ run_build() {
         fi
         
         for ((i=start_idx; i<${#steps[@]}; i++)); do
-            execute_step "${steps[$i]}"
+            # For the final build step, pass any passthrough arguments
+            if [ "${steps[$i]}" = "build" ] && [ ${#passthrough_args[@]} -gt 0 ]; then
+                execute_step "${steps[$i]}" "${passthrough_args[@]}"
+            else
+                execute_step "${steps[$i]}"
+            fi
         done
     else
         # Execute only the specified step
-        execute_step "$BUILD_STEP"
+        if [ "$BUILD_STEP" = "build" ] && [ ${#passthrough_args[@]} -gt 0 ]; then
+            execute_step "$BUILD_STEP" "${passthrough_args[@]}"
+        else
+            execute_step "$BUILD_STEP"
+        fi
     fi
 }
 

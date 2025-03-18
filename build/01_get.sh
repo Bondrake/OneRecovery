@@ -378,6 +378,7 @@ main() {
     check_resume_point "$1"
 
     # Step 1: Download and extract Alpine Linux
+    start_timing "01_get: Alpine Linux"
     log "INFO" "Step 1: Getting Alpine Linux minirootfs"
     if ! download_and_verify "$ALPINE_URL" "Alpine Linux"; then
         log "ERROR" "Failed to download Alpine Linux"
@@ -395,8 +396,10 @@ main() {
     else
         log "INFO" "Skipping Alpine Linux extraction - already completed"
     fi
+    end_timing
 
     # Step 2: Download and extract Linux kernel
+    start_timing "01_get: Linux kernel"
     log "INFO" "Step 2: Getting Linux kernel"
     if ! download_and_verify "$KERNEL_URL" "Linux kernel"; then
         log "ERROR" "Failed to download Linux kernel"
@@ -420,9 +423,11 @@ main() {
         ln -sf "$linuxver" linux
         log "INFO" "Created symbolic link to Linux kernel directory"
     fi
+    end_timing
 
     # Step 3: Download and extract OpenZFS if enabled
     if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
+        start_timing "01_get: OpenZFS"
         log "INFO" "Step 3: Getting OpenZFS source"
         if ! download_and_verify "$ZFS_URL" "OpenZFS"; then
             log "ERROR" "Failed to download OpenZFS"
@@ -467,12 +472,19 @@ main() {
                 exit 1
             fi
         fi
+        end_timing
     else
         log "INFO" "Step 3: Skipping OpenZFS (disabled in configuration)"
     fi
 
     # Print final status
     print_script_end
+    
+    # If this is the final script being run, finalize the timing log
+    if [ "${FINALIZE_TIMING_LOG:-false}" = "true" ]; then
+        finalize_timing_log
+    fi
+    
     return 0
 }
 

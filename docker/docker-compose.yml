@@ -21,6 +21,9 @@ services:
       # Build optimization
       - USE_CACHE=true
       - CCACHE_COMPRESS=true
+      # Timing and performance logging
+      - FINALIZE_TIMING_LOG=true
+      - TIMING_LOG_FILE=/onerecovery/build/build_timing.log
     # Resource limits (dynamically set by auto-resources.sh script)
     deploy:
       resources:

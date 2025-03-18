@@ -167,6 +167,79 @@ initialize_script() {
     export BANNER_PRINTED=true
 }
 
+# Timing functions for build performance tracking
+# ==========================================
+
+# Global timing variables
+GLOBAL_BUILD_START_TIME=$(date +%s)
+
+# Get script directory for absolute paths
+COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Define timing log with absolute path for consistency across scripts
+TIMING_LOG_FILE="${COMMON_DIR}/build_timing.log"
+
+# Timing function for build steps
+log_timing() {
+    local step_name="$1"
+    local step_duration="$2"
+    local log_file="${TIMING_LOG_FILE}"
+    
+    # Create log file with header if it doesn't exist
+    if [ ! -f "$log_file" ]; then
+        echo "==========================================" > "$log_file"
+        echo "OneRecovery Build Timing Log" >> "$log_file"
+        echo "Started at: $(date)" >> "$log_file"
+        echo "==========================================" >> "$log_file"
+        echo "" >> "$log_file"
+        echo "STEP                               DURATION" >> "$log_file"
+        echo "----------------------------------------" >> "$log_file"
+    fi
+    
+    # Format timing information (right-aligned)
+    local formatted_time=$(printf "%-35s %6ds" "$step_name" "$step_duration")
+    echo "$formatted_time" >> "$log_file"
+    
+    # Also log to console
+    log "INFO" "[TIMING] $step_name: ${step_duration}s"
+}
+
+# Start timing for a step
+start_timing() {
+    STEP_NAME="$1"
+    STEP_START_TIME=$(date +%s)
+    log "INFO" "[TIMING] Starting: $STEP_NAME"
+}
+
+# End timing for a step
+end_timing() {
+    local current_time=$(date +%s)
+    local duration=$((current_time - STEP_START_TIME))
+    log_timing "$STEP_NAME" "$duration"
+}
+
+# Finalize timing log with summary
+finalize_timing_log() {
+    local build_end_time=$(date +%s)
+    local build_duration=$((build_end_time - GLOBAL_BUILD_START_TIME))
+    local build_minutes=$((build_duration / 60))
+    local build_seconds=$((build_duration % 60))
+    
+    # Add total build time to timing log
+    log_timing "TOTAL BUILD TIME" "$build_duration"
+    
+    # Add footer to timing log
+    echo "" >> "${TIMING_LOG_FILE}"
+    echo "==========================================" >> "${TIMING_LOG_FILE}"
+    echo "Build completed at: $(date)" >> "${TIMING_LOG_FILE}"
+    echo "Total build time: ${build_minutes}m ${build_seconds}s" >> "${TIMING_LOG_FILE}"
+    echo "==========================================" >> "${TIMING_LOG_FILE}"
+    
+    log "INFO" "Detailed timing log saved to: ${TIMING_LOG_FILE}"
+    
+    return "$build_duration"
+}
+
 # Export all functions for use in other scripts
 export -f log
 export -f print_banner
@@ -178,3 +251,7 @@ export -f is_restricted_environment
 export -f source_library
 export -f source_libraries
 export -f initialize_script
+export -f log_timing
+export -f start_timing
+export -f end_timing
+export -f finalize_timing_log

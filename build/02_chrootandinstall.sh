@@ -22,6 +22,9 @@ initialize_script
 # Check if we should resume from a checkpoint
 check_resume_point "$1"
 
+# Start timing for this script
+start_timing "02_chrootandinstall: Setup"
+
 # Configure DNS for the chroot environment
 log "INFO" "Setting up DNS for chroot environment"
 cat > alpine-minirootfs/etc/resolv.conf << EOF
@@ -139,6 +142,11 @@ if [ -n "${EXTRA_PACKAGES:-}" ]; then
     log "INFO" "Including extra packages: $EXTRA_PACKAGES_LIST"
 fi
 
+end_timing
+
+# Start timing for package installation
+start_timing "02_chrootandinstall: Package installation"
+
 cat > alpine-minirootfs/mk.sh << EOF
 #!/bin/ash
 set -e
@@ -175,6 +183,11 @@ log "INFO" "Installation script created and made executable"
 log "INFO" "Entering chroot environment to install packages"
 
 # Use our cross-environment chroot helper
+end_timing
+
+# Start timing for chroot execution
+start_timing "02_chrootandinstall: Chroot execution"
+
 if type prepare_chroot >/dev/null 2>&1 && type cleanup_chroot >/dev/null 2>&1; then
     # Prepare the chroot environment
     prepare_chroot "alpine-minirootfs"
@@ -203,5 +216,13 @@ log "SUCCESS" "Chroot installation completed successfully"
 rm alpine-minirootfs/mk.sh
 log "INFO" "Removed installation script"
 
+# End timing for chroot execution
+end_timing
+
 # Print final status
 print_script_end
+
+# If this is the final script being run, finalize the timing log
+if [ "${FINALIZE_TIMING_LOG:-false}" = "true" ]; then
+    finalize_timing_log
+fi

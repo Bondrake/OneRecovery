@@ -547,8 +547,13 @@ get_optimal_threads() {
         available_memory_kb=$((total_memory_kb * 7 / 10)) # Use 70% of total memory
     fi
     
+    # Convert to GB for display and debugging
+    local available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
+    log "INFO" "Available memory: ${available_memory_gb}GB"
+    
     # Detect total cores
     total_cores=$(nproc 2>/dev/null || echo 2)
+    log "INFO" "System has $total_cores CPU threads available"
     
     # Calculate a safe number of threads based on available memory
     # Empirically, each compilation thread needs ~2GB for kernel compilation
@@ -559,10 +564,60 @@ get_optimal_threads() {
         safe_threads=$(( safe_threads < 1 ? 1 : safe_threads ))
         safe_threads=$(( safe_threads > total_cores ? total_cores : safe_threads ))
         
+        # Special handling for extremely low memory (< 4GB) environments
+        if [ "$available_memory_kb" -lt 4000000 ]; then
+            log "WARNING" "Very low memory environment detected (${available_memory_gb}GB)"
+            
+            # In extremely low memory environments, limit to 2 threads max
+            if [ "$safe_threads" -gt 2 ]; then
+                log "WARNING" "Reducing threads from $safe_threads to 2 due to very low memory"
+                safe_threads=2
+            fi
+            
+            # In GitHub Actions, be even more conservative with 1 thread
+            if is_github_actions && [ "$safe_threads" -gt 1 ]; then
+                log "WARNING" "GitHub Actions with very low memory: limiting to 1 thread for reliability"
+                safe_threads=1
+            fi
+        fi
+        
+        log "INFO" "Using $safe_threads build threads (based on available memory)"
         echo "$safe_threads"
     else
         # Default to 2 threads if memory detection failed
+        log "WARNING" "Could not detect available memory. Using conservative thread count: 2"
         echo "2"
+    fi
+}
+
+# Get compiler flags optimized for the current memory environment
+get_memory_optimized_cflags() {
+    local available_memory_kb=0
+    
+    # Detect available memory
+    if [ -f "/proc/meminfo" ]; then
+        available_memory_kb=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+    fi
+    
+    # If memory detection failed, try total memory with a reduction factor
+    if [ "$available_memory_kb" -eq 0 ] && [ -f "/proc/meminfo" ]; then
+        local total_memory_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
+        available_memory_kb=$((total_memory_kb * 7 / 10)) # Use 70% of total memory
+    fi
+    
+    # Convert to GB for display and debugging
+    local available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
+    
+    # Determine compiler optimization flags based on memory
+    if [ "$available_memory_kb" -lt 4000000 ]; then  # < 4GB
+        log "WARNING" "Very low memory (${available_memory_gb}GB), using minimal optimization"
+        echo "-g0 -Os -fno-inline"  # Optimize for minimal memory usage
+    elif [ "$available_memory_kb" -lt 8000000 ]; then  # < 8GB
+        log "INFO" "Low memory environment detected (${available_memory_gb}GB), using memory-saving options"
+        echo "-g0 -Os"  # Optimize for size, omit debug info
+    else
+        # Default optimization for systems with adequate memory
+        echo "-O2"
     fi
 }
 
@@ -1008,6 +1063,7 @@ export -f configure_alpine
 export -f setup_kernel_config
 export -f setup_zfs
 export -f get_optimal_threads
+export -f get_memory_optimized_cflags
 export -f print_section
 # print_banner is now imported from 80_common.sh
 export -f docker_handle_extraction

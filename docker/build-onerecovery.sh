@@ -309,6 +309,16 @@ else
         FILE_SIZE=$(du -h "$PROJECT_DIR/output/OneRecovery.efi" | cut -f1)
         echo -e "${GREEN}[SUCCESS]${NC} Created OneRecovery.efi (Size: $FILE_SIZE)"
         echo -e "${BLUE}[INFO]${NC} Output file: $PROJECT_DIR/output/OneRecovery.efi"
+        
+        # Display build timing information if available
+        TIMING_LOG="$PROJECT_DIR/build/build_timing.log"
+        if [ -f "$TIMING_LOG" ]; then
+            echo -e "${BLUE}[INFO]${NC} Build timing information:"
+            echo "=============================================================="
+            cat "$TIMING_LOG"
+            echo "=============================================================="
+            echo -e "${BLUE}[INFO]${NC} Full timing log saved to: $TIMING_LOG"
+        fi
     else
         # Check if compose itself failed 
         if [ $COMPOSE_EXIT_CODE -ne 0 ]; then

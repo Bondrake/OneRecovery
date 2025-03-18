@@ -22,6 +22,9 @@ initialize_script
 # Check if we should resume from a checkpoint
 check_resume_point "$1"
 
+# Start timing for configuration
+start_timing "03_conf: System services"
+
 # Configure system services for sysinit runlevel
 log "INFO" "Setting up system services in sysinit runlevel"
 
@@ -130,6 +133,11 @@ cat ./zfiles/interfaces > ./alpine-minirootfs/etc/network/interfaces
 cat ./zfiles/resolv.conf > ./alpine-minirootfs/etc/resolv.conf
 cat ./zfiles/profile > ./alpine-minirootfs/etc/profile
 
+end_timing
+
+# Start timing for system configuration
+start_timing "03_conf: System configuration"
+
 # Configure root password
 if [ "${GENERATE_RANDOM_PASSWORD:-true}" = "true" ]; then
     # Generate a random password
@@ -183,6 +191,11 @@ else
 fi
 log "SUCCESS" "Configuration files copied"
 
+end_timing
+
+# Start timing for console configuration
+start_timing "03_conf: Console configuration"
+
 # Configure console settings
 log "INFO" "Configuring console settings"
 # Enable serial console
@@ -202,6 +215,11 @@ log "SUCCESS" "Console settings configured"
 #/dev/usbdisk	/media/usb	vfat	noauto,ro 0 0
 #/dev/sda5	/media/ubuntu	ext4	rw,relatime 0 0
 #EOF
+
+end_timing
+
+# Start timing for kernel configuration
+start_timing "03_conf: Kernel configuration"
 
 # Set up kernel configuration
 log "INFO" "Setting up kernel configuration"
@@ -353,5 +371,13 @@ log "SUCCESS" "Kernel configuration copied"
 #cd linux
 #make menuconfig
 
+# End timing for kernel configuration
+end_timing
+
 # Print final status
 print_script_end
+
+# If this is the final script being run, finalize the timing log
+if [ "${FINALIZE_TIMING_LOG:-false}" = "true" ]; then
+    finalize_timing_log
+fi
