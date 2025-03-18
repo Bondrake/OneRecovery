@@ -2,12 +2,12 @@ name: Docker Build
 
 on:
   push:
-    branches: [ master, main, dev ]
+    branches: [master, main, dev]
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -47,26 +47,26 @@ jobs:
     strategy:
       matrix: ${{fromJson(needs.setup.outputs.matrix)}}
       fail-fast: false
-    
+
     name: Build OneRecovery (${{ matrix.name }})
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev libtirpc-dev docker.io docker-compose
-          
+
           # Create output directories with appropriate permissions
-          mkdir -p build/output output
-          sudo chmod -R 777 build output
-          
+          mkdir -p build/output outpu
+          sudo chmod -R 777 build outpu
+
           # Make all scripts executable
           chmod -R +x build/*.sh docker/*.sh
           find build/tools -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-      
+
       - name: Cache Alpine kernel configs
         uses: actions/cache@v4
         with:
@@ -74,7 +74,7 @@ jobs:
           key: alpine-kernel-config-${{ hashFiles('build/80_common.sh') }}
           restore-keys: |
             alpine-kernel-config-
-      
+
       - name: Set up ccache
         uses: actions/cache@v4
         with:
@@ -85,35 +85,35 @@ jobs:
             ccache-${{ runner.os }}-
 
       # Create custom env file for GitHub Actions using the same docker-compose setup as local
-      - name: Configure build environment
+      - name: Configure build environmen
         run: |
           # Create .env file with GitHub-specific settings
           cat > docker/.env << EOF
-          # GitHub Actions build environment
+          # GitHub Actions build environmen
           # Generated at $(date)
-          
+
           # Build arguments from matrix
           BUILD_ARGS=${{ matrix.build_args }}
-          
+
           # Resource allocations appropriate for GitHub runners
           DOCKER_MEMORY=7g
           DOCKER_CPUS=2
-          
+
           # User ID mapping
           HOST_UID=$(id -u)
           HOST_GID=$(id -g)
-          
+
           # GitHub-specific settings
           GITHUB_ACTIONS=true
-          
+
           # Debug settings
           DEBUG_FEATURE_FLAGS=true
           EOF
-          
+
           # Create ccache directory with proper permissions
           mkdir -p ~/.ccache
           sudo chmod -R 777 ~/.ccache
-          
+
           # Copy any existing kernel configs to the expected location
           mkdir -p build/zfiles/kernel-configs/features
           chmod -R 777 build/zfiles/kernel-configs
@@ -124,27 +124,27 @@ jobs:
           BUILD_ARGS: ${{ matrix.build_args }}
         run: |
           cd docker
-          
+
           # Show configuration
           echo "Building with arguments: $BUILD_ARGS"
           cat .env
-          
+
           # Use the local docker-compose setup for builds
           docker-compose up --build
-          
+
           # Check the exit code
           if [ $? -ne 0 ]; then
             echo "Docker build failed"
             docker-compose logs
             exit 1
           fi
-          
+
           # Show output directory
           echo "Build output files:"
           ls -la ../output/
-          
+
           # If we need to apply any GitHub-specific fixes to output files, do it here
-          
+
       - name: Check for build artifacts
         id: check_files
         run: |
@@ -152,7 +152,7 @@ jobs:
           if [ -f "./output/OneRecovery.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
             du -h ./output/OneRecovery.efi
-            
+
             # Display timing data if available
             if [ -f "./build/build_timing.log" ]; then
               echo "Build Timing Data:"
@@ -163,15 +163,15 @@ jobs:
             echo "Build failed to produce OneRecovery.efi"
             exit 1
           fi
-      
-      - name: Upload build artifact
+
+      - name: Upload build artifac
         if: steps.check_files.outputs.efi_file == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: OneRecovery-${{ matrix.name }}
           path: ./output/OneRecovery.efi
           if-no-files-found: error
-          
+
       - name: Upload build timing log
         if: always()
         uses: actions/upload-artifact@v4
@@ -180,8 +180,9 @@ jobs:
           path: ./build/build_timing.log
           if-no-files-found: warn
 
-  # Package artifacts section (unchanged)
+  # Release job to package all artifacts
   release:
+    name: Package and Release
     needs: build
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -190,43 +191,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-      
-      - name: Create release package
-        run: |
-          /bin/bash -c 'mkdir -p release
-          # Only copy files that exist
-          if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
-          fi
-          if [ -f "./artifacts/OneRecovery-standard/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
-          fi
-          if [ -f "./artifacts/OneRecovery-full/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
-          fi
-          cd release
-          zip -r OneRecovery-release.zip *.efi'
-      
-      - name: Upload release package
-        uses: actions/upload-artifact@v4
-        with:
-          name: OneRecovery-release
-          path: ./release/OneRecovery-release.zip
 
-  # Package all artifacts into a release
-  release:
-    needs: build
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-      
       - name: Create release package
         run: |
-          /bin/bash -c 'mkdir -p release
+          mkdir -p release
+
           # Only copy files that exist
           if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
             cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
@@ -237,9 +206,10 @@ jobs:
           if [ -f "./artifacts/OneRecovery-full/OneRecovery.efi" ]; then
             cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
           fi
+
           cd release
-          zip -r OneRecovery-release.zip *.efi'
-      
+          zip -r OneRecovery-release.zip *.efi
+
       - name: Upload release package
         uses: actions/upload-artifact@v4
         with:
