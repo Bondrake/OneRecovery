@@ -136,23 +136,44 @@ source_library() {
 source_libraries() {
     local script_path=${1:-"."}
     
-    # Common utilities (must be available)
-    source_library "$script_path/80_common.sh" true
-    
-    # Error handling
-    source_library "$script_path/81_error_handling.sh"
-    if [ $? -eq 0 ]; then
-        # Initialize error handling if available
-        init_error_handling
+    # Track loaded libraries to prevent duplication
+    if [ -z "${LIBRARIES_LOADED:-}" ]; then
+        # First time initialization
+        export LIBRARIES_LOADED="80_common"
+        
+        # Error handling
+        if source_library "$script_path/81_error_handling.sh"; then
+            # Initialize error handling if available
+            init_error_handling
+            LIBRARIES_LOADED="$LIBRARIES_LOADED:81_error_handling"
+        else
+            echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
+        fi
+        
+        # Build helpers
+        if source_library "$script_path/82_build_helper.sh"; then
+            LIBRARIES_LOADED="$LIBRARIES_LOADED:82_build_helper"
+        fi
+        
+        # Optional configuration helpers
+        if source_library "$script_path/83_config_helper.sh" false; then
+            LIBRARIES_LOADED="$LIBRARIES_LOADED:83_config_helper"
+        fi
+        
+        # Build core library (new)
+        if [ -f "$script_path/84_build_core.sh" ]; then
+            # Ensure it's executable
+            if [ ! -x "$script_path/84_build_core.sh" ]; then
+                chmod +x "$script_path/84_build_core.sh" 2>/dev/null || echo -e "${YELLOW}[WARNING]${NC} Could not make build core library executable"
+            fi
+            
+            if source_library "$script_path/84_build_core.sh"; then
+                LIBRARIES_LOADED="$LIBRARIES_LOADED:84_build_core"
+            fi
+        fi
     else
-        echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
+        echo -e "${BLUE}[INFO]${NC} Libraries already loaded: $LIBRARIES_LOADED"
     fi
-    
-    # Build helpers
-    source_library "$script_path/82_build_helper.sh"
-    
-    # Optional configuration helpers
-    source_library "$script_path/83_config_helper.sh" false
     
     return 0
 }

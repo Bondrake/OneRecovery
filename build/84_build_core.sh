@@ -1,4 +1,5 @@
 #!/bin/bash
+# Make sure this file is executable (chmod +x)
 #
 # OneRecovery Build Core Functions (84_build_core.sh)
 # Shared build functions used by 04_build.sh and build.sh

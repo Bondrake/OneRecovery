@@ -70,12 +70,8 @@ source ./80_common.sh
 # Source all library scripts using the source_libraries function
 source_libraries "."
 
-# Source the build core library
-if [ ! -f "./84_build_core.sh" ]; then
-    echo "ERROR: Build core library file not found: ./84_build_core.sh"
-    exit 1
-fi
-source "./84_build_core.sh"
+# The build core library is now loaded via source_libraries
+# No need for separate loading of 84_build_core.sh here
 
 # Set error handling
 trap 'echo -e "${RED}[ERROR]${NC} An error occurred at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR

@@ -22,12 +22,8 @@ source "${SCRIPT_DIR}/80_common.sh"
 # Source all library scripts using the source_libraries function
 source_libraries "${SCRIPT_DIR}"
 
-# Source the build core library
-if [ ! -f "${SCRIPT_DIR}/84_build_core.sh" ]; then
-    echo "ERROR: Build core library file not found: ${SCRIPT_DIR}/84_build_core.sh"
-    exit 1
-fi
-source "${SCRIPT_DIR}/84_build_core.sh"
+# The build core library is now loaded via source_libraries
+# No need for separate loading of 84_build_core.sh here
 
 # Initialize script with standard header (prints banner)
 initialize_script
