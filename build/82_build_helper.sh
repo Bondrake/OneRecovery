@@ -531,10 +531,23 @@ setup_zfs() {
     return 0
 }
 
-# Determine optimal number of build threads
+# A silent version of log that doesn't affect stdout
+_log_silent() {
+    local level=$1
+    local message=$2
+    # Log to stderr instead
+    >&2 echo -e "${BLUE}[INFO]${NC} $message"
+}
+
+# Determine optimal number of build threads (completely revised for safety)
 get_optimal_threads() {
+    # Keep any logs out of stdout to avoid affecting the return value
+    exec 3>&1  # Save the current stdout
+    exec 1>&2  # Redirect stdout to stderr
+    
     local available_memory_kb=0
     local total_cores=0
+    local result=2  # Default fallback value
     
     # Detect available memory
     if [ -f "/proc/meminfo" ]; then
@@ -549,13 +562,11 @@ get_optimal_threads() {
     
     # Convert to GB for display and debugging
     local available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
-    # Log inside a subshell to prevent it from affecting the function output
-    (log "INFO" "Available memory: ${available_memory_gb}GB")
+    log "INFO" "Available memory: ${available_memory_gb}GB"
     
     # Detect total cores
     total_cores=$(nproc 2>/dev/null || echo 2)
-    # Log inside a subshell to prevent it from affecting the function output
-    (log "INFO" "System has $total_cores CPU threads available")
+    log "INFO" "System has $total_cores CPU threads available"
     
     # Calculate a safe number of threads based on available memory
     # Empirically, each compilation thread needs ~2GB for kernel compilation
@@ -568,39 +579,45 @@ get_optimal_threads() {
         
         # Special handling for extremely low memory (< 4GB) environments
         if [ "$available_memory_kb" -lt 4000000 ]; then
-            # Log inside a subshell to prevent it from affecting the function output
-            (log "WARNING" "Very low memory environment detected (${available_memory_gb}GB)")
+            log "WARNING" "Very low memory environment detected (${available_memory_gb}GB)"
             
             # In extremely low memory environments, limit to 2 threads max
             if [ "$safe_threads" -gt 2 ]; then
-                # Log inside a subshell to prevent it from affecting the function output
-                (log "WARNING" "Reducing threads from $safe_threads to 2 due to very low memory")
+                log "WARNING" "Reducing threads from $safe_threads to 2 due to very low memory"
                 safe_threads=2
             fi
             
             # In GitHub Actions, be even more conservative with 1 thread
             if is_github_actions && [ "$safe_threads" -gt 1 ]; then
-                # Log inside a subshell to prevent it from affecting the function output
-                (log "WARNING" "GitHub Actions with very low memory: limiting to 1 thread for reliability")
+                log "WARNING" "GitHub Actions with very low memory: limiting to 1 thread for reliability"
                 safe_threads=1
             fi
         fi
         
-        # Log inside a subshell to prevent it from affecting the function output
-        (log "INFO" "Using $safe_threads build threads (based on available memory)")
-        # Return only the number, without any text
-        echo "$safe_threads"
+        log "INFO" "Using $safe_threads build threads (based on available memory)"
+        result=$safe_threads
     else
         # Default to 2 threads if memory detection failed
-        # Log inside a subshell to prevent it from affecting the function output
-        (log "WARNING" "Could not detect available memory. Using conservative thread count: 2")
-        echo "2"
+        log "WARNING" "Could not detect available memory. Using conservative thread count: 2"
+        result=2
     fi
+    
+    # Restore stdout
+    exec 1>&3
+    exec 3>&-
+    
+    # Return only the raw number on stdout
+    echo "$result"
 }
 
 # Get compiler flags optimized for the current memory environment
 get_memory_optimized_cflags() {
+    # Keep any logs out of stdout to avoid affecting the return value
+    exec 3>&1  # Save the current stdout
+    exec 1>&2  # Redirect stdout to stderr
+    
     local available_memory_kb=0
+    local result="-O2"  # Default optimization
     
     # Detect available memory
     if [ -f "/proc/meminfo" ]; then
@@ -619,14 +636,21 @@ get_memory_optimized_cflags() {
     # Determine compiler optimization flags based on memory
     if [ "$available_memory_kb" -lt 4000000 ]; then  # < 4GB
         log "WARNING" "Very low memory (${available_memory_gb}GB), using minimal optimization"
-        echo "-g0 -Os -fno-inline"  # Optimize for minimal memory usage
+        result="-g0 -Os -fno-inline"  # Optimize for minimal memory usage
     elif [ "$available_memory_kb" -lt 8000000 ]; then  # < 8GB
         log "INFO" "Low memory environment detected (${available_memory_gb}GB), using memory-saving options"
-        echo "-g0 -Os"  # Optimize for size, omit debug info
+        result="-g0 -Os"  # Optimize for size, omit debug info
     else
         # Default optimization for systems with adequate memory
-        echo "-O2"
+        result="-O2"
     fi
+    
+    # Restore stdout
+    exec 1>&3
+    exec 3>&-
+    
+    # Return only the raw flags on stdout
+    echo "$result"
 }
 
 # Print a section header
