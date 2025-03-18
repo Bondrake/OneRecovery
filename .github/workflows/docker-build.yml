@@ -40,7 +40,7 @@ jobs:
             echo "matrix={\"include\":[{\"name\":\"minimal\",\"build_args\":\"--minimal --compression-tool=upx\"},{\"name\":\"standard\",\"build_args\":\"--with-zfs --with-recovery-tools --with-network-tools --compression-tool=upx\"},{\"name\":\"full\",\"build_args\":\"--full --compression-tool=upx\"}]}" >> $GITHUB_OUTPUT
           fi
 
-  # Build job using the unified build script
+  # Build job using Docker with the same setup as local builds
   build:
     needs: setup
     runs-on: ubuntu-latest
@@ -54,52 +54,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Set up build environment
+      - name: Set up build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev libtirpc-dev
+          sudo apt-get install -y build-essential gcc g++ make autoconf automake libtool libelf-dev upx-ucl unzip zstd xz-utils ccache uuid-dev libuuid1 libblkid-dev libtirpc-dev docker.io docker-compose
           
-          # List checkout directory contents
-          echo "Current directory: $(pwd)"
-          ls -la
-          
-          # Create build directory with appropriate permissions
-          mkdir -p build output
-          # Ensure we have complete ownership of the source directory
-          sudo chown -R $USER:$USER .
+          # Create output directories with appropriate permissions
+          mkdir -p build/output output
           sudo chmod -R 777 build output
           
-          # Create critical directories with proper permissions
-          mkdir -p build/output build/scripts
-          sudo chmod -R 777 build/output build/scripts
-          
-          # Show the directory structure after setup
-          find . -type d -maxdepth 2 | sort
-      
-      - name: Make build scripts executable
-        run: |
-          # Make all library scripts executable
-          chmod +x build/80_common.sh
-          chmod +x build/81_error_handling.sh
-          chmod +x build/82_build_helper.sh
-          chmod +x build/83_config_helper.sh
-          chmod +x build/84_build_core.sh
-          # 85_cross_env_build.sh is legacy, so we don't need to include it
-          
-          # Make all build scripts executable
-          chmod +x build/00_prepare.sh
-          chmod +x build/01_get.sh
-          chmod +x build/02_chrootandinstall.sh
-          chmod +x build/03_conf.sh
-          chmod +x build/04_build.sh
-          chmod +x build/99_cleanup.sh
-          chmod +x build/build.sh
-          
-          # Make tool scripts executable
-          mkdir -p build/tools
-          if [ -d "build/tools" ]; then
-            chmod +x build/tools/*.sh 2>/dev/null || true
-          fi
+          # Make all scripts executable
+          chmod -R +x build/*.sh docker/*.sh
+          find build/tools -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
       
       - name: Cache Alpine kernel configs
         uses: actions/cache@v4
@@ -117,200 +83,75 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ matrix.name }}-
             ccache-${{ runner.os }}-
-            
-      - name: Fix potential PATH issues
-        run: |
-          echo "Checking shell and PATH configuration..."
-          echo $SHELL
-          echo $PATH
-          which mkdir
-          which bash
-          which sh
-          sudo ln -sf /bin/mkdir /usr/local/bin/mkdir || true
-          mkdir --help
 
-      - name: Run unified build script
-        env:
-          GITHUB_ACTIONS: "true"
-          USE_ALPINE_KERNEL_CONFIG: "true"
-          AUTO_KERNEL_CONFIG: "true"
-          USE_CACHE: "true"
-          CACHE_DIR: "~/.ccache"
-          CCACHE_DIR: "~/.ccache"
-          PATH: "/usr/lib/ccache:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-          INCLUDE_ZFS: "true"  # Explicitly enable ZFS
+      # Create custom env file for GitHub Actions using the same docker-compose setup as local
+      - name: Configure build environment
         run: |
-          # Set a permissive umask for the entire build process
-          # This ensures all files and directories created during build are world-writable
-          umask 0000
-          echo "Set umask to 0000 (world-writable permissions for all new files/directories)"
+          # Create .env file with GitHub-specific settings
+          cat > docker/.env << EOF
+          # GitHub Actions build environment
+          # Generated at $(date)
           
-          # Configure ccache
-          ccache --max-size=5G
-          ccache -z  # Zero statistics
+          # Build arguments from matrix
+          BUILD_ARGS=${{ matrix.build_args }}
           
-          # Create build and output directories with world-writable permissions
-          mkdir -p build output
-          chmod -R 777 build output
+          # Resource allocations appropriate for GitHub runners
+          DOCKER_MEMORY=7g
+          DOCKER_CPUS=2
           
-          # Create kernel config overlay directories with proper permissions
+          # User ID mapping
+          HOST_UID=$(id -u)
+          HOST_GID=$(id -g)
+          
+          # GitHub-specific settings
+          GITHUB_ACTIONS=true
+          
+          # Debug settings
+          DEBUG_FEATURE_FLAGS=true
+          EOF
+          
+          # Create ccache directory with proper permissions
+          mkdir -p ~/.ccache
+          sudo chmod -R 777 ~/.ccache
+          
+          # Copy any existing kernel configs to the expected location
           mkdir -p build/zfiles/kernel-configs/features
           chmod -R 777 build/zfiles/kernel-configs
+
+      # Run the build using the same docker-compose setup as local builds
+      - name: Build OneRecovery using Docker
+        env:
+          BUILD_ARGS: ${{ matrix.build_args }}
+        run: |
+          cd docker
           
-          # Create the ZFS overlay config to ensure all required ZFS settings
-          echo "# ZFS File System Support" > build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Required kernel options for ZFS module support" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Required for loadable modules support" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_MODULES=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_MODULE_UNLOAD=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Core ZFS options" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_SPL=m" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_ZFS=m" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Required compression algorithms for ZFS" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_ZLIB_DEFLATE=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_ZLIB_INFLATE=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_LZ4_COMPRESS=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_ZSTD_COMPRESS=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Required crypto components" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_CRYPTO=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_CRYPTO_SHA256=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_CRYPTO_SHA512=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_CRYPTO_CRC32C=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "# Required device-mapper support" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          echo "CONFIG_BLK_DEV_DM=y" >> build/zfiles/kernel-configs/features/zfs-support.conf
-          chmod 666 build/zfiles/kernel-configs/features/zfs-support.conf
+          # Show configuration
+          echo "Building with arguments: $BUILD_ARGS"
+          cat .env
           
-          # Create a direct kernel config with modules support (backup method)
-          echo "CONFIG_MODULES=y" > build/kernel_modules.conf
-          echo "CONFIG_MODULE_UNLOAD=y" >> build/kernel_modules.conf
-          echo "CONFIG_ZLIB_DEFLATE=y" >> build/kernel_modules.conf
-          echo "CONFIG_ZLIB_INFLATE=y" >> build/kernel_modules.conf
+          # Use the local docker-compose setup for builds
+          docker-compose up --build
           
-          # Prepare for build with root permissions
-          if [ -d "build/linux" ]; then
-            echo "Configuring kernel build with root permissions"
-            
-            # Copy the kernel config
-            if [ -f "build/linux/.config" ]; then
-              cp -f build/linux/.config build/linux/.config.bak
-            else
-              # Create a minimal config with modules support
-              echo "# Minimal configuration with module support" > build/linux/.config
-              echo "CONFIG_MODULES=y" >> build/linux/.config
-              echo "CONFIG_MODULE_UNLOAD=y" >> build/linux/.config
-              # Run make defconfig to generate a basic configuration
-              cd build/linux && make defconfig && cd ../..
-            fi
-            
-            # Force-enable modules in the kernel config
-            echo "Ensuring CONFIG_MODULES=y is set"
-            if [ -f "build/linux/.config" ]; then
-              sed -i '/CONFIG_MODULES=/d' build/linux/.config
-              echo "CONFIG_MODULES=y" >> build/linux/.config
-              sed -i '/CONFIG_MODULE_UNLOAD=/d' build/linux/.config
-              echo "CONFIG_MODULE_UNLOAD=y" >> build/linux/.config
-            fi
-            
-            # Apply the ZFS config overlay if the tools are available
-            if [ -f "build/tools/apply-config-overlay.sh" ] && [ -f "build/zfiles/kernel-configs/features/zfs-support.conf" ]; then
-              echo "Applying ZFS kernel config overlay for module dependencies"
-              chmod +x build/tools/apply-config-overlay.sh
-              build/tools/apply-config-overlay.sh build/zfiles/kernel-configs/features/zfs-support.conf build/linux/.config
-              
-              # Verify the config has the critical ZFS dependencies
-              echo "Verifying ZFS dependencies are set:"
-              grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=" build/linux/.config || {
-                echo "WARNING: ZFS dependencies not found after overlay, adding manually"
-                echo "CONFIG_ZLIB_DEFLATE=y" >> build/linux/.config
-                echo "CONFIG_ZLIB_INFLATE=y" >> build/linux/.config
-              }
-              
-              # Update the config to resolve dependencies
-              cd build/linux && make olddefconfig && cd ../..
-            else
-              echo "WARNING: ZFS config overlay tools not available, using fallback method"
-              echo "CONFIG_ZLIB_DEFLATE=y" >> build/linux/.config
-              echo "CONFIG_ZLIB_INFLATE=y" >> build/linux/.config
-            fi
-            
-            # Make sure kernel source is world-readable
-            sudo chmod -R a+r build/linux
-            sudo chmod -R a+w build/linux/.config
-            
-            # Set environment variable to indicate root build
-            echo "BUILD_AS_ROOT=true" >> $GITHUB_ENV
-          fi
-          
-          # Export required environment variables
-          echo "Configuring environment variables for build sequence"
-          export INCLUDE_ZFS="true"
-          export AUTO_KERNEL_CONFIG="true"
-          export USE_CACHE="true"
-          export CACHE_DIR="/tmp/onerecovery-cache"
-          
-          cd build
-          
-          # Create required directories (normally done by 00_prepare.sh)
-          echo "Creating required directories for build"
-          mkdir -p alpine-minirootfs/lib/modules
-          mkdir -p alpine-minirootfs/dev
-          mkdir -p "$CACHE_DIR/sources"
-          mkdir -p "$CACHE_DIR/ccache"
-          mkdir -p "$CACHE_DIR/packages"
-          chmod -R 777 alpine-minirootfs "$CACHE_DIR"
-          
-          # Run the build sequence in order
-          echo "Step 1: Running 01_get.sh to download sources"
-          sudo -E bash -c 'export INCLUDE_ZFS=true; export USE_CACHE=true; export CACHE_DIR=/tmp/onerecovery-cache; ./01_get.sh'
-          
-          echo "Step 2: Running 02_chrootandinstall.sh to prepare Alpine environment"
-          sudo -E bash -c 'export INCLUDE_ZFS=true; ./02_chrootandinstall.sh'
-          
-          echo "Step 3: Running 03_conf.sh to apply kernel config overlays"
-          sudo -E bash -c 'export INCLUDE_ZFS=true; export AUTO_KERNEL_CONFIG=true; ./03_conf.sh'
-          
-          # Verify the ZFS kernel config settings were applied (fail early if not)
-          echo "Verifying ZFS kernel config settings:"
-          if ! grep -q "^CONFIG_ZLIB_DEFLATE=y" linux/.config; then
-            echo "ERROR: CONFIG_ZLIB_DEFLATE=y not found in kernel config after applying overlay"
-            echo "This critical ZFS dependency is missing and must be fixed in the overlay system"
+          # Check the exit code
+          if [ $? -ne 0 ]; then
+            echo "Docker build failed"
+            docker-compose logs
             exit 1
           fi
           
-          if ! grep -q "^CONFIG_MODULES=y" linux/.config; then
-            echo "ERROR: CONFIG_MODULES=y not found in kernel config after applying overlay"
-            echo "This critical kernel module dependency is missing and must be fixed"
-            exit 1
-          fi
+          # Show output directory
+          echo "Build output files:"
+          ls -la ../output/
           
-          echo "SUCCESS: Critical ZFS kernel dependencies verified"
+          # If we need to apply any GitHub-specific fixes to output files, do it here
           
-          # Run the main build
-          echo "Step 4: Running unified build script using passthrough mechanism"
-          # Set flag to finalize timing log in the last script
-          # Use the build.sh script with passthrough arguments for consistency
-          sudo -E bash -c 'export FINALIZE_TIMING_LOG=true; ./build.sh build -- ${{ matrix.build_args }}'
-      
       - name: Check for build artifacts
         id: check_files
         run: |
-          # Fix permissions on output directory if needed
-          sudo chmod -R 777 ./output
-          sudo chmod -R 777 ./build
-          
           # Check if build produced the EFI file
           if [ -f "./output/OneRecovery.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
             du -h ./output/OneRecovery.efi
-            
-            # Display ccache statistics
-            echo "CCache Statistics:"
-            ccache -s
             
             # Display timing data if available
             if [ -f "./build/build_timing.log" ]; then
@@ -322,6 +163,55 @@ jobs:
             echo "Build failed to produce OneRecovery.efi"
             exit 1
           fi
+      
+      - name: Upload build artifact
+        if: steps.check_files.outputs.efi_file == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneRecovery-${{ matrix.name }}
+          path: ./output/OneRecovery.efi
+          if-no-files-found: error
+          
+      - name: Upload build timing log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-timing-log-${{ matrix.name }}
+          path: ./build/build_timing.log
+          if-no-files-found: warn
+
+  # Package artifacts section (unchanged)
+  release:
+    needs: build
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Create release package
+        run: |
+          /bin/bash -c 'mkdir -p release
+          # Only copy files that exist
+          if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
+          fi
+          if [ -f "./artifacts/OneRecovery-standard/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
+          fi
+          if [ -f "./artifacts/OneRecovery-full/OneRecovery.efi" ]; then
+            cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
+          fi
+          cd release
+          zip -r OneRecovery-release.zip *.efi'
+      
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: OneRecovery-release
+          path: ./release/OneRecovery-release.zip
       
       - name: Upload build artifact
         if: steps.check_files.outputs.efi_file == 'true'
