@@ -61,6 +61,8 @@ RUN apk add --no-cache \
     attr-dev \
     # Device management support for ZFS
     eudev-dev \
+    # RPC support required for ZFS
+    libtirpc-dev \
     # Performance optimizations for archive extraction
     pigz \
     pv
