@@ -461,6 +461,14 @@ For portable use or when direct EFI partition access is difficult:
 
 When you boot OneRecovery, it automatically logs in as root and launches the text-based user interface (TUI). The TUI provides an easy-to-use menu system for common recovery operations.
 
+#### Login Information
+
+- **Username**: root
+- **Password**: 
+  - For GitHub Actions release builds: The default password is `onerecovery`
+  - For local builds: The password is randomly generated during build and saved in `onerecovery-password.txt` in the build directory
+  - If you specified a custom password during build with `--password=PASS`, use that password
+
 #### Main Menu
 
 The main menu provides access to the following functions:
@@ -1067,7 +1075,8 @@ GitHub Actions workflow in `.github/workflows/docker-build.yml`:
 - Builds multiple configurations in parallel (minimal, standard, full)
 - Uses the same Docker container as local builds
 - Creates artifacts for each build configuration
-- Creates release packages for main branch builds
+- Creates release packages for tagged builds that match 'v*' pattern
+- Uses a default root password of 'onerecovery' for all GitHub Actions release builds, unlike local builds which generate random passwords by default
 
 ### Best Practices for Development
 
