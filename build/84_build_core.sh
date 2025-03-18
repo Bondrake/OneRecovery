@@ -399,8 +399,22 @@ build_zfs() {
     
     # Ensure proper kernel preparation for module building
     log "INFO" "Preparing kernel for module building"
-    (cd "$KERNEL_DIR" && make prepare && make modules_prepare SKIP_STACK_VALIDATION=1 HOSTCC=gcc NO_GCC_PLUGINS=1) || {
-        log "WARNING" "Kernel preparation failed, attempting to continue anyway"
+    
+    # Create symlinks for tools header files
+    log "INFO" "Setting up kernel header symlinks"
+    mkdir -p "$KERNEL_DIR/tools/include/asm"
+    mkdir -p "$KERNEL_DIR/tools/include/linux"
+    ln -sf "$KERNEL_DIR/arch/x86/include/asm/insn.h" "$KERNEL_DIR/tools/include/asm/" 2>/dev/null || true
+    ln -sf "$KERNEL_DIR/include/linux/types.h" "$KERNEL_DIR/tools/include/linux/" 2>/dev/null || true
+    
+    # Run make prepare first
+    (cd "$KERNEL_DIR" && make prepare) || {
+        log "WARNING" "Kernel prepare step failed, attempting to continue anyway"
+    }
+    
+    # Try simplified modules_prepare to avoid tools build issues
+    (cd "$KERNEL_DIR" && make modules_prepare SKIP_STACK_VALIDATION=1 HOSTCC=gcc NO_GCC_PLUGINS=1 SKIP_TOOLS=1) || {
+        log "WARNING" "Kernel modules_prepare failed, attempting to continue anyway"
     }
     
     # Ensure kernel .config is actually in the expected location
@@ -419,9 +433,21 @@ build_zfs() {
         log "ERROR" "CONFIG_MODULES is not properly enabled in kernel configuration"
     fi
     
+    # Create additional preparation for ZFS kernel headers
+    log "INFO" "Setting up header links for ZFS build"
+    if [ -f "$KERNEL_DIR/Module.symvers" ]; then
+        log "INFO" "Module.symvers exists in kernel directory"
+    else
+        log "INFO" "Creating empty Module.symvers for ZFS build"
+        touch "$KERNEL_DIR/Module.symvers"
+    fi
+    
     # Configure ZFS for the kernel with verbose output
     log "INFO" "Configuring ZFS for the kernel"
-    KCFLAGS="-DCONFIG_MODULES" KBUILD_MODPOST_WARN=0 ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
+    KCFLAGS="-DCONFIG_MODULES" \
+    KBUILD_MODPOST_WARN=0 \
+    KERNELCPPFLAGS="-DCONFIG_MODULES" \
+    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug || {
         log "ERROR" "ZFS configuration failed"
         
         # Print full kernel config for debugging
