@@ -101,26 +101,22 @@ main() {
     end_timing
     
     # Apply kernel patches and fix ABI headers before build
-    start_timing "Kernel patches and ABI fix"
+    start_timing "Kernel ABI fix"
     
-    # Apply custom kernel patches first
+    # Create symlinks for ABI headers (direct approach)
+    if [ -x "$BUILD_DIR/tools/symlink-abi-headers.sh" ]; then
+        log "INFO" "Creating symlinks for kernel ABI headers"
+        bash "$BUILD_DIR/tools/symlink-abi-headers.sh" "$KERNEL_DIR" || log "WARNING" "ABI header symlink creation failed, but continuing anyway"
+    else
+        log "WARNING" "ABI header symlink script not found"
+    fi
+    
+    # Legacy patch application (as fallback)
     if [ -x "$BUILD_DIR/tools/apply-kernel-patches.sh" ]; then
-        log "INFO" "Applying custom kernel patches"
-        chmod +x "$BUILD_DIR/tools/apply-kernel-patches.sh"
+        log "INFO" "Applying custom kernel patches (fallback)"
         bash "$BUILD_DIR/tools/apply-kernel-patches.sh" "$KERNEL_DIR" || log "WARNING" "Patch application failed, but continuing anyway"
-    else
-        log "WARNING" "Kernel patch script not found, creating it"
-        mkdir -p "$BUILD_DIR/tools/custom-kernel-patches"
     fi
     
-    # Fall back to direct ABI header fix if patching fails
-    if [ -x "$BUILD_DIR/tools/fix-kernel-abi.sh" ]; then
-        log "INFO" "Fixing kernel ABI header mismatches directly"
-        # Run with bash explicitly to ensure proper execution
-        bash "$BUILD_DIR/tools/fix-kernel-abi.sh" "$KERNEL_DIR" || log "WARNING" "ABI header fix failed, but continuing anyway"
-    else
-        log "WARNING" "Kernel ABI fixer script not found or not executable"
-    fi
     end_timing
 
     # Build kernel
