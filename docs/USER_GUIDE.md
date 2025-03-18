@@ -26,6 +26,12 @@ This comprehensive guide explains how to build, install, and use OneRecovery for
    - [Custom Configurations](#custom-configurations)
    - [Recovery Scenarios](#recovery-scenarios)
    - [Performance Considerations](#performance-considerations)
+7. [Developer Documentation](#developer-documentation)
+   - [Build System Architecture](#build-system-architecture)
+   - [Feature Flag System](#feature-flag-system)
+   - [Kernel Configuration System](#kernel-configuration-system)
+   - [Build Environments](#build-environments)
+   - [CI/CD System](#cicd-system)
 
 ## Overview
 
@@ -860,5 +866,141 @@ For large filesystems, speed up checks by:
    ```
 
 ---
+
+## Developer Documentation
+
+This section provides technical documentation for developers who want to understand or contribute to the OneRecovery build system.
+
+### Build System Architecture
+
+OneRecovery uses a modular build system designed to create a small, single-file EFI executable containing a complete Linux environment:
+
+#### Library Scripts (80-89 range)
+
+- **80_common.sh**: Core utilities, logging, and environment detection
+- **81_error_handling.sh**: Error handling and recovery mechanisms
+- **82_build_helper.sh**: File operations, environment adaptations, and feature flag parsing
+- **83_config_helper.sh**: Configuration management
+- **84_build_core.sh**: Kernel building, ZFS module building, and EFI file creation
+
+#### Build Scripts (00-10, 99 range)
+
+Sequential build steps:
+- **01_get.sh**: Download Alpine Linux, Linux kernel, and ZFS sources
+- **02_chrootandinstall.sh**: Configure Alpine Linux chroot and install packages
+- **03_conf.sh**: Configure system services and apply kernel configuration overlays
+- **04_build.sh**: Build Linux kernel and create EFI file
+
+#### Master Build Scripts
+
+- **build.sh**: Unified build script (local build, assumes Alpine environment)
+- **docker/build-onerecovery.sh**: Docker-based build launcher (recommended for cross-platform)
+
+### Feature Flag System
+
+OneRecovery's feature flags control which components are included in the build, affecting size and functionality:
+
+#### High-Level Build Profiles
+
+| Profile | Flag | Description | Typical Size |
+|---------|------|-------------|--------------|
+| Minimal | `--minimal` | Essential functionality only | 30-50MB |
+| Standard | (default) | Balanced configuration | 60-90MB |
+| Full | `--full` | All features included | 100-150MB |
+
+#### Core Feature Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--with-zfs` / `--without-zfs` | ON | ZFS filesystem support |
+| `--with-network-tools` / `--without-network-tools` | ON | Network support |
+| `--with-crypto` / `--without-crypto` | ON | Encryption support |
+| `--with-tui` / `--without-tui` | ON | Text user interface |
+| `--minimal-kernel` / `--standard-kernel` | standard | Kernel size optimization |
+
+#### Advanced Package Groups
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--with-advanced-fs` / `--without-advanced-fs` | OFF | Advanced filesystem tools |
+| `--with-disk-diag` / `--without-disk-diag` | OFF | Hardware diagnostics |
+| `--with-data-recovery` / `--without-data-recovery` | OFF | Data recovery utilities |
+| `--with-boot-repair` / `--without-boot-repair` | OFF | Boot repair tools |
+
+All features are controlled through the `parse_build_flags()` function in `82_build_helper.sh`, ensuring consistent behavior across build environments.
+
+### Kernel Configuration System
+
+The kernel configuration system balances size with functionality:
+
+1. Base configurations:
+   - **minimal.config**: Size-optimized minimal kernel
+   - **standard.config**: Balanced configuration with common drivers
+
+2. Feature overlays: Conditionally applied based on feature flags
+   - **zfs-support.conf**: ZFS filesystem kernel support
+   - **network-tools.conf**: Network protocol and driver support
+   - **crypto-support.conf**: Encryption support
+
+The overlay system in `03_conf.sh` respects feature flags, particularly `INCLUDE_MINIMAL_KERNEL`, which skips most overlays for minimal builds.
+
+### Build Environments
+
+OneRecovery supports multiple build environments, with Docker being the recommended approach for cross-platform development:
+
+#### Docker Build (Recommended)
+
+```bash
+cd docker
+./build-onerecovery.sh -b "--minimal"  # or any other build flags
+```
+
+The Docker approach:
+- Works on any system that supports Docker (Linux, macOS, Windows)
+- Handles all dependencies automatically
+- Produces consistent results across different host systems
+- Properly manages permissions and resource allocation
+
+#### Local Build
+
+```bash
+cd build
+./build.sh --minimal  # or any other build flags
+```
+
+Local builds:
+- Assume an Alpine Linux-based environment
+- Require all dependencies to be installed
+- Need appropriate permissions for chroot operations
+
+### CI/CD System
+
+GitHub Actions workflow in `.github/workflows/docker-build.yml`:
+- Builds multiple configurations in parallel (minimal, standard, full)
+- Uses the same Docker container as local builds
+- Creates artifacts for each build configuration
+- Creates release packages for main branch builds
+
+### Best Practices for Development
+
+1. **Use Docker for Development**:
+   - Provides the most consistent build environment
+   - Works across all platforms
+   - Eliminates dependency and permission issues
+
+2. **Maintain Small Image Size**:
+   - OneRecovery's primary advantage is being a single-file EFI executable
+   - Make features optional with feature flags
+   - Consider size impact for all changes
+
+3. **Follow the Library Pattern**:
+   - Use established library functions
+   - Maintain separation of concerns
+   - Respect feature flags throughout the codebase
+
+4. **Test Across Environments**:
+   - Verify builds work in Docker and GitHub Actions
+   - Test both minimal and full configurations
+   - Boot test on real hardware
 
 This User Guide is continuously improved. Please refer to the official documentation repository for the latest version and additional information.
