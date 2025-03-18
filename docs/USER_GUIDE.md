@@ -322,11 +322,11 @@ The `build.sh` script accepts numerous options to customize your build. Here's a
 
 When planning to use OneRecovery, keep in mind these EFI partition size guidelines:
 
-- **Minimal build**: 100MB EFI partition is sufficient
-- **Standard build**: 150MB EFI partition recommended
-- **Full build**: 260MB EFI partition recommended
+- **Minimal build**: Even small 100MB EFI partitions are more than sufficient
+- **Standard build**: Standard 100MB EFI partition is recommended
+- **Full build**: Standard 100MB EFI partition is typically sufficient
 
-Most modern systems have EFI partitions ranging from 100MB to 260MB.
+Most modern systems have EFI partitions of 100MB or larger, which is adequate for any OneRecovery build.
 
 ## Installation
 
@@ -904,9 +904,9 @@ OneRecovery's feature flags control which components are included in the build, 
 
 | Profile | Flag | Description | Typical Size |
 |---------|------|-------------|--------------|
-| Minimal | `--minimal` | Essential functionality only | 30-50MB |
-| Standard | (default) | Balanced configuration | 60-90MB |
-| Full | `--full` | All features included | 100-150MB |
+| Minimal | `--minimal` | Essential functionality only | ~4MB |
+| Standard | (default) | Balanced configuration | ~20MB |
+| Full | `--full` | All features included | ~40-60MB |
 
 #### Core Feature Flags
 
@@ -989,7 +989,7 @@ GitHub Actions workflow in `.github/workflows/docker-build.yml`:
    - Eliminates dependency and permission issues
 
 2. **Maintain Small Image Size**:
-   - OneRecovery's primary advantage is being a single-file EFI executable
+   - OneRecovery's primary advantage is being a tiny, single-file EFI executable (minimal: ~4MB, standard: ~20MB)
    - Make features optional with feature flags
    - Consider size impact for all changes
 
