@@ -136,6 +136,61 @@ build_kernel() {
     # Enter kernel directory
     cd "$KERNEL_DIR"
     
+    # Fix ABI header mismatches - comprehensive approach for all potential mismatches
+    log "INFO" "Checking for ABI header mismatches"
+    
+    # Function to sync a specific header file
+    sync_header_file() {
+        local arch_path="$1"
+        local tools_path="$2"
+        
+        if [ -f "$arch_path" ] && [ -f "$tools_path" ]; then
+            log "INFO" "Synchronizing ABI header: $tools_path"
+            cp -f "$arch_path" "$tools_path"
+            return 0
+        fi
+        return 1
+    }
+    
+    # Synchronize known problematic header files
+    sync_header_file "arch/x86/lib/insn.c" "tools/arch/x86/lib/insn.c"
+    sync_header_file "arch/x86/include/asm/inat.h" "tools/arch/x86/include/asm/inat.h"
+    sync_header_file "arch/x86/include/asm/insn.h" "tools/arch/x86/include/asm/insn.h"
+    sync_header_file "arch/x86/lib/inat.c" "tools/arch/x86/lib/inat.c"
+    
+    # Additional general approach - find all files in tools/arch that have equivalents in arch/
+    log "INFO" "Performing comprehensive ABI header synchronization"
+    find tools/arch -type f -name "*.h" -o -name "*.c" 2>/dev/null | while read tools_file; do
+        # Get the relative path and construct the corresponding arch path
+        rel_path="${tools_file#tools/}"
+        arch_file="$rel_path"
+        
+        if [ -f "$arch_file" ]; then
+            # Compare the files and update if different
+            if ! cmp -s "$arch_file" "$tools_file"; then
+                log "INFO" "Synchronizing mismatched file: $tools_file"
+                cp -f "$arch_file" "$tools_file"
+            fi
+        fi
+    done
+    
+    # Ensure kernel can find OpenSSL for module signing
+    if [ -f "certs/Makefile" ] && grep -q "CONFIG_MODULE_SIG=y" .config; then
+        log "INFO" "Setting up kernel module signing with OpenSSL"
+        # Create certs directory and signing key if it doesn't exist
+        mkdir -p certs
+        if [ ! -f "certs/signing_key.pem" ]; then
+            log "INFO" "Generating dummy signing key for modules"
+            # Generate a dummy key for module signing
+            openssl req -new -x509 -newkey rsa:2048 -keyout certs/signing_key.pem \
+                -outform DER -out certs/signing_key.x509 -nodes \
+                -subj "/CN=OneRecovery Build Signing Key/" 2>/dev/null || true
+            # Also create the format needed by the kernel
+            openssl x509 -inform DER -in certs/signing_key.x509 \
+                -out certs/signing_key.x509.pem 2>/dev/null || true
+        fi
+    fi
+    
     # Check directory permissions before building
     log "INFO" "Checking kernel source directory permissions"
     local perm_ok=true
