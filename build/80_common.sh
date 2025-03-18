@@ -112,14 +112,65 @@ is_restricted_environment() {
     is_github_actions || is_container
 }
 
+# Create a global associative array to track loaded libraries
+declare -A ONERECOVERY_LIBRARIES_LOADED 2>/dev/null || {
+    # Fallback for older bash versions that don't support associative arrays
+    ONERECOVERY_LIBRARIES_LOADED=()
+}
+
+# Function to check if a library has been loaded
+is_library_loaded() {
+    local library_name="$1"
+    
+    # Extract just the filename without path and extension
+    local basename=$(basename "$library_name" .sh)
+    
+    # Check if it's in our tracking array
+    if [ "${ONERECOVERY_LIBRARIES_LOADED[$basename]:-}" = "1" ]; then
+        return 0  # Already loaded
+    fi
+    return 1  # Not loaded
+}
+
+# Function to mark a library as loaded
+mark_library_loaded() {
+    local library_name="$1"
+    
+    # Extract just the filename without path and extension
+    local basename=$(basename "$library_name" .sh)
+    
+    # Mark it as loaded in our tracking array 
+    ONERECOVERY_LIBRARIES_LOADED[$basename]="1"
+    
+    # For backwards compatibility, maintain the string-based tracking
+    if [ -z "${LIBRARIES_LOADED:-}" ]; then
+        export LIBRARIES_LOADED="$basename"
+    else
+        export LIBRARIES_LOADED="$LIBRARIES_LOADED:$basename"
+    fi
+}
+
 # Function to safely source library files with error checking
 source_library() {
     local library_file=$1
     local required=${2:-false}
     
+    # Extract just the filename without path and extension
+    local basename=$(basename "$library_file" .sh)
+    
+    # Skip if already loaded
+    if is_library_loaded "$basename"; then
+        local calling_script=$(caller | awk '{print $2}')
+        local calling_line=$(caller | awk '{print $1}')
+        echo -e "${BLUE}[INFO]${NC} Library $basename already loaded (referenced from $calling_script:$calling_line)"
+        return 0
+    fi
+    
     if [ -f "$library_file" ]; then
         # Source the library
         source "$library_file"
+        # Mark it as loaded
+        mark_library_loaded "$basename"
         return 0
     else
         if [ "$required" = "true" ]; then
@@ -136,47 +187,47 @@ source_library() {
 source_libraries() {
     local script_path=${1:-"."}
     
-    # Track loaded libraries to prevent duplication
-    if [ -z "${LIBRARIES_LOADED:-}" ]; then
-        # First time initialization
-        export LIBRARIES_LOADED="80_common"
-        
-        # Error handling
-        if source_library "$script_path/81_error_handling.sh"; then
-            # Initialize error handling if available
-            init_error_handling
-            LIBRARIES_LOADED="$LIBRARIES_LOADED:81_error_handling"
-        else
-            echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
-        fi
-        
-        # Build helpers
-        if source_library "$script_path/82_build_helper.sh"; then
-            LIBRARIES_LOADED="$LIBRARIES_LOADED:82_build_helper"
-        fi
-        
-        # Optional configuration helpers
-        if source_library "$script_path/83_config_helper.sh" false; then
-            LIBRARIES_LOADED="$LIBRARIES_LOADED:83_config_helper"
-        fi
-        
-        # Build core library (new)
-        if [ -f "$script_path/84_build_core.sh" ]; then
-            # Ensure it's executable
-            if [ ! -x "$script_path/84_build_core.sh" ]; then
-                chmod +x "$script_path/84_build_core.sh" 2>/dev/null || echo -e "${YELLOW}[WARNING]${NC} Could not make build core library executable"
-            fi
-            
-            if source_library "$script_path/84_build_core.sh"; then
-                LIBRARIES_LOADED="$LIBRARIES_LOADED:84_build_core"
-            fi
-        fi
+    # Mark 80_common as loaded if not already (self-reference)
+    if ! is_library_loaded "80_common"; then
+        mark_library_loaded "80_common"
+    fi
+    
+    # Load standard libraries with tracking
+    
+    # Error handling (required)
+    if source_library "$script_path/81_error_handling.sh"; then
+        # Initialize error handling if available
+        init_error_handling
     else
-        # Add debugging information about source location
+        echo -e "${YELLOW}[WARNING]${NC} Error handling is limited"
+    fi
+    
+    # Build helpers
+    source_library "$script_path/82_build_helper.sh"
+    
+    # Optional configuration helpers
+    source_library "$script_path/83_config_helper.sh" false
+    
+    # Build core library (if available)
+    if [ -f "$script_path/84_build_core.sh" ]; then
+        # Ensure it's executable
+        if [ ! -x "$script_path/84_build_core.sh" ]; then
+            chmod +x "$script_path/84_build_core.sh" 2>/dev/null || 
+                echo -e "${YELLOW}[WARNING]${NC} Could not make build core library executable"
+        fi
+        
+        source_library "$script_path/84_build_core.sh"
+    fi
+    
+    # Debug information about loaded libraries
+    if [ "${DEBUG_LIBRARY_LOADING:-}" = "true" ]; then
         local calling_script=$(caller | awk '{print $2}')
         local calling_line=$(caller | awk '{print $1}')
-        local calling_function=$(caller 1 | awk '{print $2}' 2>/dev/null || echo "main")
-        echo -e "${BLUE}[INFO]${NC} Libraries already loaded: $LIBRARIES_LOADED (called from $calling_script:$calling_line:$calling_function)"
+        local loaded_libs=""
+        for lib in "${!ONERECOVERY_LIBRARIES_LOADED[@]}"; do
+            loaded_libs="$loaded_libs $lib"
+        done
+        echo -e "${BLUE}[DEBUG]${NC} Current loaded libraries:$loaded_libs (from $calling_script:$calling_line)"
     fi
     
     return 0
