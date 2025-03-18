@@ -216,10 +216,8 @@ run_build() {
         chmod +x 03_conf.sh
         chmod +x 04_build.sh
         
-        # Ensure critical libraries and functions are properly initialized
-        # in the Docker environment before running build scripts
-        echo "Pre-initializing library functions for Docker environment"
-        bash -c 'source ./80_common.sh && source ./81_error_handling.sh && export -f check_resume_point print_script_end print_script_start'
+        # No pre-initialization needed - each script will properly load libraries
+        # This line was previously causing double initialization of error handling
         
         # Make sure the build script exists and is executable
         if [ -f "04_build.sh" ]; then
