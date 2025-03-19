@@ -1,5 +1,5 @@
 #!/bin/bash
-# Docker entrypoint script for OneRecovery builder
+# Docker entrypoint script for OneFileLinux builder
 set -e
 
 # Fixed uid/gid or take from environment
@@ -13,20 +13,20 @@ mkdir -p /tmp
 chmod 1777 /tmp
 
 # Create a fresh work directory with all permissions for extraction
-TEMP_EXTRACT_DIR="/onerecovery/extract_temp"
+TEMP_EXTRACT_DIR="/onefilelinux/extract_temp"
 mkdir -p "$TEMP_EXTRACT_DIR"
 chmod 777 "$TEMP_EXTRACT_DIR"
 
 # Make sure we have build directories
-mkdir -p /onerecovery/build
-mkdir -p /onerecovery/output
-mkdir -p /onerecovery/.buildcache
+mkdir -p /onefilelinux/build
+mkdir -p /onefilelinux/output
+mkdir -p /onefilelinux/.buildcache
 
 # Ensure proper permissions for output directory
-chmod 777 /onerecovery/output
+chmod 777 /onefilelinux/output
 
 # Get build directory absolute path
-BUILD_DIR=$(cd /onerecovery/build && pwd)
+BUILD_DIR=$(cd /onefilelinux/build && pwd)
 
 # Update the builder user's uid/gid if needed
 if [ "$USER_ID" != "1000" ] || [ "$GROUP_ID" != "1000" ]; then
@@ -58,28 +58,28 @@ log_info "Setting up build environment..."
 # we'll change Docker's approach to use the host user's UID/GID directly
 
 # Ensure runtime directories exist and have correct permissions
-mkdir -p /onerecovery/build /onerecovery/output /onerecovery/.buildcache
-chmod 755 /onerecovery/build /onerecovery/output /onerecovery/.buildcache
+mkdir -p /onefilelinux/build /onefilelinux/output /onefilelinux/.buildcache
+chmod 755 /onefilelinux/build /onefilelinux/output /onefilelinux/.buildcache
 
 # Set ownership of the .buildcache directory which is a Docker volume with persistence
 # This is necessary for proper ccache operation
-chown -R builder:builder /onerecovery/.buildcache 2>/dev/null || true
+chown -R builder:builder /onefilelinux/.buildcache 2>/dev/null || true
 
 # For mounted host volumes (build and output), we skip ownership changes
 # This is much faster and works better with bind mounts from the host
 log_info "Using host's ownership for mounted volumes"
 
 # Ensure specific directories exist with correct permissions
-if [ -d "/onerecovery/build/alpine-minirootfs" ]; then
+if [ -d "/onefilelinux/build/alpine-minirootfs" ]; then
     log_info "Setting up special directories in alpine-minirootfs..."
     
     # Create and set permissions for key directories
-    if [ -d "/onerecovery/build/alpine-minirootfs/proc" ]; then
-        chmod 555 "/onerecovery/build/alpine-minirootfs/proc" 2>/dev/null || log_warn "Could not set permissions on /proc (this is normal in Docker)"
+    if [ -d "/onefilelinux/build/alpine-minirootfs/proc" ]; then
+        chmod 555 "/onefilelinux/build/alpine-minirootfs/proc" 2>/dev/null || log_warn "Could not set permissions on /proc (this is normal in Docker)"
     fi
     
-    if [ -d "/onerecovery/build/alpine-minirootfs/var/empty" ]; then
-        chmod 555 "/onerecovery/build/alpine-minirootfs/var/empty" 2>/dev/null || log_warn "Could not set permissions on /var/empty (this is normal in Docker)"
+    if [ -d "/onefilelinux/build/alpine-minirootfs/var/empty" ]; then
+        chmod 555 "/onefilelinux/build/alpine-minirootfs/var/empty" 2>/dev/null || log_warn "Could not set permissions on /var/empty (this is normal in Docker)"
     fi
 fi
 
@@ -91,22 +91,22 @@ fix_kernel_permissions() {
     log_info "Checking for kernel source directory permissions"
     
     # Check if linux directory exists
-    if [ -d "/onerecovery/build/linux" ]; then
+    if [ -d "/onefilelinux/build/linux" ]; then
         log_info "Fixing permissions for kernel source directory"
         
         # Find problematic directories with incorrect permissions
-        find /onerecovery/build/linux -type d -not -perm -u+rwx -exec chmod u+rwx {} \; 2>/dev/null || true
+        find /onefilelinux/build/linux -type d -not -perm -u+rwx -exec chmod u+rwx {} \; 2>/dev/null || true
         
         # Find problematic files with incorrect permissions
-        find /onerecovery/build/linux -type f -not -perm -u+rw -exec chmod u+rw {} \; 2>/dev/null || true
+        find /onefilelinux/build/linux -type f -not -perm -u+rw -exec chmod u+rw {} \; 2>/dev/null || true
         
         # Specifically handle common problem areas
-        chmod -R u+rwX /onerecovery/build/linux/include 2>/dev/null || true
-        chmod -R u+rwX /onerecovery/build/linux/arch 2>/dev/null || true
-        chmod -R u+rwX /onerecovery/build/linux/scripts 2>/dev/null || true
+        chmod -R u+rwX /onefilelinux/build/linux/include 2>/dev/null || true
+        chmod -R u+rwX /onefilelinux/build/linux/arch 2>/dev/null || true
+        chmod -R u+rwX /onefilelinux/build/linux/scripts 2>/dev/null || true
         
         # Make sure scripts are executable
-        find /onerecovery/build/linux/scripts -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+        find /onefilelinux/build/linux/scripts -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
         
         log_info "Kernel source permissions fixed"
     else
@@ -118,7 +118,7 @@ fix_kernel_permissions() {
 log_info "Setting up build performance optimizations"
 
 # Configure ccache for better performance
-export CCACHE_DIR=/onerecovery/.buildcache/ccache
+export CCACHE_DIR=/onefilelinux/.buildcache/ccache
 export PATH=/usr/lib/ccache:$PATH
 
 # Check if we have enough memory for parallel builds
@@ -191,7 +191,7 @@ bootstrap_extraction() {
 export -f bootstrap_extraction
 
 # Set working directory
-cd /onerecovery/build
+cd /onefilelinux/build
 
 # Define function to run build
 run_build() {
@@ -228,7 +228,7 @@ run_build() {
             echo "Searching for the script in the build directory..."
             
             # Find the script in the mounted volumes
-            SCRIPT_PATH=$(find /onerecovery -name "04_build.sh" -type f 2>/dev/null | head -n 1)
+            SCRIPT_PATH=$(find /onefilelinux -name "04_build.sh" -type f 2>/dev/null | head -n 1)
             
             if [ -n "$SCRIPT_PATH" ]; then
                 echo "Found script at: $SCRIPT_PATH"
@@ -248,7 +248,7 @@ run_build() {
         else
             echo "Creating build.sh symlink"
             # Find the script in the mounted volumes
-            SCRIPT_PATH=$(find /onerecovery -name "build.sh" -type f 2>/dev/null | head -n 1)
+            SCRIPT_PATH=$(find /onefilelinux -name "build.sh" -type f 2>/dev/null | head -n 1)
             
             if [ -n "$SCRIPT_PATH" ]; then
                 echo "Found script at: $SCRIPT_PATH"
@@ -388,7 +388,7 @@ if [ "${RUN_AS_ROOT:-false}" = "true" ]; then
     echo "Running as root user (RUN_AS_ROOT=true)"
     if [ $# -eq 0 ]; then
         # Default command if none provided
-        cd /onerecovery/build && run_build
+        cd /onefilelinux/build && run_build
     else
         # Run whatever command was passed
         "$@"
@@ -397,7 +397,7 @@ else
     echo "Running as builder user"
     if [ $# -eq 0 ]; then
         # Default command if none provided
-        exec su-exec builder bash -c "cd /onerecovery/build && run_build"
+        exec su-exec builder bash -c "cd /onefilelinux/build && run_build"
     else
         # Run whatever command was passed
         exec su-exec builder "$@"

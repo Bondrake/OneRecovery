@@ -1,6 +1,6 @@
-# OneRecovery Docker Build System
+# OneFileLinux Docker Build System
 
-This directory contains files for building OneRecovery using Docker, providing a consistent build environment regardless of host system.
+This directory contains files for building OneFileLinux using Docker, providing a consistent build environment regardless of host system.
 
 ## Features
 
@@ -8,7 +8,7 @@ This directory contains files for building OneRecovery using Docker, providing a
 - Consistent builds across different host platforms (Linux, macOS, Windows)
 - Efficient build caching for faster rebuilds
 - Proper permission handling between container and host
-- Support for all OneRecovery build options
+- Support for all OneFileLinux build options
 - Volume mounting for persistent build artifacts
 - Easy to use command-line interface
 
@@ -23,22 +23,22 @@ This directory contains files for building OneRecovery using Docker, providing a
 
 1. Make the build script executable:
    ```bash
-   chmod +x build-onerecovery.sh
+   chmod +x build-onefilelinux.sh
    ```
 
 2. Run the build with default settings:
    ```bash
-   ./build-onerecovery.sh
+   ./build-onefilelinux.sh
    ```
 
 3. For a full build with all features:
    ```bash
-   ./build-onerecovery.sh -b "--full"
+   ./build-onefilelinux.sh -b "--full"
    ```
 
 4. For a minimal build:
    ```bash
-   ./build-onerecovery.sh -b "--minimal"
+   ./build-onefilelinux.sh -b "--minimal"
    ```
 
 ## Configuration
@@ -57,10 +57,10 @@ HOST_GID=1000
 
 ## Command Line Options
 
-The `build-onerecovery.sh` script supports several options:
+The `build-onefilelinux.sh` script supports several options:
 
 ```
-Usage: ./build-onerecovery.sh [options]
+Usage: ./build-onefilelinux.sh [options]
 
 Options:
   -h, --help            Display this help message
@@ -77,14 +77,14 @@ Options:
 
 - `Dockerfile`: Defines the containerized build environment
 - `docker-compose.yml`: Configuration for Docker Compose
-- `build-onerecovery.sh`: Main build script to interact with the Docker environment
+- `build-onefilelinux.sh`: Main build script to interact with the Docker environment
 - `entrypoint.sh`: Docker container entry point that bootstraps the build process 
 - `auto-resources.sh`: Helper script to automatically detect and configure system resources
 - `.env.example`: Example environment variable file
 
 ## Build Artifacts
 
-After a successful build, the output file (`OneRecovery.efi`) will be placed in the `../output/` directory relative to this directory.
+After a successful build, the output file (`OneFileLinux.efi`) will be placed in the `../output/` directory relative to this directory.
 
 ## Troubleshooting
 
@@ -116,7 +116,7 @@ To improve build performance:
 You can enter an interactive shell in the container for debugging or manual builds:
 
 ```bash
-./build-onerecovery.sh -i
+./build-onefilelinux.sh -i
 ```
 
 ### Custom Build Steps
@@ -124,9 +124,9 @@ You can enter an interactive shell in the container for debugging or manual buil
 To run specific build steps:
 
 ```bash
-./build-onerecovery.sh -i
+./build-onefilelinux.sh -i
 # Inside the container:
-cd /onerecovery/build
+cd /onefilelinux/build
 ./build.sh get  # Only run the download step
 ./build.sh build  # Only run the build step
 ```
@@ -136,7 +136,7 @@ cd /onerecovery/build
 To clear the build cache:
 
 ```bash
-./build-onerecovery.sh -c
+./build-onefilelinux.sh -c
 ```
 
 ## Integration with CI/CD

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery Build Helper (82_build_helper.sh)
+# OneFileLinux Build Helper (82_build_helper.sh)
 # Cross-environment build utilities for consistent builds in any environment
 # Provides file operations, environment detection, and build utilities
 # This is part of the library scripts (80-89 range)
@@ -21,7 +21,7 @@ is_restricted_environment() {
 
 # Print environment information
 print_environment_info() {
-    echo "OneRecovery Build Environment:"
+    echo "OneFileLinux Build Environment:"
     echo "------------------------------"
     
     if is_github_actions; then
@@ -360,8 +360,8 @@ configure_alpine() {
             safe_copy "$zfiles_dir/init" "$rootfs_dir/init" "755"
         fi
         
-        if [ -f "$zfiles_dir/onerecovery-tui" ]; then
-            safe_copy "$zfiles_dir/onerecovery-tui" "$rootfs_dir/onerecovery-tui" "755"
+        if [ -f "$zfiles_dir/onefilelinux-tui" ]; then
+            safe_copy "$zfiles_dir/onefilelinux-tui" "$rootfs_dir/onefilelinux-tui" "755"
         fi
     else
         echo "Warning: zfiles directory not found: $zfiles_dir"
@@ -671,7 +671,7 @@ docker_handle_extraction() {
     log "INFO" "Special handling for extraction of $src_file to $dest_dir"
     
     # Create temporary extraction directory
-    local temp_extract_dir="/tmp/onerecovery_extract_temp"
+    local temp_extract_dir="/tmp/onefilelinux_extract_temp"
     mkdir -p "$temp_extract_dir"
     chmod 777 "$temp_extract_dir" 2>/dev/null || true
     

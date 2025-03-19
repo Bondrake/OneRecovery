@@ -137,10 +137,10 @@ main() {
     log "SUCCESS" "Build completed successfully!"
     log "INFO" "Detailed timing log saved to: ${TIMING_LOG_FILE}"
     
-    if [ -f "$OUTPUT_DIR/OneRecovery.efi" ]; then
-        local file_size=$(du -h "$OUTPUT_DIR/OneRecovery.efi" | cut -f1)
-        log "SUCCESS" "Created OneRecovery.efi (Size: $file_size)"
-        log "INFO" "EFI file: $OUTPUT_DIR/OneRecovery.efi"
+    if [ -f "$OUTPUT_DIR/OneFileLinux.efi" ]; then
+        local file_size=$(du -h "$OUTPUT_DIR/OneFileLinux.efi" | cut -f1)
+        log "SUCCESS" "Created OneFileLinux.efi (Size: $file_size)"
+        log "INFO" "EFI file: $OUTPUT_DIR/OneFileLinux.efi"
         
         # Show included features
         log "INFO" "Included features:"

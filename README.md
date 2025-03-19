@@ -1,12 +1,12 @@
-# OneRecovery
+# OneFileLinux
 
-OneRecovery is a single-file EFI-based Linux recovery environment designed for data recovery, system repair, and diagnostics.
+OneFileLinux is a single-file EFI-based Linux recovery environment designed for data recovery, system repair, and diagnostics.
 
-<img width=600 alt="OneRecovery" src="https://hub.zhovner.com/img/one-file-linux.png" />
+<img width=600 alt="OneFileLinux" src="https://hub.zhovner.com/img/one-file-linux.png" />
 
-## Why OneRecovery?
+## Why OneFileLinux?
 
-OneRecovery provides a powerful system recovery solution with unique advantages:
+OneFileLinux provides a powerful system recovery solution with unique advantages:
 
 - **Zero Installation Required**: No need to create additional partitions or modify your system
 - **No External Media Needed**: Once copied to your EFI partition, it's always available
@@ -30,19 +30,19 @@ OneRecovery provides a powerful system recovery solution with unique advantages:
 
 ### Building with Docker (Recommended)
 
-The easiest way to build OneRecovery is using Docker, which provides a consistent build environment:
+The easiest way to build OneFileLinux is using Docker, which provides a consistent build environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/OneRecovery.git
-cd OneRecovery/docker
+git clone https://github.com/yourusername/OneFileLinux.git
+cd OneFileLinux/docker
 
 # Build with default settings
-./build-onerecovery.sh
+./build-onefilelinux.sh
 
 # Or build with specific options
-./build-onerecovery.sh -b "--full"
-./build-onerecovery.sh -b "--minimal"
+./build-onefilelinux.sh -b "--full"
+./build-onefilelinux.sh -b "--minimal"
 ```
 
 See the [Docker build documentation](docker/README.md) for more details.
@@ -60,8 +60,8 @@ sudo apt-get install build-essential git autoconf automake libtool \
   libncurses-dev e2fsprogs coreutils mtools xorriso squashfs-tools
 
 # Clone the repository
-git clone https://github.com/yourusername/OneRecovery.git
-cd OneRecovery
+git clone https://github.com/yourusername/OneFileLinux.git
+cd OneFileLinux
 
 # Run the build
 cd build
@@ -70,7 +70,7 @@ cd build
 
 ## Build Options
 
-OneRecovery offers several build configurations to balance features and size:
+OneFileLinux offers several build configurations to balance features and size:
 
 | Build Type | Description | Size | Command |
 |------------|-------------|------|---------|
@@ -95,24 +95,24 @@ You can customize your build with these package groups:
 
 ## Installation
 
-1. Copy the generated `OneRecovery.efi` to your EFI System Partition (ESP):
+1. Copy the generated `OneFileLinux.efi` to your EFI System Partition (ESP):
    ```bash
-   sudo mkdir -p /boot/efi/EFI/OneRecovery
-   sudo cp output/OneRecovery.efi /boot/efi/EFI/OneRecovery/
+   sudo mkdir -p /boot/efi/EFI/OneFileLinux
+   sudo cp output/OneFileLinux.efi /boot/efi/EFI/OneFileLinux/
    ```
 
 2. Add a boot entry (optional, you can also boot it directly from UEFI):
    ```bash
-   sudo efibootmgr --create --disk /dev/sda --part 1 --label "OneRecovery" --loader '\EFI\OneRecovery\OneRecovery.efi'
+   sudo efibootmgr --create --disk /dev/sda --part 1 --label "OneFileLinux" --loader '\EFI\OneFileLinux\OneFileLinux.efi'
    ```
 
-3. Boot into UEFI and select OneRecovery from the boot menu.
+3. Boot into UEFI and select OneFileLinux from the boot menu.
 
 For detailed installation instructions for macOS, Windows, and creating bootable USB drives, see the [User Guide](docs/USER_GUIDE.md).
 
 ## EFI Partition Size Considerations
 
-When planning to use OneRecovery, keep in mind these EFI partition size guidelines:
+When planning to use OneFileLinux, keep in mind these EFI partition size guidelines:
 
 - **Minimal build**: 100MB EFI partition is sufficient
 - **Standard build**: 150MB EFI partition recommended

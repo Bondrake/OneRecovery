@@ -206,7 +206,7 @@ try_cached_version() {
     local component=$3
     
     local base_name=$(basename "$file")
-    local cache_dir="/onerecovery/.buildcache/${component,,}"
+    local cache_dir="/onefilelinux/.buildcache/${component,,}"
     
     if [ -d "$cache_dir/${base_name%.tar.*}" ]; then
         log "INFO" "Found cached $component, copying"

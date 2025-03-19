@@ -156,8 +156,8 @@ if [ "${GENERATE_RANDOM_PASSWORD:-true}" = "true" ]; then
         sed "s|^root:.*|root:$PASSWORD_HASH:18383:0:::::|" ./zfiles/shadow > ./alpine-minirootfs/etc/shadow
         
         # Save the password to a file for user reference
-        echo "Generated root password: $GENERATED_PASSWORD" > onerecovery-password.txt
-        log "SUCCESS" "Random root password generated. See onerecovery-password.txt"
+        echo "Generated root password: $GENERATED_PASSWORD" > onefilelinux-password.txt
+        log "SUCCESS" "Random root password generated. See onefilelinux-password.txt"
     fi
 elif [ -n "${ROOT_PASSWORD}" ]; then
     # Use provided custom password
@@ -184,8 +184,8 @@ chmod +x ./alpine-minirootfs/init
 # Install TUI script if enabled
 if [ "${INCLUDE_TUI:-true}" = "true" ]; then
     log "INFO" "Installing Text User Interface"
-    cat ./zfiles/onerecovery-tui > ./alpine-minirootfs/onerecovery-tui
-    chmod +x ./alpine-minirootfs/onerecovery-tui
+    cat ./zfiles/onefilelinux-tui > ./alpine-minirootfs/onefilelinux-tui
+    chmod +x ./alpine-minirootfs/onefilelinux-tui
 else
     log "INFO" "Skipping Text User Interface (disabled in configuration)"
 fi

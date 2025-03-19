@@ -1,6 +1,6 @@
 #!/bin/ash
 #
-# OneRecovery TUI (Text User Interface)
+# OneFileLinux TUI (Text User Interface)
 # A simple menu-driven interface for common recovery tasks
 #
 
@@ -61,7 +61,7 @@ show_header() {
     echo "  | \__/'---'\__/ | "
     echo "  |_______________| "
     echo "                    "
-    echo -e "${GREEN}   OneRecovery v$VERSION   ${RESET}"
+    echo -e "${GREEN}   OneFileLinux v$VERSION   ${RESET}"
     draw_line
 }
 
@@ -631,7 +631,7 @@ show_logs() {
     
     # Show logs submenu
     echo "1. System log (dmesg)"
-    echo "2. OneRecovery operations log"
+    echo "2. OneFileLinux operations log"
     echo "3. Back to main menu"
     echo
     
@@ -648,7 +648,7 @@ show_logs() {
             ;;
         2)
             show_header
-            echo -e "${WHITE}OneRecovery Operations Log${RESET}"
+            echo -e "${WHITE}OneFileLinux Operations Log${RESET}"
             echo
             cat "$LOG_FILE" | less
             ;;
@@ -661,9 +661,9 @@ show_logs() {
 # Function to show help
 show_help() {
     show_header
-    echo -e "${WHITE}OneRecovery Help${RESET}"
+    echo -e "${WHITE}OneFileLinux Help${RESET}"
     echo
-    echo "OneRecovery is a lightweight Linux system for system recovery and maintenance."
+    echo "OneFileLinux is a lightweight Linux system for system recovery and maintenance."
     echo
     echo -e "${CYAN}Main Menu Options:${RESET}"
     echo "1. System Information - Display hardware and system details"
@@ -1830,7 +1830,7 @@ main_menu() {
             6) advanced_tools ;;
             7) show_logs ;;
             8)
-                echo "Launching shell. Type 'exit' to return to OneRecovery."
+                echo "Launching shell. Type 'exit' to return to OneFileLinux."
                 /bin/ash
                 ;;
             9) show_help ;;
@@ -1864,7 +1864,7 @@ main_menu() {
                 esac
                 ;;
             q|Q) 
-                log_message "Exiting OneRecovery TUI"
+                log_message "Exiting OneFileLinux TUI"
                 clear
                 exit 0
                 ;;
@@ -1875,6 +1875,6 @@ main_menu() {
 }
 
 # Initialize
-log_message "Starting OneRecovery TUI v$VERSION"
+log_message "Starting OneFileLinux TUI v$VERSION"
 detect_system_info
 main_menu

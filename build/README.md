@@ -1,6 +1,6 @@
-# OneRecovery Build System
+# OneFileLinux Build System
 
-This directory contains the build system for OneRecovery. For complete documentation, see the [User Guide](../docs/USER_GUIDE.md).
+This directory contains the build system for OneFileLinux. For complete documentation, see the [User Guide](../docs/USER_GUIDE.md).
 
 ## Quick Start
 
@@ -36,7 +36,7 @@ sudo ./build.sh --full
   - `kernel-minimal.config` - Minimal kernel configuration
   - `init` - System initialization script
   - `interfaces` - Network configuration
-  - `onerecovery-tui` - Text-based user interface script
+  - `onefilelinux-tui` - Text-based user interface script
   - `profile` - System profile
   - `resolv.conf` - DNS configuration
   - `shadow` - User accounts configuration

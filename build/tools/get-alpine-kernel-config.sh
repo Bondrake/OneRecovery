@@ -9,7 +9,7 @@ if [ -f "$COMMON_LIB" ]; then
     source "$COMMON_LIB"
 else
     echo "ERROR: Common library not found at $COMMON_LIB"
-    echo "This script must be run from the tools directory of the OneRecovery build system."
+    echo "This script must be run from the tools directory of the OneFileLinux build system."
     exit 1
 fi
 

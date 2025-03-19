@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# OneRecovery Docker Build Script
-# This script launches the OneRecovery build inside a Docker container
+# OneFileLinux Docker Build Script
+# This script launches the OneFileLinux build inside a Docker container
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +29,7 @@ print_banner() {
     echo "  | \__/'---'\__/ | "
     echo "  |_______________| "
     echo "                    "
-    echo -e "${GREEN}   OneRecovery Docker Builder  ${NC}"
+    echo -e "${GREEN}   OneFileLinux Docker Builder  ${NC}"
     echo "----------------------------------------------------"
 }
 
@@ -220,7 +220,7 @@ fi
 
 # Create .env file for docker-compose
 cat > "$SCRIPT_DIR/.env" << EOF
-# Auto-generated environment file for OneRecovery build
+# Auto-generated environment file for OneFileLinux build
 # Generated on $(date)
 
 # Resource limits
@@ -292,9 +292,9 @@ BUILD_START_TIME=$(date +%s)
 
 if [ "$INTERACTIVE" = true ]; then
     echo -e "${BLUE}[INFO]${NC} Starting interactive shell in container..."
-    $COMPOSE_CMD run --rm $BUILD_OPTS onerecovery-builder /bin/bash
+    $COMPOSE_CMD run --rm $BUILD_OPTS onefilelinux-builder /bin/bash
 else
-    echo -e "${BLUE}[INFO]${NC} Starting OneRecovery build in container..."
+    echo -e "${BLUE}[INFO]${NC} Starting OneFileLinux build in container..."
     
     # Print timestamp
     echo -e "${BLUE}[INFO]${NC} Build started at $(date)"
@@ -305,15 +305,15 @@ else
     echo -e "${BLUE}[DEBUG]${NC} Docker Compose exit code: $COMPOSE_EXIT_CODE"
     
     # Check the actual container exit code which might be different
-    CONTAINER_EXIT=$(docker inspect --format='{{.State.ExitCode}}' onerecovery-builder 2>/dev/null || echo "unknown")
-    echo -e "${BLUE}[DEBUG]${NC} Container onerecovery-builder exit code: $CONTAINER_EXIT"
+    CONTAINER_EXIT=$(docker inspect --format='{{.State.ExitCode}}' onefilelinux-builder 2>/dev/null || echo "unknown")
+    echo -e "${BLUE}[DEBUG]${NC} Container onefilelinux-builder exit code: $CONTAINER_EXIT"
     
     # Check for the output file first as the primary indicator of success
-    if [ -f "$PROJECT_DIR/output/OneRecovery.efi" ]; then
-        echo -e "${GREEN}[SUCCESS]${NC} OneRecovery build completed successfully!"
-        FILE_SIZE=$(du -h "$PROJECT_DIR/output/OneRecovery.efi" | cut -f1)
-        echo -e "${GREEN}[SUCCESS]${NC} Created OneRecovery.efi (Size: $FILE_SIZE)"
-        echo -e "${BLUE}[INFO]${NC} Output file: $PROJECT_DIR/output/OneRecovery.efi"
+    if [ -f "$PROJECT_DIR/output/OneFileLinux.efi" ]; then
+        echo -e "${GREEN}[SUCCESS]${NC} OneFileLinux build completed successfully!"
+        FILE_SIZE=$(du -h "$PROJECT_DIR/output/OneFileLinux.efi" | cut -f1)
+        echo -e "${GREEN}[SUCCESS]${NC} Created OneFileLinux.efi (Size: $FILE_SIZE)"
+        echo -e "${BLUE}[INFO]${NC} Output file: $PROJECT_DIR/output/OneFileLinux.efi"
         
         # Display build timing information if available
         TIMING_LOG="$PROJECT_DIR/build/build_timing.log"
@@ -328,7 +328,7 @@ else
         # Check if compose itself failed 
         if [ $COMPOSE_EXIT_CODE -ne 0 ]; then
             echo -e "${RED}[ERROR]${NC} Docker Compose execution failed with exit code $COMPOSE_EXIT_CODE."
-            echo -e "${RED}[ERROR]${NC} OneRecovery build failed. See container logs for details."
+            echo -e "${RED}[ERROR]${NC} OneFileLinux build failed. See container logs for details."
             exit 1
         else
             # Compose succeeded but no output file - container likely exited with error

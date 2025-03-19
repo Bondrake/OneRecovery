@@ -3,7 +3,7 @@ FoxBuild/linux
 FoxBuild/zfs*
 FoxBuild/alpine-minirootfs/
 FoxBuild/*.tar.*
-OneRecovery.efi
+OneFileLinux.efi
 FUTURE_IMPROVEMENTS.md
 .DS_Store
 CLAUDE.md

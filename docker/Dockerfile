@@ -87,18 +87,18 @@ RUN adduser -D -u 1000 builder && \
     chmod 4755 /bin/busybox
 
 # Set up build directories and cache locations
-RUN mkdir -p /onerecovery/build /onerecovery/output /onerecovery/.buildcache && \
-    chown -R builder:builder /onerecovery
+RUN mkdir -p /onefilelinux/build /onefilelinux/output /onefilelinux/.buildcache && \
+    chown -R builder:builder /onefilelinux
 
 # Create cache directories
-RUN mkdir -p /onerecovery/.buildcache/sources \
-             /onerecovery/.buildcache/packages \
-             /onerecovery/.buildcache/ccache \
-             /onerecovery/.buildcache/build && \
-    chown -R builder:builder /onerecovery/.buildcache
+RUN mkdir -p /onefilelinux/.buildcache/sources \
+             /onefilelinux/.buildcache/packages \
+             /onefilelinux/.buildcache/ccache \
+             /onefilelinux/.buildcache/build && \
+    chown -R builder:builder /onefilelinux/.buildcache
 
 # Configure ccache for better performance
-ENV CCACHE_DIR=/onerecovery/.buildcache/ccache
+ENV CCACHE_DIR=/onefilelinux/.buildcache/ccache
 ENV PATH=/usr/lib/ccache:$PATH
 RUN su builder -c "ccache -M 5G" && \
     su builder -c "ccache -o compression=true" && \
@@ -110,7 +110,7 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Set workdir
-WORKDIR /onerecovery
+WORKDIR /onefilelinux
 
 # Install a healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

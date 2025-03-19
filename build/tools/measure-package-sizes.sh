@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery Package Size Analysis Script
+# OneFileLinux Package Size Analysis Script
 # Measures the size impact of each advanced package group on the final EFI file
 #
 # This script conducts a thorough size analysis by:
@@ -70,7 +70,7 @@ print_banner() {
     echo "  | \__/'---'\__/ | "
     echo "  |_______________| "
     echo "                    "
-    echo -e "${GREEN}   OneRecovery Size Analysis Tool  ${NC}"
+    echo -e "${GREEN}   OneFileLinux Size Analysis Tool  ${NC}"
     echo "----------------------------------------------------"
 }
 
@@ -155,9 +155,9 @@ build_baseline() {
     ./85_cross_env_build.sh $build_args > "$RESULTS_DIR/logs/${compname}-build.log" 2>&1
     
     # Check if build was successful
-    if [ -f "$OUTPUT_DIR/OneRecovery.efi" ]; then
+    if [ -f "$OUTPUT_DIR/OneFileLinux.efi" ]; then
         # Copy the EFI file for analysis
-        cp "$OUTPUT_DIR/OneRecovery.efi" "$RESULTS_DIR/efi-files/OneRecovery-${compname}.efi"
+        cp "$OUTPUT_DIR/OneFileLinux.efi" "$RESULTS_DIR/efi-files/OneFileLinux-${compname}.efi"
         log "SUCCESS" "Baseline build with $compression compression completed"
         return 0
     else
@@ -194,9 +194,9 @@ build_with_package_group() {
     ./85_cross_env_build.sh $build_args > "$RESULTS_DIR/logs/${compname}-build.log" 2>&1
     
     # Check if build was successful
-    if [ -f "$OUTPUT_DIR/OneRecovery.efi" ]; then
+    if [ -f "$OUTPUT_DIR/OneFileLinux.efi" ]; then
         # Copy the EFI file for analysis
-        cp "$OUTPUT_DIR/OneRecovery.efi" "$RESULTS_DIR/efi-files/OneRecovery-${compname}.efi"
+        cp "$OUTPUT_DIR/OneFileLinux.efi" "$RESULTS_DIR/efi-files/OneFileLinux-${compname}.efi"
         log "SUCCESS" "Build with $group package group and $compression compression completed"
         return 0
     else
@@ -233,9 +233,9 @@ build_full() {
     ./85_cross_env_build.sh $build_args > "$RESULTS_DIR/logs/${compname}-build.log" 2>&1
     
     # Check if build was successful
-    if [ -f "$OUTPUT_DIR/OneRecovery.efi" ]; then
+    if [ -f "$OUTPUT_DIR/OneFileLinux.efi" ]; then
         # Copy the EFI file for analysis
-        cp "$OUTPUT_DIR/OneRecovery.efi" "$RESULTS_DIR/efi-files/OneRecovery-${compname}.efi"
+        cp "$OUTPUT_DIR/OneFileLinux.efi" "$RESULTS_DIR/efi-files/OneFileLinux-${compname}.efi"
         log "SUCCESS" "Full build with $compression compression completed"
         return 0
     else
@@ -249,8 +249,8 @@ analyze_results() {
     local compression=$1
     local report_file="$RESULTS_DIR/size-report-${compression}.txt"
     local csv_file="$RESULTS_DIR/size-report-${compression}.csv"
-    local baseline_file="$RESULTS_DIR/efi-files/OneRecovery-baseline-${compression}.efi"
-    local full_file="$RESULTS_DIR/efi-files/OneRecovery-full-${compression}.efi"
+    local baseline_file="$RESULTS_DIR/efi-files/OneFileLinux-baseline-${compression}.efi"
+    local full_file="$RESULTS_DIR/efi-files/OneFileLinux-full-${compression}.efi"
     
     # Check if baseline file exists
     if [ ! -f "$baseline_file" ]; then
@@ -262,7 +262,7 @@ analyze_results() {
     local baseline_size=$(stat -c %s "$baseline_file" 2>/dev/null || stat -f %z "$baseline_file")
     
     # Create header for report
-    echo "OneRecovery Size Analysis Report (${compression} compression)" > "$report_file"
+    echo "OneFileLinux Size Analysis Report (${compression} compression)" > "$report_file"
     echo "=========================================================" >> "$report_file"
     echo "" >> "$report_file"
     echo "Baseline size (no advanced packages): $(numfmt --to=iec-i --suffix=B $baseline_size) ($baseline_size bytes)" >> "$report_file"
@@ -278,7 +278,7 @@ analyze_results() {
     
     # Analyze each package group
     for group in "${PACKAGE_GROUPS[@]}"; do
-        local group_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-${compression}.efi"
+        local group_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-${compression}.efi"
         
         if [ -f "$group_file" ]; then
             local group_size=$(stat -c %s "$group_file" 2>/dev/null || stat -f %z "$group_file")
@@ -323,7 +323,7 @@ create_summary() {
     local summary_file="$RESULTS_DIR/summary-report.txt"
     local summary_csv="$RESULTS_DIR/summary-report.csv"
     
-    echo "OneRecovery Size Analysis Summary" > "$summary_file"
+    echo "OneFileLinux Size Analysis Summary" > "$summary_file"
     echo "=================================" >> "$summary_file"
     echo "" >> "$summary_file"
     
@@ -333,10 +333,10 @@ create_summary() {
     # Process baseline and each package group
     process_group() {
         local group=$1
-        local none_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-none.efi"
-        local upx_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-upx.efi"
-        local zstd_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-zstd.efi"
-        local xz_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-xz.efi"
+        local none_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-none.efi"
+        local upx_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-upx.efi"
+        local zstd_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-zstd.efi"
+        local xz_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-xz.efi"
         
         echo "$group Configuration:" >> "$summary_file"
         
@@ -356,7 +356,7 @@ create_summary() {
         
         # Process each compression method
         for comp in upx zstd xz; do
-            local comp_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-${comp}.efi"
+            local comp_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-${comp}.efi"
             
             if [ -f "$comp_file" ]; then
                 local comp_size=$(stat -c %s "$comp_file" 2>/dev/null || stat -f %z "$comp_file")
@@ -400,7 +400,7 @@ create_summary() {
 create_markdown_report() {
     local md_file="$RESULTS_DIR/size-analysis-report.md"
     
-    echo "# OneRecovery Size Analysis Report" > "$md_file"
+    echo "# OneFileLinux Size Analysis Report" > "$md_file"
     echo "" >> "$md_file"
     echo "## Overview" >> "$md_file"
     echo "" >> "$md_file"
@@ -421,7 +421,7 @@ create_markdown_report() {
     echo "| Compression | Size | Reduction |" >> "$md_file"
     echo "|------------|------|-----------|" >> "$md_file"
     
-    local none_file="$RESULTS_DIR/efi-files/OneRecovery-baseline-none.efi"
+    local none_file="$RESULTS_DIR/efi-files/OneFileLinux-baseline-none.efi"
     local none_size=0
     
     if [ -f "$none_file" ]; then
@@ -432,7 +432,7 @@ create_markdown_report() {
     fi
     
     for comp in upx zstd xz; do
-        local comp_file="$RESULTS_DIR/efi-files/OneRecovery-baseline-${comp}.efi"
+        local comp_file="$RESULTS_DIR/efi-files/OneFileLinux-baseline-${comp}.efi"
         
         if [ -f "$comp_file" ]; then
             local comp_size=$(stat -c %s "$comp_file" 2>/dev/null || stat -f %z "$comp_file")
@@ -460,7 +460,7 @@ create_markdown_report() {
     echo "|---------------|------|------------------------|---------------------|" >> "$md_file"
     
     for group in "${PACKAGE_GROUPS[@]}"; do
-        local group_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-none.efi"
+        local group_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-none.efi"
         
         if [ -f "$group_file" ]; then
             local group_size=$(stat -c %s "$group_file" 2>/dev/null || stat -f %z "$group_file")
@@ -474,7 +474,7 @@ create_markdown_report() {
     done
     
     # Add full build information
-    local full_file="$RESULTS_DIR/efi-files/OneRecovery-full-none.efi"
+    local full_file="$RESULTS_DIR/efi-files/OneFileLinux-full-none.efi"
     
     if [ -f "$full_file" ]; then
         local full_size=$(stat -c %s "$full_file" 2>/dev/null || stat -f %z "$full_file")
@@ -495,7 +495,7 @@ create_markdown_report() {
         echo "| Package Group | Size | Increase over Baseline | Percentage Increase | Compression Ratio |" >> "$md_file"
         echo "|---------------|------|------------------------|---------------------|-------------------|" >> "$md_file"
         
-        local comp_baseline_file="$RESULTS_DIR/efi-files/OneRecovery-baseline-${comp}.efi"
+        local comp_baseline_file="$RESULTS_DIR/efi-files/OneFileLinux-baseline-${comp}.efi"
         local comp_baseline_size=0
         
         if [ -f "$comp_baseline_file" ]; then
@@ -505,8 +505,8 @@ create_markdown_report() {
         fi
         
         for group in "${PACKAGE_GROUPS[@]}"; do
-            local group_comp_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-${comp}.efi"
-            local group_none_file="$RESULTS_DIR/efi-files/OneRecovery-${group}-none.efi"
+            local group_comp_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-${comp}.efi"
+            local group_none_file="$RESULTS_DIR/efi-files/OneFileLinux-${group}-none.efi"
             
             if [ -f "$group_comp_file" ] && [ -f "$group_none_file" ]; then
                 local group_comp_size=$(stat -c %s "$group_comp_file" 2>/dev/null || stat -f %z "$group_comp_file")
@@ -522,8 +522,8 @@ create_markdown_report() {
         done
         
         # Add full build information for this compression
-        local full_comp_file="$RESULTS_DIR/efi-files/OneRecovery-full-${comp}.efi"
-        local full_none_file="$RESULTS_DIR/efi-files/OneRecovery-full-none.efi"
+        local full_comp_file="$RESULTS_DIR/efi-files/OneFileLinux-full-${comp}.efi"
+        local full_none_file="$RESULTS_DIR/efi-files/OneFileLinux-full-none.efi"
         
         if [ -f "$full_comp_file" ] && [ -f "$full_none_file" ]; then
             local full_comp_size=$(stat -c %s "$full_comp_file" 2>/dev/null || stat -f %z "$full_comp_file")
@@ -565,7 +565,7 @@ create_markdown_report() {
 # Main function
 main() {
     print_banner
-    log "INFO" "Starting OneRecovery package size analysis"
+    log "INFO" "Starting OneFileLinux package size analysis"
     
     # Create directories
     clean_previous

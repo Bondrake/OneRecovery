@@ -1,19 +1,19 @@
 services:
-  onerecovery-builder:
+  onefilelinux-builder:
     build:
       context: .
       dockerfile: Dockerfile
-    image: onerecovery-builder-local:latest
-    container_name: onerecovery-builder
+    image: onefilelinux-builder-local:latest
+    container_name: onefilelinux-builder
     # Run as root by default in GitHub Actions
     user: ${RUN_AS_USER:-root}
     volumes:
       # Mount source code including all library scripts
-      - ../build:/onerecovery/build:rw
+      - ../build:/onefilelinux/build:rw
       # Mount output directory
-      - ../output:/onerecovery/output:rw
+      - ../output:/onefilelinux/output:rw
       # Mount persistent build cache
-      - onerecovery-cache:/onerecovery/.buildcache
+      - onefilelinux-cache:/onefilelinux/.buildcache
     environment:
       # Configure build arguments here (can be overridden with .env)
       - BUILD_ARGS=${BUILD_ARGS:-"--with-zfs --with-recovery-tools --with-network-tools --use-cache --make-verbose"}
@@ -32,7 +32,7 @@ services:
       - CCACHE_COMPRESS=true
       # Timing and performance logging
       - FINALIZE_TIMING_LOG=true
-      - TIMING_LOG_FILE=/onerecovery/build/build_timing.log
+      - TIMING_LOG_FILE=/onefilelinux/build/build_timing.log
       # Password settings
       - GENERATE_RANDOM_PASSWORD=${GENERATE_RANDOM_PASSWORD:-true}
       - ROOT_PASSWORD=${ROOT_PASSWORD:-""}
@@ -49,5 +49,5 @@ services:
     privileged: true
 
 volumes:
-  onerecovery-cache:
+  onefilelinux-cache:
     driver: local

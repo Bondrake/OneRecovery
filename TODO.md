@@ -1,4 +1,4 @@
-# OneRecovery Documentation Update Tasks
+# OneFileLinux Documentation Update Tasks
 
 ## Documentation Updates Completed
 
@@ -76,4 +76,4 @@
    - [ ] Create size impact analysis for different feature flags
    - [ ] Benchmark boot times on different hardware
 
-_The documentation now properly reflects the sophisticated architecture of OneRecovery, with emphasis on its core features as a small single-file EFI executable and the Docker-based cross-platform build approach._
+_The documentation now properly reflects the sophisticated architecture of OneFileLinux, with emphasis on its core features as a small single-file EFI executable and the Docker-based cross-platform build approach._

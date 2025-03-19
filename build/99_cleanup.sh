@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery cleanup script
+# OneFileLinux cleanup script
 # Removes build artifacts and temporary files
 #
 
@@ -50,10 +50,10 @@ if [ -d "zfs" ] || [ -d "zfs-*" ] || [ -f "zfs-*.tar.gz" ]; then
     rm -rf zfs*
 fi
 
-# Clean up OneRecovery output
-if [ -f "OneRecovery.efi" ]; then
-    log "INFO" "Removing OneRecovery.efi..."
-    rm -f OneRecovery.efi
+# Clean up OneFileLinux output
+if [ -f "OneFileLinux.efi" ]; then
+    log "INFO" "Removing OneFileLinux.efi..."
+    rm -f OneFileLinux.efi
 fi
 
 # Clean up build artifacts

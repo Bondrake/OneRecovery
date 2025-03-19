@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery Common Functions (80_common.sh)
+# OneFileLinux Common Functions (80_common.sh)
 # Shared basic utilities used across all build scripts
 # This is part of the library scripts (80-89 range)
 #
@@ -49,7 +49,7 @@ log() {
     esac
 }
 
-# Print OneRecovery banner
+# Print OneFileLinux banner
 print_banner() {
     local script_name=${1:-$SCRIPT_NAME}
     echo -e "${BLUE}"
@@ -65,7 +65,7 @@ print_banner() {
     echo "  | \__/'---'\__/ | "
     echo "  |_______________| "
     echo "                    "
-    echo -e "${GREEN}   OneRecovery: $script_name  ${NC}"
+    echo -e "${GREEN}   OneFileLinux: $script_name  ${NC}"
     echo "----------------------------------------------------"
 }
 
@@ -113,9 +113,9 @@ is_restricted_environment() {
 }
 
 # Create a global associative array to track loaded libraries
-declare -A ONERECOVERY_LIBRARIES_LOADED 2>/dev/null || {
+declare -A ONEFILELINUX_LIBRARIES_LOADED 2>/dev/null || {
     # Fallback for older bash versions that don't support associative arrays
-    ONERECOVERY_LIBRARIES_LOADED=()
+    ONEFILELINUX_LIBRARIES_LOADED=()
 }
 
 # Function to check if a library has been loaded
@@ -126,7 +126,7 @@ is_library_loaded() {
     local basename=$(basename "$library_name" .sh)
     
     # Check if it's in our tracking array
-    if [ "${ONERECOVERY_LIBRARIES_LOADED[$basename]:-}" = "1" ]; then
+    if [ "${ONEFILELINUX_LIBRARIES_LOADED[$basename]:-}" = "1" ]; then
         return 0  # Already loaded
     fi
     return 1  # Not loaded
@@ -140,7 +140,7 @@ mark_library_loaded() {
     local basename=$(basename "$library_name" .sh)
     
     # Mark it as loaded in our tracking array 
-    ONERECOVERY_LIBRARIES_LOADED[$basename]="1"
+    ONEFILELINUX_LIBRARIES_LOADED[$basename]="1"
     
     # For backwards compatibility, maintain the string-based tracking
     if [ -z "${LIBRARIES_LOADED:-}" ]; then
@@ -233,7 +233,7 @@ source_libraries() {
         local calling_script=$(caller | awk '{print $2}')
         local calling_line=$(caller | awk '{print $1}')
         local loaded_libs=""
-        for lib in "${!ONERECOVERY_LIBRARIES_LOADED[@]}"; do
+        for lib in "${!ONEFILELINUX_LIBRARIES_LOADED[@]}"; do
             loaded_libs="$loaded_libs $lib"
         done
         echo -e "${BLUE}[DEBUG]${NC} Current loaded libraries:$loaded_libs (from $calling_script:$calling_line)"
@@ -278,7 +278,7 @@ log_timing() {
     # Create log file with header if it doesn't exist
     if [ ! -f "$log_file" ]; then
         echo "==========================================" > "$log_file"
-        echo "OneRecovery Build Timing Log" >> "$log_file"
+        echo "OneFileLinux Build Timing Log" >> "$log_file"
         echo "Started at: $(date)" >> "$log_file"
         echo "==========================================" >> "$log_file"
         echo "" >> "$log_file"

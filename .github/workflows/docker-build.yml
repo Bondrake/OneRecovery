@@ -59,7 +59,7 @@ jobs:
       matrix: ${{fromJson(needs.setup.outputs.matrix)}}
       fail-fast: false
 
-    name: Build OneRecovery (${{ matrix.name }})
+    name: Build OneFileLinux (${{ matrix.name }})
 
     steps:
       - name: Checkout code
@@ -174,7 +174,7 @@ jobs:
           chmod -R 777 build/zfiles/kernel-configs
 
       # Run the build using the same docker-compose setup as local builds
-      - name: Build OneRecovery using Docker
+      - name: Build OneFileLinux using Docker
         env:
           BUILD_ARGS: ${{ matrix.build_args }}
           GENERATE_RANDOM_PASSWORD: "false"
@@ -224,9 +224,9 @@ jobs:
         id: check_files
         run: |
           # Check if build produced the EFI file
-          if [ -f "./output/OneRecovery.efi" ]; then
+          if [ -f "./output/OneFileLinux.efi" ]; then
             echo "efi_file=true" >> $GITHUB_OUTPUT
-            du -h ./output/OneRecovery.efi
+            du -h ./output/OneFileLinux.efi
 
             # Display timing data if available
             if [ -f "./build/build_timing.log" ]; then
@@ -235,7 +235,7 @@ jobs:
             fi
           else
             echo "efi_file=false" >> $GITHUB_OUTPUT
-            echo "Build failed to produce OneRecovery.efi"
+            echo "Build failed to produce OneFileLinux.efi"
             exit 1
           fi
 
@@ -243,8 +243,8 @@ jobs:
         if: steps.check_files.outputs.efi_file == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: OneRecovery-${{ matrix.name }}
-          path: ./output/OneRecovery.efi
+          name: OneFileLinux-${{ matrix.name }}
+          path: ./output/OneFileLinux.efi
           if-no-files-found: error
 
       - name: Upload build timing log
@@ -273,31 +273,31 @@ jobs:
           mkdir -p release
 
           # Only copy files that exist
-          if [ -f "./artifacts/OneRecovery-minimal/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-minimal/OneRecovery.efi ./release/OneRecovery-minimal.efi
+          if [ -f "./artifacts/OneFileLinux-minimal/OneFileLinux.efi" ]; then
+            cp ./artifacts/OneFileLinux-minimal/OneFileLinux.efi ./release/OneFileLinux-minimal.efi
           fi
-          if [ -f "./artifacts/OneRecovery-standard/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-standard/OneRecovery.efi ./release/OneRecovery-standard.efi
+          if [ -f "./artifacts/OneFileLinux-standard/OneFileLinux.efi" ]; then
+            cp ./artifacts/OneFileLinux-standard/OneFileLinux.efi ./release/OneFileLinux-standard.efi
           fi
-          if [ -f "./artifacts/OneRecovery-full/OneRecovery.efi" ]; then
-            cp ./artifacts/OneRecovery-full/OneRecovery.efi ./release/OneRecovery-full.efi
+          if [ -f "./artifacts/OneFileLinux-full/OneFileLinux.efi" ]; then
+            cp ./artifacts/OneFileLinux-full/OneFileLinux.efi ./release/OneFileLinux-full.efi
           fi
 
           cd release
-          zip -r OneRecovery-release.zip *.efi
+          zip -r OneFileLinux-release.zip *.efi
 
       - name: Upload release package
         uses: actions/upload-artifact@v4
         with:
-          name: OneRecovery-release
-          path: ./release/OneRecovery-release.zip
+          name: OneFileLinux-release
+          path: ./release/OneFileLinux-release.zip
 
       # Create GitHub Release for v* tags
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ./release/OneRecovery-release.zip
-          name: "OneRecovery ${{ github.ref_name }}"
+          files: ./release/OneFileLinux-release.zip
+          name: "OneFileLinux ${{ github.ref_name }}"
           draft: false
           prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
           generate_release_notes: true

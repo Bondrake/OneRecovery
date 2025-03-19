@@ -179,8 +179,8 @@ cat > alpine-minirootfs/mk.sh << EOF
 set -e
 
 echo "[INFO] Setting hostname"
-echo onerecovery > /etc/hostname && hostname -F /etc/hostname
-echo 127.0.1.1 onerecovery onerecovery >> /etc/hosts
+echo onefilelinux > /etc/hostname && hostname -F /etc/hostname
+echo 127.0.1.1 onefilelinux onefilelinux >> /etc/hosts
 
 echo "[INFO] Updating package lists"
 apk update

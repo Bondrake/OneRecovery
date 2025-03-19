@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery Error Handling Framework (81_error_handling.sh)
+# OneFileLinux Error Handling Framework (81_error_handling.sh)
 # Provides error handling, recovery options, and prerequisite checks
 # This is part of the library scripts (80-89 range)
 #
@@ -291,12 +291,12 @@ create_password_hash() {
 }
 
 # Use a global variable to ensure we only initialize once per session
-ONERECOVERY_ERROR_HANDLING_INITIALIZED=${ONERECOVERY_ERROR_HANDLING_INITIALIZED:-false}
+ONEFILELINUX_ERROR_HANDLING_INITIALIZED=${ONEFILELINUX_ERROR_HANDLING_INITIALIZED:-false}
 
 # Initialize error handling framework
 init_error_handling() {
     # Skip initialization if already done - use a simple global flag
-    if [ "$ONERECOVERY_ERROR_HANDLING_INITIALIZED" = "true" ]; then
+    if [ "$ONEFILELINUX_ERROR_HANDLING_INITIALIZED" = "true" ]; then
         # Add debug message if we're in DEBUG mode
         if [ "${DEBUG_LIBRARY_LOADING:-false}" = "true" ]; then
             echo -e "${BLUE}[DEBUG]${NC} Error handling already initialized, skipping"
@@ -329,8 +329,8 @@ init_error_handling() {
     echo -e "${BLUE}[INFO]${NC} Setting up error handling"
     
     # Mark as initialized - this is the official flag we'll check from now on
-    ONERECOVERY_ERROR_HANDLING_INITIALIZED=true
-    export ONERECOVERY_ERROR_HANDLING_INITIALIZED
+    ONEFILELINUX_ERROR_HANDLING_INITIALIZED=true
+    export ONEFILELINUX_ERROR_HANDLING_INITIALIZED
     
     # We'll let the main script handle printing the banner
     # This avoids duplicate banners when scripts call initialize_script

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Make sure this file is executable (chmod +x)
 #
-# OneRecovery Build Core Functions (84_build_core.sh)
+# OneFileLinux Build Core Functions (84_build_core.sh)
 # Shared build functions used by 04_build.sh and build.sh
 # This is part of the library scripts (80-89 range)
 #
@@ -67,7 +67,7 @@ build_kernel() {
         log "INFO" "Low memory detected (${available_memory_gb}GB). Creating temporary swap file..."
         
         local swap_size_mb=4096  # 4GB swap
-        local swap_file="/tmp/onerecovery_swap"
+        local swap_file="/tmp/onefilelinux_swap"
         
         # Remove existing swap if present
         if [ -f "$swap_file" ]; then
@@ -300,10 +300,10 @@ build_kernel() {
     cd "$BUILD_DIR"
     
     # Clean up swap file if we created one
-    if [ "${USE_SWAP:-false}" = "true" ] && [ -f "/tmp/onerecovery_swap" ]; then
+    if [ "${USE_SWAP:-false}" = "true" ] && [ -f "/tmp/onefilelinux_swap" ]; then
         log "INFO" "Removing temporary swap file"
-        sudo swapoff "/tmp/onerecovery_swap" 2>/dev/null || true
-        sudo rm -f "/tmp/onerecovery_swap"
+        sudo swapoff "/tmp/onefilelinux_swap" 2>/dev/null || true
+        sudo rm -f "/tmp/onefilelinux_swap"
         log "SUCCESS" "Swap file removed"
     fi
 }
@@ -362,13 +362,13 @@ create_efi() {
     fi
     
     # Create EFI file
-    log "INFO" "Creating OneRecovery.efi"
+    log "INFO" "Creating OneFileLinux.efi"
     if [ -f "arch/x86/boot/bzImage" ]; then
-        cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
+        cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneFileLinux.efi" || {
             log "ERROR" "Failed to copy kernel bzImage to output directory"
             return 1
         }
-        log "SUCCESS" "Kernel bzImage copied to OneRecovery.efi"
+        log "SUCCESS" "Kernel bzImage copied to OneFileLinux.efi"
     else
         log "ERROR" "Failed to find kernel bzImage - kernel build may have failed"
         # Try to check if we can find any error messages
@@ -395,7 +395,7 @@ create_efi() {
     fi
     
     # Record original size
-    local original_size=$(du -h "$OUTPUT_DIR/OneRecovery.efi" | cut -f1)
+    local original_size=$(du -h "$OUTPUT_DIR/OneFileLinux.efi" | cut -f1)
     log "INFO" "Original EFI size: $original_size"
     
     # Apply compression if enabled
@@ -405,25 +405,25 @@ create_efi() {
         log "INFO" "Selected compression tool: $COMPRESSION_TOOL"
         
         # Create a backup of the original file
-        cp "$OUTPUT_DIR/OneRecovery.efi" "$OUTPUT_DIR/OneRecovery.efi.original"
+        cp "$OUTPUT_DIR/OneFileLinux.efi" "$OUTPUT_DIR/OneFileLinux.efi.original"
         
         case "$COMPRESSION_TOOL" in
             "upx")
                 if command -v upx &> /dev/null; then
                     # Apply UPX compression
                     log "INFO" "Compressing with UPX (faster decompression, good size reduction)..."
-                    if upx --best --lzma "$OUTPUT_DIR/OneRecovery.efi"; then
-                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneRecovery.efi" | cut -f1)
+                    if upx --best --lzma "$OUTPUT_DIR/OneFileLinux.efi"; then
+                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneFileLinux.efi" | cut -f1)
                         log "SUCCESS" "UPX compression successful"
                         log "INFO" "Original size: $original_size, Compressed size: $COMPRESSED_SIZE"
                     else
                         log "WARNING" "UPX compression failed, restoring original file"
-                        mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                     fi
                 else
                     log "ERROR" "UPX not found. Please install UPX: apt-get install upx-ucl"
                     log "INFO" "Restoring original uncompressed file"
-                    mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                    mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                 fi
                 ;;
                 
@@ -433,23 +433,23 @@ create_efi() {
                     log "INFO" "Compressing with XZ (higher compression ratio, slower decompression)..."
                     # Note: XZ compression would require a decompression stub in a real implementation
                     # This is a simplified version for demonstration
-                    if xz -z -9 -e -f --keep "$OUTPUT_DIR/OneRecovery.efi"; then
+                    if xz -z -9 -e -f --keep "$OUTPUT_DIR/OneFileLinux.efi"; then
                         # In a real implementation, we would need to prepend a decompression stub
                         # For now, we'll just rename the file
-                        mv "$OUTPUT_DIR/OneRecovery.efi.xz" "$OUTPUT_DIR/OneRecovery.efi.compressed"
-                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneRecovery.efi.compressed" | cut -f1)
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.xz" "$OUTPUT_DIR/OneFileLinux.efi.compressed"
+                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneFileLinux.efi.compressed" | cut -f1)
                         log "WARNING" "XZ compression completed but requires a custom decompression stub"
                         log "INFO" "Original size: $original_size, Compressed size: $COMPRESSED_SIZE"
                         log "INFO" "Using original uncompressed file for compatibility"
-                        mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                     else
                         log "WARNING" "XZ compression failed, restoring original file"
-                        mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                     fi
                 else
                     log "ERROR" "XZ not found. Please install XZ"
                     log "INFO" "Restoring original uncompressed file"
-                    mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                    mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                 fi
                 ;;
                 
@@ -459,41 +459,41 @@ create_efi() {
                     log "INFO" "Compressing with ZSTD (balanced compression ratio and speed)..."
                     # Note: ZSTD compression would require a decompression stub in a real implementation
                     # This is a simplified version for demonstration
-                    if zstd -19 -f "$OUTPUT_DIR/OneRecovery.efi" -o "$OUTPUT_DIR/OneRecovery.efi.zst"; then
+                    if zstd -19 -f "$OUTPUT_DIR/OneFileLinux.efi" -o "$OUTPUT_DIR/OneFileLinux.efi.zst"; then
                         # In a real implementation, we would need to prepend a decompression stub
                         # For now, we'll just rename the file
-                        mv "$OUTPUT_DIR/OneRecovery.efi.zst" "$OUTPUT_DIR/OneRecovery.efi.compressed"
-                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneRecovery.efi.compressed" | cut -f1)
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.zst" "$OUTPUT_DIR/OneFileLinux.efi.compressed"
+                        COMPRESSED_SIZE=$(du -h "$OUTPUT_DIR/OneFileLinux.efi.compressed" | cut -f1)
                         log "WARNING" "ZSTD compression completed but requires a custom decompression stub"
                         log "INFO" "Original size: $original_size, Compressed size: $COMPRESSED_SIZE"
                         log "INFO" "Using original uncompressed file for compatibility"
-                        mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                     else
                         log "WARNING" "ZSTD compression failed, restoring original file"
-                        mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                        mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                     fi
                 else
                     log "ERROR" "ZSTD not found. Please install ZSTD"
                     log "INFO" "Restoring original uncompressed file"
-                    mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                    mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                 fi
                 ;;
                 
             *)
                 log "ERROR" "Unknown compression tool: $COMPRESSION_TOOL"
                 log "INFO" "Restoring original uncompressed file"
-                mv "$OUTPUT_DIR/OneRecovery.efi.original" "$OUTPUT_DIR/OneRecovery.efi"
+                mv "$OUTPUT_DIR/OneFileLinux.efi.original" "$OUTPUT_DIR/OneFileLinux.efi"
                 ;;
         esac
         
         # Clean up backup if it exists
-        rm -f "$OUTPUT_DIR/OneRecovery.efi.original"
+        rm -f "$OUTPUT_DIR/OneFileLinux.efi.original"
     else
         log "INFO" "Compression disabled"
     fi
     
-    local final_size=$(du -h "$OUTPUT_DIR/OneRecovery.efi" | cut -f1)
-    log "SUCCESS" "OneRecovery.efi created successfully (size: $final_size)"
+    local final_size=$(du -h "$OUTPUT_DIR/OneFileLinux.efi" | cut -f1)
+    log "SUCCESS" "OneFileLinux.efi created successfully (size: $final_size)"
     
     # Return to build directory
     cd "$BUILD_DIR"

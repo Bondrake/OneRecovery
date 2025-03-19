@@ -1,4 +1,4 @@
-# OneRecovery Build Documentation
+# OneFileLinux Build Documentation
 
 ## Quick References
 
@@ -10,7 +10,7 @@ For detailed information about the build system and available options, please re
 
 ## Build System Architecture
 
-The OneRecovery build system employs a structured approach with modular components and library scripts to ensure reliable builds across different environments.
+The OneFileLinux build system employs a structured approach with modular components and library scripts to ensure reliable builds across different environments.
 
 ### Script Organization
 
@@ -47,7 +47,7 @@ The main build process is divided into numbered steps:
 #### Entry Points
 
 - **build.sh**: Main entry point for the build process
-- **docker/build-onerecovery.sh**: Docker-based build launcher
+- **docker/build-onefilelinux.sh**: Docker-based build launcher
 
 ### Using the Build System
 

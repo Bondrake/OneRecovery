@@ -1,11 +1,11 @@
-# OneRecovery User Guide
+# OneFileLinux User Guide
 
-This comprehensive guide explains how to build, install, and use OneRecovery for system recovery operations.
+This comprehensive guide explains how to build, install, and use OneFileLinux for system recovery operations.
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Building OneRecovery](#building-onerecovery)
+2. [Building OneFileLinux](#building-onefilelinux)
    - [Using Docker](#using-docker-recommended)
    - [Building Natively](#building-natively)
    - [Build Options](#build-options)
@@ -13,7 +13,7 @@ This comprehensive guide explains how to build, install, and use OneRecovery for
    - [macOS Installation](#macos-installation)
    - [PC/Windows Installation](#pcwindows-installation)
    - [USB Flash Drive Installation](#usb-flash-drive-installation)
-4. [Using OneRecovery](#using-onerecovery)
+4. [Using OneFileLinux](#using-onefilelinux)
    - [Text User Interface](#text-user-interface)
    - [Common Recovery Operations](#common-recovery-operations)
    - [Working with Filesystems](#working-with-filesystems)
@@ -35,7 +35,7 @@ This comprehensive guide explains how to build, install, and use OneRecovery for
 
 ## Overview
 
-OneRecovery is a lightweight Linux distribution contained in a single EFI executable file that runs on any UEFI computer (PC or Mac) without installation. It provides a comprehensive set of tools for system recovery, data rescue, and hardware diagnostics.
+OneFileLinux is a lightweight Linux distribution contained in a single EFI executable file that runs on any UEFI computer (PC or Mac) without installation. It provides a comprehensive set of tools for system recovery, data rescue, and hardware diagnostics.
 
 ### Key Features
 
@@ -50,7 +50,7 @@ OneRecovery is a lightweight Linux distribution contained in a single EFI execut
 
 ### Project History
 
-OneRecovery is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This modernized version features:
+OneFileLinux is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This modernized version features:
 
 - Updated Linux kernel (6.12) and Alpine Linux (3.21)
 - ZFS filesystem support
@@ -58,11 +58,11 @@ OneRecovery is a fork of the original OneFileLinux project, which hasn't been ma
 - Streamlined user experience with automatic root login
 - Size and performance optimizations
 
-## Building OneRecovery
+## Building OneFileLinux
 
 ### Using Docker (Recommended)
 
-The easiest way to build OneRecovery is using Docker, which provides a consistent build environment regardless of your host system.
+The easiest way to build OneFileLinux is using Docker, which provides a consistent build environment regardless of your host system.
 
 #### Prerequisites
 
@@ -75,36 +75,36 @@ The easiest way to build OneRecovery is using Docker, which provides a consisten
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/OneRecovery.git
-   cd OneRecovery/docker
+   git clone https://github.com/yourusername/OneFileLinux.git
+   cd OneFileLinux/docker
    ```
 
 2. Make the build script executable:
    ```bash
-   chmod +x build-onerecovery.sh
+   chmod +x build-onefilelinux.sh
    ```
 
 3. Run the build with default settings:
    ```bash
-   ./build-onerecovery.sh
+   ./build-onefilelinux.sh
    ```
 
 4. For a full build with all features:
    ```bash
-   ./build-onerecovery.sh -b "--full"
+   ./build-onefilelinux.sh -b "--full"
    ```
 
 5. For a minimal build:
    ```bash
-   ./build-onerecovery.sh -b "--minimal"
+   ./build-onefilelinux.sh -b "--minimal"
    ```
 
 #### Docker Build Options
 
-The `build-onerecovery.sh` script supports several options:
+The `build-onefilelinux.sh` script supports several options:
 
 ```
-Usage: ./build-onerecovery.sh [options]
+Usage: ./build-onefilelinux.sh [options]
 
 Options:
   -h, --help            Display this help message
@@ -119,7 +119,7 @@ Options:
 
 #### Build Artifacts
 
-After a successful build, the output file (`OneRecovery.efi`) will be placed in the `output/` directory in the root of the repository.
+After a successful build, the output file (`OneFileLinux.efi`) will be placed in the `output/` directory in the root of the repository.
 
 ### Building Natively
 
@@ -148,8 +148,8 @@ apk add build-base git autoconf automake libtool util-linux elfutils-dev \
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/OneRecovery.git
-   cd OneRecovery
+   git clone https://github.com/yourusername/OneFileLinux.git
+   cd OneFileLinux
    ```
 
 2. Run the build scripts sequentially:
@@ -167,7 +167,7 @@ apk add build-base git autoconf automake libtool util-linux elfutils-dev \
    ./04_build.sh     # Build the final EFI file
    ```
 
-4. After successful completion, the `OneRecovery.efi` file will be created in the repository root directory.
+4. After successful completion, the `OneFileLinux.efi` file will be created in the repository root directory.
 
 5. Optional: Clean up build artifacts:
    ```bash
@@ -176,7 +176,7 @@ apk add build-base git autoconf automake libtool util-linux elfutils-dev \
 
 ### Build Options
 
-OneRecovery offers several build configurations to balance features and size:
+OneFileLinux offers several build configurations to balance features and size:
 
 #### Build Types
 
@@ -230,7 +230,7 @@ The `build.sh` script accepts numerous options to customize your build. Here's a
 ```
 --use-cache            Enable source and build caching (default: yes)
 --no-cache             Disable source and build caching
---cache-dir=DIR        Set cache directory (default: ~/.onerecovery/cache)
+--cache-dir=DIR        Set cache directory (default: ~/.onefilelinux/cache)
 --jobs=N               Set number of parallel build jobs (default: CPU cores)
 --keep-ccache          Keep compiler cache between builds (default: yes)
 --no-keep-ccache       Clear compiler cache between builds
@@ -328,19 +328,19 @@ The `build.sh` script accepts numerous options to customize your build. Here's a
 
 #### EFI Partition Size Considerations
 
-When planning to use OneRecovery, keep in mind these EFI partition size guidelines:
+When planning to use OneFileLinux, keep in mind these EFI partition size guidelines:
 
 - **Minimal build**: Even small 100MB EFI partitions are more than sufficient
 - **Standard build**: Standard 100MB EFI partition is recommended
 - **Full build**: Standard 100MB EFI partition is typically sufficient
 
-Most modern systems have EFI partitions of 100MB or larger, which is adequate for any OneRecovery build.
+Most modern systems have EFI partitions of 100MB or larger, which is adequate for any OneFileLinux build.
 
 ## Installation
 
 ### MacOS Installation
 
-1. **Download OneRecovery.efi**
+1. **Download OneFileLinux.efi**
    From the releases page or build it yourself.
 
 2. **Mount the EFI System Partition**
@@ -349,9 +349,9 @@ Most modern systems have EFI partitions of 100MB or larger, which is adequate fo
    diskutil mount disk0s1      # Replace with your EFI partition identifier
    ```
 
-3. **Copy OneRecovery.efi to the EFI Partition**
+3. **Copy OneFileLinux.efi to the EFI Partition**
    ```bash
-   cp ~/Downloads/OneRecovery.efi /Volumes/EFI/
+   cp ~/Downloads/OneFileLinux.efi /Volumes/EFI/
    ```
 
 4. **Configure Boot Options**
@@ -364,38 +364,38 @@ Most modern systems have EFI partitions of 100MB or larger, which is adequate fo
    4. Mount the EFI partition (step 2)
    5. Set the boot option:
       ```bash
-      bless --mount /Volumes/EFI --setBoot --nextonly --file /Volumes/EFI/OneRecovery.efi
+      bless --mount /Volumes/EFI --setBoot --nextonly --file /Volumes/EFI/OneFileLinux.efi
       ```
       
-   This configures a one-time boot of OneRecovery, preserving your default boot order.
+   This configures a one-time boot of OneFileLinux, preserving your default boot order.
 
-5. **Reboot to Start OneRecovery**
+5. **Reboot to Start OneFileLinux**
    
-   After using OneRecovery, type `reboot` in the Linux console to return to macOS. Repeat steps 2 and 4 from Recovery Mode for subsequent uses.
+   After using OneFileLinux, type `reboot` in the Linux console to return to macOS. Repeat steps 2 and 4 from Recovery Mode for subsequent uses.
 
 ### PC (Windows/Linux) Installation
 
-There are multiple methods to boot OneRecovery on PC systems. The following procedure works for most systems without built-in UEFI Shell access.
+There are multiple methods to boot OneFileLinux on PC systems. The following procedure works for most systems without built-in UEFI Shell access.
 
 1. **Access the EFI System Partition**
    
    Windows 10+ systems installed in UEFI mode typically have a 100MB EFI partition.
    You will need either:
    - A Linux live USB to access this partition
-   - An existing installation of OneRecovery via USB
+   - An existing installation of OneFileLinux via USB
    
 2. **Configure NVRAM Boot Option**
    
    Using Linux, add a boot entry with efibootmgr:
    ```bash
-   efibootmgr --disk /dev/sda --part 1 --create --label "OneRecovery" --loader /OneRecovery.efi
+   efibootmgr --disk /dev/sda --part 1 --create --label "OneFileLinux" --loader /OneFileLinux.efi
    ```
    
    Replace `/dev/sda` with your disk path and `--part 1` with your EFI partition number.
 
-3. **Boot OneRecovery**
+3. **Boot OneFileLinux**
    
-   Boot into your computer's boot menu (typically F12, F10, or Esc during startup) and select "OneRecovery".
+   Boot into your computer's boot menu (typically F12, F10, or Esc during startup) and select "OneFileLinux".
 
 ### USB Flash Drive Installation
 
@@ -420,7 +420,7 @@ For portable use or when direct EFI partition access is difficult:
    In macOS:
    ```bash
    diskutil list                        # Find your USB drive
-   diskutil eraseDisk FAT32 ONERECOVERY GPT /dev/diskN  # Replace diskN with your USB
+   diskutil eraseDisk FAT32 ONEFILELINUX GPT /dev/diskN  # Replace diskN with your USB
    ```
    
    In Linux:
@@ -430,43 +430,43 @@ For portable use or when direct EFI partition access is difficult:
    sudo mkfs.vfat -F 32 /dev/sdX1       # Format the partition
    ```
 
-2. **Install OneRecovery**
+2. **Install OneFileLinux**
    
    Create the directory structure and copy the file:
    
    Windows:
    ```
    mkdir -p X:\EFI\BOOT          # Replace X: with your USB drive letter
-   copy OneRecovery.efi X:\EFI\BOOT\BOOTx64.EFI
+   copy OneFileLinux.efi X:\EFI\BOOT\BOOTx64.EFI
    ```
    
    macOS/Linux:
    ```bash
-   mkdir -p /Volumes/ONERECOVERY/EFI/BOOT   # macOS
+   mkdir -p /Volumes/ONEFILELINUX/EFI/BOOT   # macOS
    # OR
    mkdir -p /mnt/usb/EFI/BOOT               # Linux (mount point may vary)
    
-   cp OneRecovery.efi /Volumes/ONERECOVERY/EFI/BOOT/BOOTx64.EFI   # macOS
+   cp OneFileLinux.efi /Volumes/ONEFILELINUX/EFI/BOOT/BOOTx64.EFI   # macOS
    # OR
-   cp OneRecovery.efi /mnt/usb/EFI/BOOT/BOOTx64.EFI               # Linux
+   cp OneFileLinux.efi /mnt/usb/EFI/BOOT/BOOTx64.EFI               # Linux
    ```
 
 3. **Boot from USB**
    
    Select the USB drive from your computer's boot menu.
 
-## Using OneRecovery
+## Using OneFileLinux
 
 ### Text User Interface
 
-When you boot OneRecovery, it automatically logs in as root and launches the text-based user interface (TUI). The TUI provides an easy-to-use menu system for common recovery operations.
+When you boot OneFileLinux, it automatically logs in as root and launches the text-based user interface (TUI). The TUI provides an easy-to-use menu system for common recovery operations.
 
 #### Login Information
 
 - **Username**: root
 - **Password**: 
-  - For GitHub Actions release builds: The default password is `onerecovery`
-  - For local builds: The password is randomly generated during build and saved in `onerecovery-password.txt` in the build directory
+  - For GitHub Actions release builds: The default password is `onefilelinux`
+  - For local builds: The password is randomly generated during build and saved in `onefilelinux-password.txt` in the build directory
   - If you specified a custom password during build with `--password=PASS`, use that password
 
 #### Main Menu
@@ -556,7 +556,7 @@ gdisk /dev/sda   # For GPT partitioning
 
 #### ZFS Operations
 
-OneRecovery includes comprehensive ZFS support. Common operations:
+OneFileLinux includes comprehensive ZFS support. Common operations:
 
 ```bash
 # Import pool
@@ -681,7 +681,7 @@ ip addr show
 
 ### Boot Issues
 
-#### System Doesn't Boot OneRecovery
+#### System Doesn't Boot OneFileLinux
 
 1. Verify that your system boots in UEFI mode, not legacy BIOS
 2. Check that the EFI file is in the correct location
@@ -771,7 +771,7 @@ zpool import -fFX pool_name
 
 #### Adding Custom Utilities
 
-If you've built OneRecovery yourself, you can add custom utilities by:
+If you've built OneFileLinux yourself, you can add custom utilities by:
 
 1. Modifying the package list in `02_chrootandinstall.sh`
 2. Adding custom scripts to the `zfiles/` directory
@@ -796,7 +796,7 @@ Create custom recovery scripts by adding them to the system:
 
 #### Recovering from Deleted Partition Table
 
-1. Boot into OneRecovery
+1. Boot into OneFileLinux
 2. Use TestDisk to scan for lost partitions:
    ```bash
    testdisk /dev/sda
@@ -806,7 +806,7 @@ Create custom recovery scripts by adding them to the system:
 
 #### Rescuing Files from Failed Drive
 
-1. Boot into OneRecovery
+1. Boot into OneFileLinux
 2. If the drive is physically failing, create a disk image:
    ```bash
    ddrescue /dev/failed_drive /mnt/backup/disk.img /mnt/backup/logfile
@@ -818,7 +818,7 @@ Create custom recovery scripts by adding them to the system:
 
 #### Fixing Boot Problems
 
-1. Boot into OneRecovery
+1. Boot into OneFileLinux
 2. For Linux boot issues:
    ```bash
    mount /dev/sda1 /mnt            # Mount root filesystem
@@ -852,7 +852,7 @@ For large drives (>2TB), use these optimizations:
 
 #### Memory Optimization
 
-If OneRecovery is running slowly due to memory constraints:
+If OneFileLinux is running slowly due to memory constraints:
 
 1. Create and use a swap file:
    ```bash
@@ -885,11 +885,11 @@ For large filesystems, speed up checks by:
 
 ## Developer Documentation
 
-This section provides technical documentation for developers who want to understand or contribute to the OneRecovery build system.
+This section provides technical documentation for developers who want to understand or contribute to the OneFileLinux build system.
 
 ### Build System Architecture
 
-OneRecovery uses a modular build system designed to create a small, single-file EFI executable containing a complete Linux environment:
+OneFileLinux uses a modular build system designed to create a small, single-file EFI executable containing a complete Linux environment:
 
 #### Library Scripts (80-89 range)
 
@@ -910,11 +910,11 @@ Sequential build steps:
 #### Master Build Scripts
 
 - **build.sh**: Unified build script (local build, assumes Alpine environment)
-- **docker/build-onerecovery.sh**: Docker-based build launcher (recommended for cross-platform)
+- **docker/build-onefilelinux.sh**: Docker-based build launcher (recommended for cross-platform)
 
 ### Feature Flag System
 
-OneRecovery's feature flags control which components are included in the build, affecting size and functionality:
+OneFileLinux's feature flags control which components are included in the build, affecting size and functionality:
 
 #### High-Level Build Profiles
 
@@ -1042,13 +1042,13 @@ The overlay system in `03_conf.sh` respects feature flags, particularly `INCLUDE
 
 ### Build Environments
 
-OneRecovery supports multiple build environments, with Docker being the recommended approach for cross-platform development:
+OneFileLinux supports multiple build environments, with Docker being the recommended approach for cross-platform development:
 
 #### Docker Build (Recommended)
 
 ```bash
 cd docker
-./build-onerecovery.sh -b "--minimal"  # or any other build flags
+./build-onefilelinux.sh -b "--minimal"  # or any other build flags
 ```
 
 The Docker approach:
@@ -1076,7 +1076,7 @@ GitHub Actions workflow in `.github/workflows/docker-build.yml`:
 - Uses the same Docker container as local builds
 - Creates artifacts for each build configuration
 - Creates release packages for tagged builds that match 'v*' pattern
-- Uses a default root password of 'onerecovery' for all GitHub Actions release builds, unlike local builds which generate random passwords by default
+- Uses a default root password of 'onefilelinux' for all GitHub Actions release builds, unlike local builds which generate random passwords by default
 
 ### Best Practices for Development
 
@@ -1086,7 +1086,7 @@ GitHub Actions workflow in `.github/workflows/docker-build.yml`:
    - Eliminates dependency and permission issues
 
 2. **Maintain Small Image Size**:
-   - OneRecovery's primary advantage is being a tiny, single-file EFI executable (minimal: ~4MB, standard: ~20MB)
+   - OneFileLinux's primary advantage is being a tiny, single-file EFI executable (minimal: ~4MB, standard: ~20MB)
    - Make features optional with feature flags
    - Consider size impact for all changes
 

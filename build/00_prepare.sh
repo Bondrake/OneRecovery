@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# OneRecovery build environment preparation script
+# OneFileLinux build environment preparation script
 # Detects OS and installs required dependencies
 #
 
@@ -104,10 +104,10 @@ prepare_directories() {
     
     # Create cache directory if caching is enabled
     if [ "${USE_CACHE:-true}" = "true" ]; then
-        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/sources"
-        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/ccache"
-        mkdir -p "${CACHE_DIR:-$HOME/.onerecovery/cache}/packages"
-        log "INFO" "Cache directories prepared: ${CACHE_DIR:-$HOME/.onerecovery/cache}"
+        mkdir -p "${CACHE_DIR:-$HOME/.onefilelinux/cache}/sources"
+        mkdir -p "${CACHE_DIR:-$HOME/.onefilelinux/cache}/ccache"
+        mkdir -p "${CACHE_DIR:-$HOME/.onefilelinux/cache}/packages"
+        log "INFO" "Cache directories prepared: ${CACHE_DIR:-$HOME/.onefilelinux/cache}"
     fi
     
     log "SUCCESS" "Directory structure prepared."
@@ -215,7 +215,7 @@ main() {
             apk add ccache
             ;;
         "macOS")
-            log "WARNING" "macOS detected. You need a Linux environment to build OneRecovery."
+            log "WARNING" "macOS detected. You need a Linux environment to build OneFileLinux."
             log "INFO" "We recommend using Docker or a Linux VM. See the README for details."
             log "INFO" ""
             log "INFO" "For Docker, you can use:"
