@@ -425,53 +425,11 @@ main() {
     fi
     end_timing
 
-    # Step 3: Download and extract OpenZFS if enabled
+    # Step 3: OpenZFS is now handled via Alpine packages
     if [ "${INCLUDE_ZFS:-true}" = "true" ]; then
         start_timing "01_get: OpenZFS"
-        log "INFO" "Step 3: Getting OpenZFS source"
-        if ! download_and_verify "$ZFS_URL" "OpenZFS"; then
-            log "ERROR" "Failed to download OpenZFS"
-            exit 1
-        fi
-        
-        # First check if both directories exist - if so, clean up the redundant one
-        if [ -d "zfs-${zfsver}" ] && [ -d "zfs" ]; then
-            log "INFO" "Found both zfs and zfs-${zfsver} directories, removing zfs-${zfsver}"
-            rm -rf "zfs-${zfsver}"
-        fi
-        
-        # Check if extraction is needed for zfs
-        if [ -d "zfs" ]; then
-            # Directory exists, check if extraction needed using our library function
-            if needs_extraction "zfs" "zfs"; then
-                if ! extract_archive "zfs-${zfsver}.tar.gz" "zfs" "OpenZFS"; then
-                    log "ERROR" "Failed to extract OpenZFS"
-                    exit 1
-                fi
-                # Mark extraction as complete
-                mark_extraction_complete "zfs"
-                log "INFO" "Extracted OpenZFS to existing zfs directory"
-            else
-                log "INFO" "Skipping OpenZFS extraction - already completed"
-            fi
-        else
-            # No directory exists yet, extract and rename
-            if ! extract_archive "zfs-${zfsver}.tar.gz" "" "OpenZFS"; then
-                log "ERROR" "Failed to extract OpenZFS"
-                exit 1
-            fi
-            
-            # Rename ZFS directory
-            if [ -d "zfs-${zfsver}" ]; then
-                mv "zfs-${zfsver}" zfs
-                # Mark extraction as complete in the new location
-                mark_extraction_complete "zfs"
-                log "INFO" "Renamed ZFS directory from zfs-${zfsver} to zfs"
-            else
-                log "ERROR" "Expected zfs-${zfsver} directory not found after extraction"
-                exit 1
-            fi
-        fi
+        log "INFO" "Step 3: Using Alpine ZFS packages instead of building from source"
+        log "INFO" "Skipping OpenZFS source download and extraction"
         end_timing
     else
         log "INFO" "Step 3: Skipping OpenZFS (disabled in configuration)"

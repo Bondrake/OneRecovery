@@ -314,207 +314,21 @@ build_zfs() {
         return 0
     fi
     
-    print_section "Building ZFS"
+    print_section "ZFS Setup"
+    log "INFO" "Using pre-built Alpine Linux ZFS packages"
+    log "SUCCESS" "ZFS support configured through Alpine packages"
     
-    # Detect available system memory
-    local available_memory_kb=0
-    
-    # Detect available memory
-    if [ -f "/proc/meminfo" ]; then
-        available_memory_kb=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)
-    fi
-    
-    # Convert to GB for display
-    local available_memory_gb=$(awk "BEGIN {printf \"%.1f\", $available_memory_kb/1024/1024}")
-    
-    # Get optimal number of threads for building
-    local threads=$(get_optimal_threads)
-    log "INFO" "Building ZFS with $threads threads"
-    
-    # Validate threads is an integer, replace with default if not
-    if ! [[ "$threads" =~ ^[0-9]+$ ]]; then
-        log "WARNING" "Thread count is not a valid number: '$threads'. Using default: 2"
-        threads=2
-    fi
-    
-    # Get optimized compiler flags based on memory conditions
-    export CFLAGS=$(get_memory_optimized_cflags)
-    
-    # Enter ZFS directory
-    cd "$ZFS_DIR"
-    
-    # Use ccache for ZFS if enabled
-    if [ "${USE_CACHE:-false}" = "true" ] && command -v ccache &> /dev/null; then
-        log "INFO" "Using compiler cache for ZFS build"
-        export CC="ccache gcc"
-        export HOSTCC="ccache gcc"
-    fi
-    
-    # Check for required development packages
-    log "INFO" "Checking for RPC development libraries"
-    if [ -f "/usr/include/rpc/xdr.h" ]; then
-        log "INFO" "Found system RPC headers in /usr/include/rpc/"
-    elif [ -f "/usr/include/tirpc/rpc/xdr.h" ]; then
-        log "INFO" "Found libtirpc headers in /usr/include/tirpc/"
-    else
-        # List installed packages for debugging
-        if command -v dpkg-query > /dev/null; then
-            log "INFO" "Installed packages containing 'rpc' or 'tirpc':"
-            dpkg-query -W "*rpc*" "*tirpc*" || true
+    # Check for required kernel modules in the Alpine package
+    if [ -d "$ROOTFS_DIR/lib/modules" ]; then
+        log "INFO" "Verifying ZFS kernel modules in Alpine packages"
+        if find "$ROOTFS_DIR/lib/modules" -name "zfs.ko" -o -name "spl.ko" | grep -q .; then
+            log "SUCCESS" "ZFS kernel modules found in Alpine packages"
+        else
+            log "WARNING" "ZFS kernel modules not found in expected location. Check Alpine package compatibility."
         fi
-        
-        # Check paths for RPC headers
-        log "INFO" "Searching for RPC headers..."
-        find /usr/include -name "xdr.h" || true
     fi
     
-    # Verify kernel config has the required ZFS dependencies
-    # The proper overlays should have already been applied by 03_conf.sh
-    log "INFO" "Verifying kernel config has required ZFS dependencies"
-    
-    # Check for critical ZFS dependencies
-    if [ ! -f "$KERNEL_DIR/.config" ]; then
-        log "ERROR" "Kernel config file not found at $KERNEL_DIR/.config"
-        log "INFO" "Please run 03_conf.sh before 04_build.sh"
-        return 1
-    fi
-    
-    # Check for CONFIG_MODULES which is essential for ZFS
-    if ! grep -q "^CONFIG_MODULES=y" "$KERNEL_DIR/.config"; then
-        log "ERROR" "CONFIG_MODULES=y not found in kernel config"
-        log "INFO" "Please run 03_conf.sh with ZFS support enabled"
-        log "INFO" "This should have been applied by the ZFS overlay in 03_conf.sh"
-        return 1
-    fi
-    
-    # Check for ZLIB_DEFLATE which is needed for ZFS
-    if ! grep -q "^CONFIG_ZLIB_DEFLATE=y" "$KERNEL_DIR/.config"; then
-        log "ERROR" "CONFIG_ZLIB_DEFLATE=y not found in kernel config"
-        log "INFO" "Please run 03_conf.sh with ZFS support enabled"
-        log "INFO" "This should have been applied by the ZFS overlay in 03_conf.sh"
-        return 1
-    fi
-    
-    log "SUCCESS" "Kernel has required ZFS dependencies configured"
-    
-    # Ensure proper kernel preparation for module building
-    log "INFO" "Preparing kernel for module building"
-    
-    # Create symlinks for tools header files
-    log "INFO" "Setting up kernel header symlinks"
-    mkdir -p "$KERNEL_DIR/tools/include/asm"
-    mkdir -p "$KERNEL_DIR/tools/include/linux"
-    ln -sf "$KERNEL_DIR/arch/x86/include/asm/insn.h" "$KERNEL_DIR/tools/include/asm/" 2>/dev/null || true
-    ln -sf "$KERNEL_DIR/include/linux/types.h" "$KERNEL_DIR/tools/include/linux/" 2>/dev/null || true
-    
-    # Run make prepare first
-    (cd "$KERNEL_DIR" && make prepare) || {
-        log "WARNING" "Kernel prepare step failed, attempting to continue anyway"
-    }
-    
-    # Try simplified modules_prepare to avoid tools build issues
-    (cd "$KERNEL_DIR" && make modules_prepare SKIP_STACK_VALIDATION=1 HOSTCC=gcc NO_GCC_PLUGINS=1 SKIP_TOOLS=1) || {
-        log "WARNING" "Kernel modules_prepare failed, attempting to continue anyway"
-    }
-    
-    # Ensure kernel .config is actually in the expected location
-    if [ -f "$KERNEL_DIR/.config" ] && [ ! -f "$KERNEL_DIR/include/config/auto.conf" ]; then
-        log "INFO" "Creating kernel config symlinks"
-        mkdir -p "$KERNEL_DIR/include/config"
-        cp "$KERNEL_DIR/.config" "$KERNEL_DIR/include/config/auto.conf"
-    fi
-    
-    # Explicitly verify and echo the CONFIG_MODULES setting
-    log "INFO" "Verifying CONFIG_MODULES in kernel config"
-    if grep -q "^CONFIG_MODULES=y" "$KERNEL_DIR/.config"; then
-        echo "CONFIG_MODULES=y" > "$KERNEL_DIR/include/config/module.release"
-        log "SUCCESS" "CONFIG_MODULES is properly enabled in kernel configuration"
-    else
-        log "ERROR" "CONFIG_MODULES is not properly enabled in kernel configuration"
-    fi
-    
-    # Create additional preparation for ZFS kernel headers
-    log "INFO" "Setting up header links for ZFS build"
-    if [ -f "$KERNEL_DIR/Module.symvers" ]; then
-        log "INFO" "Module.symvers exists in kernel directory"
-    else
-        log "INFO" "Creating empty Module.symvers for ZFS build"
-        touch "$KERNEL_DIR/Module.symvers"
-    fi
-    
-    # Create a minimal environment for ZFS module build
-    log "INFO" "Setting up minimal kernel environment for ZFS"
-    
-    # Ensure the basic directory structure exists
-    mkdir -p "$KERNEL_DIR/include/linux"
-    mkdir -p "$KERNEL_DIR/include/config"
-    mkdir -p "$KERNEL_DIR/include/generated/uapi/linux"
-    
-    # Create key files that ZFS looks for
-    echo "#define MODULES 1" > "$KERNEL_DIR/include/generated/uapi/linux/modules.h"
-    echo "#define CONFIG_MODULES 1" > "$KERNEL_DIR/include/linux/module.h"
-    
-    # Configure ZFS using ZFS_MODULE_COMPILER_FLAGS
-    log "INFO" "Configuring ZFS for the kernel with custom flags"
-    SKIP_TOOLS=1 \
-    KERNELMAKE_PARAMS="-k" \
-    ZFS_MODULE_COMPILER_FLAGS="-DCONFIG_MODULES=1" \
-    KCFLAGS="-DCONFIG_MODULES=1" \
-    KBUILD_MODPOST_WARN=0 \
-    KERNELCPPFLAGS="-DCONFIG_MODULES=1" \
-    ./configure --with-linux="$KERNEL_DIR" --with-linux-obj="$KERNEL_DIR" --prefix=/fake --enable-debug --with-linux-version=6.12.19 || {
-        log "ERROR" "ZFS configuration failed"
-        
-        # Print full kernel config for debugging
-        log "INFO" "Kernel config dump for debugging:"
-        head -n 50 "$KERNEL_DIR/.config"
-        
-        # Check for critical configs
-        log "INFO" "Checking for critical ZFS dependencies in kernel config:"
-        grep -E "CONFIG_ZLIB_DEFLATE=|CONFIG_MODULES=|CONFIG_SPL=|CONFIG_ZFS=" "$KERNEL_DIR/.config" || true
-        
-        # Print the config.log file for debugging
-        if [ -f "config.log" ]; then
-            log "INFO" "Contents of config.log:"
-            cat config.log | grep -E "rpc|tirpc|xdr|error|warning|CONFIG_MODULES|support|ZLIB" || true
-            
-            # Find the specific error message about modules
-            log "INFO" "Searching for module error messages:"
-            grep -A 5 "checking whether CONFIG_MODULES is defined" config.log || true
-            
-            # Search for ZLIB errors
-            log "INFO" "Searching for ZLIB error messages:"
-            grep -A 5 "checking.*ZLIB" config.log || true
-        fi
-        return 1
-    }
-    
-    # Determine verbosity level
-    if [ "${MAKE_VERBOSE:-0}" = "1" ] || [ "${VERBOSE:-false}" = "true" ]; then
-        local make_v="V=1"
-        log "INFO" "Using verbose build output"
-    else
-        local make_v="V=0"
-    fi
-    
-    # Build ZFS modules
-    log "INFO" "Building ZFS modules"
-    nice -n 19 make $make_v -j"$threads" -C module || {
-        log "ERROR" "ZFS module build failed"
-        return 1
-    }
-    
-    # Install ZFS modules
-    log "INFO" "Installing ZFS modules"
-    DESTDIR="$(realpath "$ROOTFS_DIR")" make INSTALL_MOD_PATH="$(realpath "$ROOTFS_DIR")" install
-    
-    # Clean up fake directory
-    rm -rf "${ROOTFS_DIR}/fake"
-    
-    log "SUCCESS" "ZFS built and installed successfully"
-    
-    # Return to build directory
-    cd "$BUILD_DIR"
+    return 0
 }
 
 # Create the final EFI file
