@@ -3,7 +3,7 @@ name: Docker Build
 on:
   push:
     # Only build on tags, not branches
-    branches: []  # Empty list means no branch triggers
+    branches-ignore: ['**']  # Explicitly ignore all branches
     tags:
       - 'build-*'  # Tags for builds only (no release)
       - 'v*'       # Tags for builds with releases (e.g., v1.0.0)
