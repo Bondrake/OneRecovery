@@ -54,8 +54,9 @@ RUN apk add --no-cache \
     rsync \
     shadow \
     su-exec \
-    # Full GNU diffutils for kernel build (BusyBox diff lacks -I option)
+    # Full GNU utilities for kernel build (BusyBox lacks some required options)
     diffutils \
+    findutils \
     # Package config tool for build system
     pkgconf \
     # UUID libraries required for ZFS
