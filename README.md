@@ -4,6 +4,18 @@ OneFileLinux is a single-file EFI-based Linux recovery environment designed for 
 
 <img width=600 alt="OneFileLinux" src="https://hub.zhovner.com/img/one-file-linux.png" />
 
+## Project Revival and Enhancements
+
+OneFileLinux has been revived and massively overhauled with a focus on modern systems and advanced recovery capabilities:
+
+- **Modern Architecture**: Completely rebuilt with a modular, maintainable codebase
+- **Latest Technology**: Updated to Linux kernel 6.12 and Alpine Linux 3.21
+- **Advanced File Systems**: Full ZFS and Btrfs support for modern storage solutions
+- **Flexible Building**: Modular build system with minimal to full-featured options
+- **Robust Error Handling**: Comprehensive error detection and recovery mechanisms
+- **CI/CD Integration**: Automated builds and testing with GitHub Actions
+- **Docker Support**: Containerized build environment for consistent results
+
 ## Why OneFileLinux?
 
 OneFileLinux provides a powerful system recovery solution with unique advantages:
@@ -34,7 +46,7 @@ The easiest way to build OneFileLinux is using Docker, which provides a consiste
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/OneFileLinux.git
+git clone https://github.com/zhovner/OneFileLinux.git
 cd OneFileLinux/docker
 
 # Build with default settings
@@ -60,7 +72,7 @@ sudo apt-get install build-essential git autoconf automake libtool \
   libncurses-dev e2fsprogs coreutils mtools xorriso squashfs-tools
 
 # Clone the repository
-git clone https://github.com/yourusername/OneFileLinux.git
+git clone https://github.com/zhovner/OneFileLinux.git
 cd OneFileLinux
 
 # Run the build

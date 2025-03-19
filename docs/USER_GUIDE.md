@@ -48,15 +48,19 @@ OneFileLinux is a lightweight Linux distribution contained in a single EFI execu
 - **Text UI**: Full-featured text-based user interface for easy navigation
 - **Size Optimized**: Minimal builds under 50MB, full builds under 150MB
 
-### Project History
+### Project Revival
 
-OneFileLinux is a fork of the original OneFileLinux project, which hasn't been maintained for over 5 years. This modernized version features:
+OneFileLinux has been revived and completely redesigned from the ground up, transforming a previously unmaintained project into a robust, modern recovery solution. Key improvements include:
 
-- Updated Linux kernel (6.12) and Alpine Linux (3.21)
-- ZFS filesystem support
-- Enhanced system utilities for recovery and disk management
-- Streamlined user experience with automatic root login
-- Size and performance optimizations
+- **Modular Architecture**: Complete rebuild with a layered, maintainable design
+- **Error Resilience**: Comprehensive error handling and recovery mechanisms
+- **Modern Foundation**: Updated Linux kernel (6.12) and Alpine Linux (3.21)
+- **Advanced Storage Support**: Full ZFS and Btrfs integration
+- **Adaptive Building**: Flexible build system with multiple configuration options
+- **Streamlined Experience**: Automatic root login and intuitive text-based interface
+- **Size Optimization**: Ultra-compact builds as small as 4MB for minimal configurations
+- **Continuous Integration**: Automated build and test pipeline with GitHub Actions
+- **Docker Integration**: Containerized build environment for consistent results
 
 ## Building OneFileLinux
 
@@ -75,7 +79,7 @@ The easiest way to build OneFileLinux is using Docker, which provides a consiste
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/OneFileLinux.git
+   git clone https://github.com/zhovner/OneFileLinux.git
    cd OneFileLinux/docker
    ```
 
@@ -148,7 +152,7 @@ apk add build-base git autoconf automake libtool util-linux elfutils-dev \
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/OneFileLinux.git
+   git clone https://github.com/zhovner/OneFileLinux.git
    cd OneFileLinux
    ```
 
