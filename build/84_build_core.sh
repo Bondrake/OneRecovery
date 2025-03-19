@@ -371,7 +371,7 @@ create_efi() {
             grep -i "error" kernel_build.log | tail -10
         fi
         return 1
-    }
+    fi
     
     # If building as root, fix permissions on the output directory
     if [ "${BUILD_AS_ROOT:-false}" = "true" ]; then
