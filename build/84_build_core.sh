@@ -139,22 +139,6 @@ build_kernel() {
     # ABI header mismatch warnings are allowed
     log "INFO" "ABI header mismatch warnings are allowed for now"
     
-    # Ensure kernel can find OpenSSL for module signing
-    if [ -f "certs/Makefile" ] && grep -q "CONFIG_MODULE_SIG=y" .config; then
-        log "INFO" "Setting up kernel module signing with OpenSSL"
-        # Create certs directory and signing key if it doesn't exist
-        mkdir -p certs
-        if [ ! -f "certs/signing_key.pem" ]; then
-            log "INFO" "Generating dummy signing key for modules"
-            # Generate a dummy key for module signing
-            openssl req -new -x509 -newkey rsa:2048 -keyout certs/signing_key.pem \
-                -outform DER -out certs/signing_key.x509 -nodes \
-                -subj "/CN=OneRecovery Build Signing Key/" 2>/dev/null || true
-            # Also create the format needed by the kernel
-            openssl x509 -inform DER -in certs/signing_key.x509 \
-                -out certs/signing_key.x509.pem 2>/dev/null || true
-        fi
-    fi
     
     # Check directory permissions before building
     log "INFO" "Checking kernel source directory permissions"
@@ -195,6 +179,17 @@ build_kernel() {
         make menuconfig
     else
         log "INFO" "Using non-interactive kernel configuration"
+        # Check for module signing configuration and disable it to avoid OpenSSL dependency
+        if grep -q "CONFIG_MODULE_SIG=y" .config; then
+            log "INFO" "Disabling kernel module signing to avoid OpenSSL dependency"
+            # Disable module signing in the kernel config
+            sed -i 's/CONFIG_MODULE_SIG=y/CONFIG_MODULE_SIG=n/' .config
+            sed -i 's/CONFIG_MODULE_SIG_ALL=y/CONFIG_MODULE_SIG_ALL=n/' .config
+            # Ensure other related options are disabled
+            sed -i 's/CONFIG_SYSTEM_TRUSTED_KEYS=.*/CONFIG_SYSTEM_TRUSTED_KEYS=""/' .config
+            sed -i 's/CONFIG_SYSTEM_REVOCATION_KEYS=.*/CONFIG_SYSTEM_REVOCATION_KEYS=""/' .config
+        fi
+        # Apply configuration updates
         make olddefconfig
     fi
     
@@ -347,12 +342,34 @@ create_efi() {
     
     # Create modules.dep
     log "INFO" "Creating modules.dep"
-    depmod -b "$ROOTFS_DIR" -F System.map "$kernel_version" || true
+    if [ -f "System.map" ]; then
+        log "INFO" "Using System.map for module dependencies"
+        depmod -b "$ROOTFS_DIR" -F System.map "$kernel_version" || {
+            log "WARNING" "depmod encountered errors, modules may not load correctly"
+        }
+    else
+        log "WARNING" "System.map not found, module dependencies may be incomplete"
+        # Try running depmod without System.map
+        depmod -b "$ROOTFS_DIR" "$kernel_version" 2>/dev/null || {
+            log "WARNING" "Failed to create module dependencies"
+        }
+    fi
     
     # Create EFI file
     log "INFO" "Creating OneRecovery.efi"
-    cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
-        log "ERROR" "Failed to find kernel bzImage"
+    if [ -f "arch/x86/boot/bzImage" ]; then
+        cp arch/x86/boot/bzImage "$OUTPUT_DIR/OneRecovery.efi" || {
+            log "ERROR" "Failed to copy kernel bzImage to output directory"
+            return 1
+        }
+        log "SUCCESS" "Kernel bzImage copied to OneRecovery.efi"
+    else
+        log "ERROR" "Failed to find kernel bzImage - kernel build may have failed"
+        # Try to check if we can find any error messages
+        if [ -f "kernel_build.log" ]; then
+            log "INFO" "Checking build log for errors:"
+            grep -i "error" kernel_build.log | tail -10
+        fi
         return 1
     }
     

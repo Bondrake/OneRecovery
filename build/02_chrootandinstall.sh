@@ -157,6 +157,10 @@ if [ "${INCLUDE_SECURITY:-false}" = "true" ]; then
     log "INFO" "Including security tools: $SECURITY_PACKAGES"
 fi
 
+# Always include openssl for kernel module signing
+PACKAGES="$PACKAGES openssl"
+log "INFO" "Including openssl for kernel module signing"
+
 # Add extra packages if specified
 if [ -n "${EXTRA_PACKAGES:-}" ]; then
     # Convert comma-separated list to space-separated list
