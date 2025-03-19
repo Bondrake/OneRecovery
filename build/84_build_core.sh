@@ -179,15 +179,21 @@ build_kernel() {
         make menuconfig
     else
         log "INFO" "Using non-interactive kernel configuration"
-        # Check for module signing configuration and disable it to avoid OpenSSL dependency
+        # Check for module signing configuration and fix OpenSSL-related settings
         if grep -q "CONFIG_MODULE_SIG=y" .config; then
-            log "INFO" "Disabling kernel module signing to avoid OpenSSL dependency"
-            # Disable module signing in the kernel config
-            sed -i 's/CONFIG_MODULE_SIG=y/CONFIG_MODULE_SIG=n/' .config
-            sed -i 's/CONFIG_MODULE_SIG_ALL=y/CONFIG_MODULE_SIG_ALL=n/' .config
-            # Ensure other related options are disabled
+            # Make sure trusted keys and revocation keys are empty to avoid external dependencies
+            log "INFO" "Setting empty trusted keys for kernel configuration"
             sed -i 's/CONFIG_SYSTEM_TRUSTED_KEYS=.*/CONFIG_SYSTEM_TRUSTED_KEYS=""/' .config
             sed -i 's/CONFIG_SYSTEM_REVOCATION_KEYS=.*/CONFIG_SYSTEM_REVOCATION_KEYS=""/' .config
+            
+            # Check if we need to pre-create the signing key directory and files
+            if [ ! -d "certs" ]; then
+                mkdir -p certs
+                log "INFO" "Created kernel certs directory"
+            fi
+            
+            # We'll keep module signing enabled since we're now installing openssl in Docker
+            log "INFO" "Keeping module signing enabled with empty trusted keys"
         fi
         # Apply configuration updates
         make olddefconfig

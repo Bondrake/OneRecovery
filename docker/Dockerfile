@@ -57,6 +57,8 @@ RUN apk add --no-cache \
     # Full GNU utilities for kernel build (BusyBox lacks some required options)
     diffutils \
     findutils \
+    # OpenSSL for kernel signing operations
+    openssl \
     # Package config tool for build system
     pkgconf \
     # UUID libraries required for ZFS
