@@ -1,3 +1,28 @@
+# Project Moved!
+
+  **⚠️ This repository is no longer maintained ⚠️**
+
+  ### OneRecovery has been renamed to OneFileLinux!
+
+  This project has moved to a new home and returned to its original upstream name:
+  https://github.com/Bondrake/OneFileLinux
+
+  #### Why the name change?
+  We've adopted the original "OneFileLinux" name to honor the project's heritage and to better reflect its purpose: a complete Linux system in a single file. This simplifies project discovery and
+  better aligns with the original vision.
+
+  The new repository includes:
+  - Modern kernel (6.12) and Alpine Linux (3.21)
+  - ZFS and Btrfs support
+  - Comprehensive recovery tools
+  - Improved build system
+  - Docker support
+  - Continuous integration via GitHub Actions
+
+  All future development, issues, and pull requests should be directed to the new repository.
+
+  Thank you for your interest in this project!
+
 # OneRecovery
 
 OneRecovery is a single-file EFI-based Linux recovery environment designed for data recovery, system repair, and diagnostics.
