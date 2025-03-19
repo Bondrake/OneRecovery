@@ -85,11 +85,9 @@ main() {
         exit 1
     fi
     
-    # Verify ZFS if enabled
-    if [ "$INCLUDE_ZFS" = "true" ] && [ ! -d "$ZFS_DIR" ]; then
-        log "ERROR" "ZFS directory not found: $ZFS_DIR"
-        log "INFO" "Please run 01_get.sh first with ZFS support enabled"
-        exit 1
+    # ZFS now uses pre-built Alpine packages, no need to check for source directory
+    if [ "$INCLUDE_ZFS" = "true" ]; then
+        log "INFO" "ZFS support will use pre-built Alpine packages"
     fi
     
     # Make sure kernel is configured
